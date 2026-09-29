@@ -14,33 +14,33 @@ final class CategoryPredictor extends RuleEngine {
     private const FAST = ['Moon', 'Sun', 'Mercury', 'Venus', 'Mars'];
     private const SLOW = ['Jupiter', 'Saturn', 'Rahu', 'Ketu'];
     private const BENEFIC = ['Jupiter', 'Venus', 'Mercury', 'Moon'];
-    private array $weakPlanets = [];
+    private array $k = [], $by = [], $relPlanets = [], $timing = [], $day = [];
 
     /** @param array $cat category row; $local = reference local date (DateTimeImmutable, profile timezone). */
     public function predict(array $k, array $cat, string $period, \DateTimeImmutable $local, float $lat, float $lon): array {
         $P = array_values(array_filter(array_map('trim', explode(',', $cat['planets'])), fn($x) => isset(self::LK_BAD[$x])));
         $H = array_values(array_filter(array_map('intval', explode(',', $cat['houses'])), fn($x) => $x >= 1 && $x <= 12));
         [$range, $refs] = $this->range($period, $local);
-        $by = $this->by($k); $F = []; $this->weakPlanets = [];
-        foreach ($P as $pl) if (in_array($by[$pl]['house'], self::LK_BAD[$pl], true)) $this->weakPlanets[$pl] = $by[$pl]['house'];
+        $by = $this->by($k); $F = [];
 
         // 1. natal strength of significators (always; heavier for lifetime)
         $wN = $period === 'lifetime' ? 2 : 1;
         foreach ($P as $pl) {
             $d = $by[$pl]['dignity'] ?? null;
-            if ($d === 'exalted' || $d === 'own') $F[] = $this->f(+$wN, "natal_$d", ['planet' => $this->pn($pl)]);
-            if ($d === 'debilitated') $F[] = $this->f(-$wN, 'natal_debilitated', ['planet' => $this->pn($pl)]);
+            if ($d === 'exalted' || $d === 'own') $F[] = $this->f(+$wN, "natal_$d", ['planet' => $this->pn($pl)], $pl);
+            if ($d === 'debilitated') $F[] = $this->f(-$wN, 'natal_debilitated', ['planet' => $this->pn($pl)], $pl);
             $good = !in_array($by[$pl]['house'], self::LK_BAD[$pl], true);
-            $F[] = $this->f($good ? $wN : -$wN, $good ? 'lk_good' : 'lk_bad', ['planet' => $this->pn($pl), 'h' => $by[$pl]['house']]);
+            $F[] = $this->f($good ? $wN : -$wN, $good ? 'lk_good' : 'lk_bad', ['planet' => $this->pn($pl), 'h' => $by[$pl]['house']], $pl);
         }
         // 2. category houses: lords placed well / in 6-8-12
         $lords = [];
         foreach ($H as $h) {
             $lord = Zodiac::SIGN_LORDS[($k['lagna']['sign'] + $h - 1) % 12]; $lords[$lord] = true; $lh = $by[$lord]['house'];
-            if (in_array($lh, [6, 8, 12], true) && !in_array($h, [6, 8, 12], true)) $F[] = $this->f(-$wN, 'lord_dusthana', ['h' => $h, 'planet' => $this->pn($lord), 'lh' => $lh]);
-            elseif (in_array($lh, [1, 4, 5, 7, 9, 10], true)) $F[] = $this->f(+$wN, 'lord_strong', ['h' => $h, 'planet' => $this->pn($lord), 'lh' => $lh]);
+            if (in_array($lh, [6, 8, 12], true) && !in_array($h, [6, 8, 12], true)) $F[] = $this->f(-$wN, 'lord_dusthana', ['h' => $h, 'planet' => $this->pn($lord), 'lh' => $lh], $lord);
+            elseif (in_array($lh, [1, 4, 5, 7, 9, 10], true)) $F[] = $this->f(+$wN, 'lord_strong', ['h' => $h, 'planet' => $this->pn($lord), 'lh' => $lh], $lord);
         }
         $rel = fn(string $pl) => in_array($pl, $P, true) || isset($lords[$pl]);
+        $this->k = $k; $this->by = $by; $this->relPlanets = array_values(array_unique([...$P, ...array_keys($lords)])); $this->timing = []; $this->day = [];
 
         if ($period === 'lifetime') {
             $timeline = [];
@@ -49,7 +49,7 @@ final class CategoryPredictor extends RuleEngine {
                 $timeline[] = ['lord' => $md['lord'], 'name' => $this->pn($md['lord']), 'start' => $md['start'], 'end' => $md['end'], 'favourable' => $good];
             }
             foreach (array_slice($timeline, 0, 3) as $tl) $F[] = $this->f($tl['favourable'] ? 1 : -1, $tl['favourable'] ? 'md_future_good' : 'md_future_bad',
-                ['planet' => $tl['name'], 'from' => $tl['start'], 'to' => $tl['end']]);
+                ['planet' => $tl['name'], 'from' => $tl['start'], 'to' => $tl['end']], $tl['lord']);
             return $this->finish($cat, $period, $range, $F) + ['timeline' => $timeline];
         }
 
@@ -60,7 +60,8 @@ final class CategoryPredictor extends RuleEngine {
         if ($period !== 'daily' && $now) foreach (['mahadasha' => 2, 'antardasha' => 1] as $lvl => $w) {
             $pl = $now[$lvl] ?? null; if (!$pl || !$rel($pl)) continue;
             $good = !in_array($by[$pl]['house'], self::LK_BAD[$pl], true);
-            $F[] = $this->f($good ? $w : -$w, "dasha_{$lvl}_" . ($good ? 'good' : 'bad'), ['planet' => $this->pn($pl)]);
+            $F[] = $this->f($good ? $w : -$w, "dasha_{$lvl}_" . ($good ? 'good' : 'bad'), ['planet' => $this->pn($pl)], $pl);
+            $this->timing[] = ['good' => $good, 'until' => $this->dashaEnd($lvl, $local->format('Y-m-d'))];
         }
         // 4. transits: period-relevant planets (plus significators of matching speed), from Moon and over category houses
         $set = match ($period) { 'daily' => ['Moon', ...array_intersect($P, self::FAST)], 'yearly' => [...self::SLOW],
@@ -71,14 +72,16 @@ final class CategoryPredictor extends RuleEngine {
             $at = fn(array $tr) => current(array_filter($tr['planets'], fn($t) => $t['name'] === $pl));
             $m = $at($mid); $w = $rel($pl) ? 1.5 : 1;
             $g = array_sum(array_map(fn($tr) => in_array($at($tr)['house_from_moon'], self::GOCHAR_GOOD[$pl], true) ? 1 : -1, $trs)) / $n;
-            if ($g != 0) $F[] = $this->f($g * $w, $g > 0 ? 'transit_good' : 'transit_bad', ['planet' => $this->pn($pl), 'h' => $m['house_from_moon']]);
+            if ($g != 0) $F[] = $this->f($g * $w, $g > 0 ? 'transit_good' : 'transit_bad', ['planet' => $this->pn($pl), 'h' => $m['house_from_moon']], $pl);
             if ($pl === 'Moon') continue;
             $inH = array_sum(array_map(fn($tr) => in_array($at($tr)['house_from_lagna'], $H, true) ? 1 : 0, $trs)) / $n;
             if ($inH >= 0.5) { $ben = in_array($pl, self::BENEFIC, true);
-                $F[] = $this->f(($ben ? 1 : -1) * $w * $inH, $ben ? 'transit_house_good' : 'transit_house_bad', ['planet' => $this->pn($pl), 'h' => $m['house_from_lagna']]); }
+                $F[] = $this->f(($ben ? 1 : -1) * $w * $inH, $ben ? 'transit_house_good' : 'transit_house_bad', ['planet' => $this->pn($pl), 'h' => $m['house_from_lagna']], $pl); }
         }
         if ($period === 'daily') {
             $ti = $mid['derived']['tara']['index'];
+            if ($ti !== 0) $this->day[] = in_array($ti, [2, 4, 6], true) ? 'tara_bad' : 'tara_good';
+            if ($mid['derived']['chandrashtama']['active']) $this->day[] = 'chandrashtama';
             if ($ti !== 0) $F[] = $this->f(in_array($ti, [2, 4, 6], true) ? -1 : 1, in_array($ti, [2, 4, 6], true) ? 'tara_bad' : 'tara_good', ['tara' => $this->t("astro.taras.$ti")]);
             if ($mid['derived']['chandrashtama']['active']) $F[] = $this->f(-2, 'chandrashtama', []);
         }
@@ -106,7 +109,7 @@ final class CategoryPredictor extends RuleEngine {
         return array_values(array_filter($o, fn($f) => abs($f['w']) > 0.01));
     }
 
-    private function f(float $w, string $key, array $vars): array { return ['w' => $w, 'key' => $key, 'text' => $this->t("pred.f.$key", $vars)]; }
+    private function f(float $w, string $key, array $vars, ?string $pl = null): array { return ['w' => $w, 'key' => $key, 'pl' => $pl, 'text' => $this->t("pred.f.$key", $vars)]; }
 
     private function lines(?string $s): array { return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $s)))); }
     private function field(array $cat, string $k): array { return $this->lines($cat["{$k}_{$this->lang}"] ?? '') ?: $this->lines($cat["{$k}_en"] ?? ''); }
@@ -119,21 +122,59 @@ final class CategoryPredictor extends RuleEngine {
         $pos = array_values(array_column(array_filter($F, fn($f) => $f['w'] > 0), 'text'));
         $neg = array_values(array_column(array_filter($F, fn($f) => $f['w'] < 0), 'text'));
         $name = $cat['name_' . $this->lang] ?: $cat['name_en']; $v = ['cat' => $name, 'period' => $this->t("pred.period.$period")];
-        // plain-language advice: the category's own tips (admin) first, then general tips for this kind of period
-        $gen = fn(string $k) => $this->lines(str_replace('|', "\n", $this->t("pred.$k.$level", $v)));
-        $upay = $this->field($cat, 'upay');
-        // no upay written by the admin: fall back to the Lal Kitab remedy of the category's weakest planets
-        if (!$upay) foreach ($this->weakPlanets as $pl => $h) { $x = $this->c("lk.$pl.$h.rem.0"); if ($x !== '' && count($upay) < 2) $upay[] = $x; }
+        [$do, $dont, $upay, $personal] = $this->advice($cat, $F);
         return ['meta' => ['type' => 'interpretation', 'kind' => 'category_prediction', 'ruleset' => self::VERSION, 'lang' => $this->lang],
                 'category' => ['id' => (int) $cat['id'], 'slug' => $cat['slug'], 'name' => $name, 'icon' => $cat['icon'], 'caution' => (bool) $cat['caution']],
                 'period' => $period, 'range' => $range, 'score' => $score, 'score_label' => $this->t('pred.score_label'), 'level' => $level,
                 'level_text' => $this->t("pred.level.$level"), 'headline' => $this->t("pred.headline.$level", $v),
                 'explanation' => $this->t("pred.simple.$level", $v) . ' ' . $this->t('pred.summary.counts', ['p' => count($pos), 'n' => count($neg)]),
-                'do' => array_values(array_unique([...$this->field($cat, 'dos'), ...$gen('do')])),
-                'dont' => array_values(array_unique([...$this->field($cat, 'donts'), ...$gen('dont')])),
-                'upay' => array_values(array_unique($upay)) ?: [$this->t('pred.upay_default')],
+                'personal' => $personal, 'do' => $do, 'dont' => $dont, 'upay' => $upay,
                 'caution' => $cat['caution'] ? $this->t('pred.caution') : null,
                 'details' => ['positive' => $pos, 'challenging' => $neg], 'positive' => $pos, 'challenging' => $neg,
                 'disclaimer' => $this->t('pred.disclaimer')];
     }
+
+    /** End date (Y-m-d) of the running mahadasha / antardasha at $date. */
+    private function dashaEnd(string $lvl, string $date): ?string {
+        foreach ($this->k['dasha']['mahadasha'] as $md) if ($md['start'] <= $date && $date < $md['end']) {
+            if ($lvl === 'mahadasha') return $md['end'];
+            foreach ($md['antardasha'] ?? [] as $ad) if ($ad['start'] <= $date && $date < $ad['end']) return $ad['end'];
+        }
+        return null;
+    }
+
+    /**
+     * Advice built from this kundali: which of the topic's planets are strong or weak here (all factors summed per planet),
+     * the Lal Kitab reading and remedies for each planet in the house it actually occupies, matching Lal Kitab combinations,
+     * the running dasha and today's timing. The admin's general tip for the category is added last.
+     */
+    private function advice(array $cat, array $F): array {
+        $ps = []; foreach ($F as $f) if ($f['pl']) $ps[$f['pl']] = ($ps[$f['pl']] ?? 0) + $f['w'];
+        $strong = array_keys(array_filter($ps, fn($w) => $w > 0.01)); usort($strong, fn($a, $b) => $ps[$b] <=> $ps[$a]);
+        $weak = array_keys(array_filter($ps, fn($w) => $w < -0.01)); usort($weak, fn($a, $b) => $ps[$a] <=> $ps[$b]);
+        $do = []; $dont = []; $upay = []; $personal = [];
+        // what the Lal Kitab says about the topic's planets in this chart (strongest influence first)
+        $rel = $this->relPlanets; usort($rel, fn($a, $b) => abs($ps[$b] ?? 0) <=> abs($ps[$a] ?? 0));
+        foreach (array_slice($rel, 0, 4) as $pl) {
+            $h = $this->by[$pl]['house']; $good = !in_array($h, self::LK_BAD[$pl], true);
+            if (($x = $this->c("lk.$pl.$h." . ($good ? 'good' : 'bad'))) !== '') $personal[] = ['text' => $x, 'good' => $good];
+        }
+        foreach (array_slice($strong, 0, 2) as $pl) $do[] = $this->t("pred.pl.$pl.do");
+        foreach (array_slice($weak, 0, 2) as $pl) { $dont[] = $this->t("pred.pl.$pl.dont"); $do[] = $this->t("pred.pl.$pl.fix"); }
+        if ($this->lang === 'en') foreach ($this->relPlanets as $pl) { $c = $this->lkCombos($this->k, $pl); array_push($do, ...$c['g']); array_push($dont, ...$c['c']); }
+        // nearest change: the antardasha if it matters here, else the mahadasha
+        foreach (array_slice(array_reverse($this->timing), 0, 1) as $tm) if ($tm['until']) ($tm['good'] ? $do[] = $this->t('pred.time.good', ['date' => $tm['until']]) : $dont[] = $this->t('pred.time.bad', ['date' => $tm['until']]));
+        foreach ($this->day as $d) ($d === 'tara_good' ? $do[] = $this->t("pred.time.$d") : $dont[] = $this->t("pred.time.$d"));
+        // remedies from the Lal Kitab for the weak planets, in the houses they occupy in this chart
+        foreach (array_slice($weak, 0, 2) as $pl) {
+            $h = $this->by[$pl]['house'];
+            for ($i = 0; $i < 2; $i++) if (($x = $this->c("lk.$pl.$h.rem.$i")) !== '') $upay[] = $x;
+            $upay[] = $this->t("pred.pl.$pl.upay");
+        }
+        if (!$weak && $strong) $upay[] = $this->t("pred.pl.{$strong[0]}.upay");
+        $one = fn(string $k) => array_slice($this->field($cat, $k), 0, 1);
+        $u = fn(array $a) => array_values(array_unique($a));
+        return [$u([...$do, ...$one('dos')]), $u([...$dont, ...$one('donts')]), array_slice($u([...$upay, ...$one('upay')]), 0, 5) ?: [$this->t('pred.upay_default')], $personal];
+    }
+
 }

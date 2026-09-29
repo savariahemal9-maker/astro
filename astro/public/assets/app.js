@@ -318,6 +318,7 @@
         <div class="pp-score">${dial(d.score, d.score_label)}</div></div>
       <p class="lead">${esc(d.explanation)}</p>
       ${d.caution ? `<div class="warn"><span class="ms">report</span> ${esc(d.caution)}</div>` : ''}
+      ${d.personal && d.personal.length ? `<div class="pp-kundali"><h3><span class="ms">menu_book</span> ${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span>${esc(x.text)}</li>`).join('')}</ul></div>` : ''}
       <div class="pp-boxes">${box('do', 'check_circle', t('ui.what_to_do'), d.do)}${box('dont', 'block', t('ui.what_to_avoid'), d.dont)}${box('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
       ${d.timeline && d.timeline.length ? `<h3><span class="ms">timeline</span> ${esc(t('ui.life_phases'))}</h3><ul class="pp-phases">${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span class="chip ${x.favourable ? 'ok' : 'warn'}">${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ul>` : ''}
       ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>

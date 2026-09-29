@@ -307,3 +307,6 @@ label.check{display:flex;align-items:center;gap:.5rem}
 .pp-box.do{background:#1b9e5a14} .pp-box.do h3{color:#1b7a47} .pp-box.dont{background:#e5484d12} .pp-box.dont h3{color:#c0343a} .pp-box.upay{background:#f5a52418} .pp-box.upay h3{color:#a86a00}
 .pp-phases{list-style:none;padding:0;margin:.3rem 0 1rem} .pp-phases li{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px dashed var(--line)}
 @media (max-width:900px){.pp-boxes{grid-template-columns:1fr}}
+.pp-kundali{margin:1rem 0 .2rem;padding:.8rem 1rem;border-radius:14px;background:var(--p-c)} .pp-kundali h3{margin:0 0 .4rem;display:flex;align-items:center;gap:.35rem;font-size:1rem;color:var(--p)}
+.pp-kundali ul{list-style:none;margin:0;padding:0} .pp-kundali li{display:flex;gap:.5rem;align-items:flex-start;padding:.3rem 0}
+.pp-kundali li .ms{font-size:1.1rem;margin-top:.1rem} .pp-kundali li.good .ms{color:#1b7a47} .pp-kundali li.care .ms{color:#c0343a}
