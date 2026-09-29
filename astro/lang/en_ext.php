@@ -98,6 +98,7 @@ return [
   'inf_weak' => '{planet} is weakened in the birth chart ({why}).',
 ],
 'rf' => [
+  'tone' => ['good' => 'Good', 'mixed' => 'Average', 'bad' => 'Be careful'], 'pick' => 'Choose your rashi', 'l_color' => 'Lucky colour', 'l_num' => 'Lucky number', 'l_day' => 'Best day', 'chant' => 'Chant 11 times to calm {planet}', 'glance' => 'At a glance',
   'title' => 'Rashifal',
   'sub' => 'Horoscope for all 12 Moon signs, calculated from the real planetary positions.',
   'tabs' => 'Daily|Weekly|Monthly',
