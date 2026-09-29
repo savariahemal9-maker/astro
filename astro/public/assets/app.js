@@ -67,6 +67,24 @@
     const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['ai-chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']]
       : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['login', 'ui.sign_in', 'login']];
     $bnav.innerHTML = bl.map(x => a(x)).join('');
+    renderStrip(); renderFooter();
+  }
+  // traditional header strip: today's date, tithi and nakshatra for the saved place
+  let stripPc = null;
+  function renderStrip() {
+    const el = document.getElementById('tsText'); if (!el) return;
+    const place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
+    const d = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang + '-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const put = () => { el.textContent = stripPc ? `${d} · ${tn('paksha', stripPc.tithi[0].paksha)} ${tn('tithis', stripPc.tithi[0].name)} · ${tn('nakshatras', stripPc.nakshatra[0].name)} · ${place.name.split(',')[0]}` : d; };
+    put(); if (!stripPc) apiRaw('GET', `/panchang?date=${new Date().toLocaleDateString('en-CA')}&lat=${place.lat}&lon=${place.lon}&tzid=${encodeURIComponent(place.tzid)}`).then(p => { stripPc = p; put(); }).catch(() => {});
+  }
+  function renderFooter() {
+    const el = document.getElementById('sfoot'); if (!el) return;
+    const L = (h, l) => `<a href="#/${h}">${esc(t(l))}</a>`;
+    el.innerHTML = `<div class="sf-in"><div class="sf-brand"><b>${esc(t('ui.app_name'))}</b><p>${esc(t('home.foot'))}</p><p class="sf-om">ॐ</p></div>
+      <div><h4>${esc(t('home.explore_e'))}</h4>${L(token ? 'add' : 'register', 'home.f_kundali')}${L('predict', 'home.f_predict')}${L('ai-chat', 'home.f_ai')}${L('dashboard', 'home.f_remedy')}</div>
+      <div><h4>${esc(t('rf.title'))}</h4>${L('rashifal/daily', 'rf.title')}${L('panchang', 'ui.panchang')}${L('home', 'home.nav')}</div></div>
+      <div class="sf-copy">© ${new Date().getFullYear()} ${esc(t('ui.app_name'))} · Vedic · Lal Kitab · Panchang</div>`;
   }
   const closeDrawer = () => document.body.classList.remove('drawer-open');
   document.getElementById('scrim').onclick = closeDrawer;
@@ -228,7 +246,8 @@
         if (reg) body.name = f.name.value;
         const d = await api('POST', reg ? '/auth/register' : '/auth/login', body);
         setToken(d.token); if (d.user.lang !== lang) await loadLang(d.user.lang);
-        location.hash = '#/dashboard';
+        let draft = null; try { draft = sessionStorage.getItem('kdraft'); } catch (er) {}
+        location.hash = draft ? '#/add' : '#/dashboard';
       } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; }
     };
   }
@@ -994,6 +1013,9 @@
       <div class="addwrap"><section class="card">${chartForm()}</section>
       <aside class="card tips"><div class="card-h"><span class="ms">lightbulb</span>${esc(t('ui.tips'))}</div><ul><li>${esc(t('ui.tip1'))}</li><li>${esc(t('ui.tip2'))}</li><li>${esc(t('ui.tip3'))}</li></ul></aside></div>`);
     bindChartForm();
+    let dr = null; try { dr = JSON.parse(sessionStorage.getItem('kdraft') || 'null'); sessionStorage.removeItem('kdraft'); } catch (e) {}
+    if (dr) { const f = document.getElementById('cf'); ['label', 'birth_date', 'birth_time', 'place_q'].forEach(k => { if (dr[k]) f[k].value = dr[k]; });
+      f.place_q.dispatchEvent(new Event('input')); f.place_q.focus(); }
   }
   async function viewEdit(id) {
     loading(); let p; try { p = await api('GET', '/profiles/' + id); } catch (e) { h(errBox(e)); return; }
@@ -1245,22 +1267,39 @@
   }
   function viewHome() {
     const T = k => esc(t('home.' + k)), need = r => !token && ['add', 'predict', 'ai-chat', 'dashboard'].includes(r) ? 'register' : r;
-    const feat = [['add', 'f_kundali', 'auto_stories'], ['rashifal', 'f_rashifal', 'stars'], ['panchang', 'f_panchang', 'calendar_month'],
-      ['predict', 'f_predict', 'auto_awesome'], ['ai-chat', 'f_ai', 'psychology'], ['dashboard', 'f_remedy', 'spa']];
-    h(`<div class="hm">
-      <section class="hm-hero"><div><span class="ph-e"><span class="ms">verified</span>${T('eyebrow')}</span><h1>${T('h1a')} <em>${T('h1b')}</em></h1><p>${T('sub')}</p>
-        <div class="hm-cta"><a class="btn" href="#/${token ? 'add' : 'register'}"><span class="ms">auto_stories</span>${T('cta1')}</a><a class="btn ghost" href="#/rashifal"><span class="ms">stars</span>${T('cta2')}</a></div>
-        <div class="hm-trust"><span><span class="ms">check_circle</span>${T('t1')}</span><span><span class="ms">check_circle</span>${T('t2')}</span><span><span class="ms">check_circle</span>${T('t3')}</span></div></div>
-        ${zodiacWheel()}</section>
-      <div class="m-sec"><h2>${T('explore_h')}</h2></div>
-      <div class="hm-tiles">${feat.map(([r, k, ic]) => `<a class="hm-tile" href="#/${need(r)}"><span class="ic"><span class="ms">${ic}</span></span><div><b>${T(k)}</b><p>${T(k + '_p')}</p></div><span class="ms go">chevron_right</span></a>`).join('')}</div>
-      <div class="m-sec"><h2>${T('signs_h')}</h2><a href="#/rashifal">${T('signs_e')}<span class="ms">arrow_forward</span></a></div>
-      <div class="hm-signs">${SIGNS.map((sg, i) => `<a class="hm-sign" href="#/rashifal" data-sign="${i}"><span class="g">${GLYPH[i]}</span><small>${esc(t('astro.signs.' + sg))}</small></a>`).join('')}</div>
+    const svc = [['add', 'auto_stories', t('home.f_kundali')], ['rashifal', 'stars', t('rf.title')], ['panchang', 'calendar_month', t('ui.panchang')], ['predict', 'auto_awesome', t('home.f_predict')],
+      ['ai-chat', 'psychology', t('home.f_ai')], ['dashboard', 'spa', t('home.f_remedy')], ['dashboard', 'temple_hindu', t('ui.pooja')], ['panchang', 'schedule', t('ui.choghadiya')]];
+    h(`<div class="th">
+      <section class="th-hero"><div class="th-copy"><span class="th-om">ॐ</span><span class="ph-e">${T('eyebrow')}</span><h1>${T('h1a')} <em>${T('h1b')}</em></h1><p>${T('sub')}</p>
+          <div class="th-trust"><span><span class="ms">verified</span>${T('t1')}</span><span><span class="ms">spa</span>${T('t2')}</span><span><span class="ms">translate</span>${T('t3')}</span></div></div>
+        <form class="th-form" id="qk"><h2><span class="ms">auto_stories</span>${T('qk_title')}</h2><p>${T('qk_sub')}</p>
+          <label>${esc(t('ui.name'))}<input name="label" required maxlength="120" autocomplete="name"></label>
+          <div class="th-row"><label>${esc(t('ui.birth_date'))}<input type="date" name="birth_date" required></label><label>${esc(t('ui.birth_time'))}<input type="time" name="birth_time" required></label></div>
+          <label>${esc(t('ui.birth_place'))}<input name="place" required placeholder="${esc(t('ui.search_place'))}" autocomplete="off"></label>
+          <button><span class="ms">auto_awesome</span>${T('qk_btn')}</button></form></section>
+      <section class="th-svc">${svc.map(([r, ic, l], i) => `<a class="th-s c${i}" href="#/${need(r)}"><span class="ms">${ic}</span><b>${esc(l)}</b></a>`).join('')}</section>
+      <div class="th-two">
+        <section class="card th-pc"><div class="card-h"><span class="ms">calendar_month</span>${T('pc_title')}</div><div id="thpc"><div class="skel"><span></span><span></span></div></div>
+          <a class="btn tonal" href="#/panchang">${esc(t('ui.panchang'))} <span class="ms">arrow_forward</span></a></section>
+        <section class="card th-hs"><div class="card-h"><span class="ms">stars</span>${T('hs_title')}</div>
+          <div class="th-signs">${SIGNS.map((sg, i) => `<a href="#/rashifal/daily" data-sign="${i}"><span class="g">${GLYPH[i]}</span><small>${esc(t('astro.signs.' + sg))}</small></a>`).join('')}</div></section>
+      </div>
       <div class="m-sec"><h2>${T('how_h')}</h2></div>
-      <div class="hm-steps">${['s1', 's2', 's3'].map((k, i) => `<div class="hm-step"><span class="n">${i + 1}</span><b>${T(k)}</b><p>${T(k + 'p')}</p></div>`).join('')}</div>
-      <section class="hm-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section>
-      <p class="hm-foot">${T('foot')}</p></div>`);
+      <div class="hm-steps">${[['edit_calendar', 's1'], ['travel_explore', 's2'], ['task_alt', 's3']].map(([ic, k], i) => `<div class="hm-step"><span class="n"><span class="ms">${ic}</span></span><b>${i + 1}. ${T(k)}</b><p>${T(k + 'p')}</p></div>`).join('')}</div>
+      <section class="hm-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section></div>`);
     $app.querySelectorAll('[data-sign]').forEach(el => el.onclick = () => { try { localStorage.setItem('rf_sign', el.dataset.sign); } catch (e) {} });
+    const f = document.getElementById('qk');
+    f.onsubmit = e => { e.preventDefault(); try { sessionStorage.setItem('kdraft', JSON.stringify({ label: f.label.value, birth_date: f.birth_date.value, birth_time: f.birth_time.value, place_q: f.place.value })); } catch (er) {}
+      location.hash = token ? '#/add' : '#/register'; };
+    const place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad, Gujarat, India', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
+    apiRaw('GET', `/panchang?date=${today()}&lat=${place.lat}&lon=${place.lon}&tzid=${encodeURIComponent(place.tzid)}`).then(p => {
+      const el = document.getElementById('thpc'); if (!el) return; const tm = x => esc((x || '').slice(11));
+      const row = (ic, l, v) => `<div class="th-r"><span class="ms">${ic}</span><small>${esc(l)}</small><b>${v}</b></div>`;
+      el.innerHTML = `<p class="th-place"><span class="ms">location_on</span>${esc(place.name.split(',')[0])} · ${esc(tn('weekdays', p.vara.name))}</p><div class="th-rows">
+        ${row('brightness_4', t('ui.tithi'), esc(tn('paksha', p.tithi[0].paksha) + ' ' + tn('tithis', p.tithi[0].name)))}${row('stars', t('ui.nakshatra'), esc(tn('nakshatras', p.nakshatra[0].name)))}
+        ${row('join', t('ui.yoga'), esc(tn('yogas', p.yoga[0].name)))}${row('wb_twilight', t('ui.sunrise') + ' / ' + t('ui.sunset'), `${tm(p.sunrise)} · ${tm(p.sunset)}`)}
+        ${row('block', t('ui.rahu_kaal'), `${tm(p.rahu_kaal.start)} – ${tm(p.rahu_kaal.end)}`)}${row('dark_mode', t('ui.moon_sign'), esc(tn('signs', p.moon_sign)))}</div>`;
+    }).catch(() => { const el = document.getElementById('thpc'); if (el) el.innerHTML = '<p class="muted">—</p>'; });
   }
 
   // ---------- Router ----------
