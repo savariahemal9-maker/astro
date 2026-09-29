@@ -1,6 +1,6 @@
 // Website client. Uses only the public /api/v1 endpoints, exactly as a mobile app would.
 (() => {
-  const API = window.API_BASE;
+  const API = window.API_BASE, ASSET = API.replace(/\/api\/v1$/, '') + '/public/assets/', LOGO = ASSET + 'brand/logo-wide.webp';
   const $app = document.getElementById('app');
   const $rail = document.getElementById('rail'), $bnav = document.getElementById('bnav'), $prog = document.getElementById('progress');
   let inflight = 0;
@@ -62,7 +62,7 @@
       ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'],
       ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'], ['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
-    document.getElementById('drawer').innerHTML = `<div class="drawer-h"><b>${esc(t('ui.app_name'))}</b></div>${all.map(x => a(x)).join('')}`;
+    document.getElementById('drawer').innerHTML = `<div class="drawer-h"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></div>${all.map(x => a(x)).join('')}`;
     // phones: five destinations
     const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['ai-chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']]
       : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['login', 'ui.sign_in', 'login']];
@@ -81,10 +81,10 @@
   function renderFooter() {
     const el = document.getElementById('sfoot'); if (!el) return;
     const L = (h, l) => `<a href="#/${h}">${esc(t(l))}</a>`;
-    el.innerHTML = `<div class="sf-in"><div class="sf-brand"><b>${esc(t('ui.app_name'))}</b><p>${esc(t('home.foot'))}</p><p class="sf-om">ॐ</p></div>
+    el.innerHTML = `<div class="sf-in"><div class="sf-brand"><span class="sf-logo"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></span><p>${esc(t('home.foot'))}</p></div>
       <div><h4>${esc(t('home.explore_e'))}</h4>${L(token ? 'add' : 'register', 'home.f_kundali')}${L('predict', 'home.f_predict')}${L('ai-chat', 'home.f_ai')}${L('dashboard', 'home.f_remedy')}</div>
       <div><h4>${esc(t('rf.title'))}</h4>${L('rashifal/daily', 'rf.title')}${L('panchang', 'ui.panchang')}${L('home', 'home.nav')}</div></div>
-      <div class="sf-copy">© ${new Date().getFullYear()} ${esc(t('ui.app_name'))} · Vedic · Lal Kitab · Panchang</div>`;
+      <div class="sf-copy">© ${new Date().getFullYear()} KarmYog Astro · Vastu · Vedic · Lal Kitab · Panchang</div>`;
   }
   const closeDrawer = () => document.body.classList.remove('drawer-open');
   document.getElementById('scrim').onclick = closeDrawer;
@@ -154,13 +154,15 @@
   function placePicker(root, onPick) {
     const input = root.querySelector('[name=place_q]'), box = root.querySelector('.suggest');
     let timer;
+    input.addEventListener('focus', () => { if (innerWidth < 860) setTimeout(() => input.scrollIntoView({ block: 'start', behavior: 'smooth' }), 300); });
     input.addEventListener('input', () => {
       clearTimeout(timer);
       if (input.value.trim().length < 3) { box.innerHTML = ''; return; }
       timer = setTimeout(async () => {
         try {
           const rows = await api('GET', '/geo/search?q=' + encodeURIComponent(input.value));
-          box.innerHTML = rows.map((r, i) => `<button type="button" data-i="${i}">${esc(r.name)}</button>`).join('');
+          box.innerHTML = rows.length ? rows.map((r, i) => { const [c, ...rest] = r.name.split(', ');
+            return `<button type="button" class="sg" data-i="${i}"><span class="ms">location_on</span><span><b>${esc(c)}</b><small>${esc(rest.join(', '))}</small></span></button>`; }).join('') : `<p class="sg-none">—</p>`;
           box.querySelectorAll('button').forEach(b => b.onclick = async () => {
             const r = rows[b.dataset.i]; input.value = r.name; box.innerHTML = '';
             let tz = r.tzid || null;
@@ -272,7 +274,8 @@
         if (reg) body.name = f.name.value;
         const d = await api('POST', reg ? '/auth/register' : '/auth/login', body);
         setToken(d.token); if (d.user.lang !== lang) await loadLang(d.user.lang);
-        let draft = null; try { draft = sessionStorage.getItem('kdraft'); } catch (er) {}
+        let draft = null; try { draft = JSON.parse(sessionStorage.getItem('kdraft') || 'null'); } catch (er) {}
+        if (draft?.place?.lat != null) { try { const p = await quickCreate(draft); sessionStorage.removeItem('kdraft'); location.hash = '#/chart/' + p.id; return; } catch (er) {} }
         location.hash = draft ? '#/add' : '#/dashboard';
       } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; }
     };
@@ -1297,6 +1300,14 @@
       <path d="M200 160l8.5 27 28.5-.5-23 16.5 9 27-23-16.5-23 16.5 9-27-23-16.5 28.5.5z" fill="#fff"/>
     </svg><div class="orb"><i></i></div><div class="orb o2"><i></i></div></div>`;
   }
+  // hide the bottom bar while the on-screen keyboard is up
+  (() => { const isField = el => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !['checkbox', 'radio', 'button', 'submit'].includes(el.type);
+    const upd = () => document.body.classList.toggle('kb-open', isField(document.activeElement) || !!(window.visualViewport && visualViewport.height < innerHeight * 0.75));
+    document.addEventListener('focusin', upd); document.addEventListener('focusout', () => setTimeout(upd, 60));
+    window.visualViewport?.addEventListener('resize', upd); })();
+  // create a kundali straight from the quick form data (place already resolved)
+  const quickCreate = d => api('POST', '/profiles', { label: d.label, gender: null, birth_date: d.birth_date, birth_time: d.birth_time, time_accuracy: 'exact',
+    place_name: d.place_q, lat: d.place.lat, lon: d.place.lon, tzid: d.place.tzid || 'Asia/Kolkata', manual_offset_minutes: null, dst_fold: null, confirmed: true });
   function viewHome() {
     const T = k => esc(t('home.' + k)), need = r => !token && ['add', 'predict', 'ai-chat', 'dashboard'].includes(r) ? 'register' : r;
     const svc = [['add', 'auto_stories', t('home.f_kundali')], ['rashifal', 'stars', t('rf.title')], ['panchang', 'calendar_month', t('ui.panchang')], ['predict', 'auto_awesome', t('home.f_predict')],
@@ -1307,8 +1318,8 @@
         <form class="th-form" id="qk"><h2><span class="ms">auto_stories</span>${T('qk_title')}</h2><p>${T('qk_sub')}</p>
           <label>${esc(t('ui.name'))}<input name="label" required maxlength="120" autocomplete="name"></label>
           <div class="th-row"><label>${esc(t('ui.birth_date'))}<input type="date" name="birth_date" required></label><label>${esc(t('ui.birth_time'))}<input type="time" name="birth_time" required></label></div>
-          <label>${esc(t('ui.birth_place'))}<input name="place" required placeholder="${esc(t('ui.search_place'))}" autocomplete="off"></label>
-          <button><span class="ms">auto_awesome</span>${T('qk_btn')}</button></form></section>
+          <label class="th-place-l">${esc(t('ui.birth_place'))}<input name="place_q" required placeholder="${esc(t('ui.search_place'))}" autocomplete="off"><div class="suggest"></div></label>
+          <div id="qkerr"></div><button><span class="ms">auto_awesome</span>${T('qk_btn')}</button></form></section>
       <section class="th-svc">${svc.map(([r, ic, l], i) => `<a class="th-s c${i}" href="#/${need(r)}"><span class="ms">${ic}</span><b>${esc(l)}</b></a>`).join('')}</section>
       <div class="th-two">
         <section class="card th-pc"><div class="card-h"><span class="ms">calendar_month</span>${T('pc_title')}</div><div id="thpc"><div class="skel"><span></span><span></span></div></div>
@@ -1321,8 +1332,13 @@
       <section class="hm-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section></div>`);
     $app.querySelectorAll('[data-sign]').forEach(el => el.onclick = () => { try { localStorage.setItem('rf_sign', el.dataset.sign); } catch (e) {} });
     const f = document.getElementById('qk');
-    f.onsubmit = e => { e.preventDefault(); try { sessionStorage.setItem('kdraft', JSON.stringify({ label: f.label.value, birth_date: f.birth_date.value, birth_time: f.birth_time.value, place_q: f.place.value })); } catch (er) {}
-      location.hash = token ? '#/add' : '#/register'; };
+    let qp = null; placePicker(f, p => qp = p); f.place_q.addEventListener('input', () => qp = null);
+    f.onsubmit = async e => { e.preventDefault(); const err = document.getElementById('qkerr'); err.innerHTML = '';
+      if (!qp) { err.innerHTML = errBox({ message: t('ui.search_place') }); f.place_q.focus(); return; }
+      const d = { label: f.label.value, birth_date: f.birth_date.value, birth_time: f.birth_time.value, place_q: f.place_q.value, place: qp };
+      if (!token) { try { sessionStorage.setItem('kdraft', JSON.stringify(d)); } catch (er) {} location.hash = '#/register'; return; }
+      const btn = f.querySelector('button:last-child'); btn.disabled = true;
+      try { const p = await quickCreate(d); location.hash = '#/chart/' + p.id; } catch (e2) { err.innerHTML = errBox(e2); btn.disabled = false; } };
     const place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad, Gujarat, India', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
     apiRaw('GET', `/panchang?date=${today()}&lat=${place.lat}&lon=${place.lon}&tzid=${encodeURIComponent(place.tzid)}`).then(p => {
       const el = document.getElementById('thpc'); if (!el) return; const tm = x => esc((x || '').slice(11));
