@@ -10,7 +10,7 @@ use App\I18n\Lang;
  * Rules and texts are DRAFTS: have them reviewed by a qualified astrologer before launch.
  */
 class RuleEngine {
-    public const VERSION = '0.8';
+    public const VERSION = '1.0';
     protected const ELEMENTS = ['fire', 'earth', 'air', 'water'];
     protected const MODALITY = ['movable', 'fixed', 'dual'];
     protected const MANTRA = ['Sun' => 'ॐ सूर्याय नमः', 'Moon' => 'ॐ चन्द्राय नमः', 'Mars' => 'ॐ भौमाय नमः', 'Mercury' => 'ॐ बुधाय नमः',
@@ -38,6 +38,12 @@ class RuleEngine {
         return $this->wrap('report', $items);
     }
 
+    protected function lkItem(array $k, string $pl, string $id, string $rule): ?array {
+        $L = $this->lk($k, $pl); if (!$L['remedies']) return null;
+        return ['id' => $id, 'section' => 'remedy', 'title' => $this->pn($pl) . ' · ' . $this->t('ui.house') . ' ' . $L['house'] . ' — ' . $this->t($L['benefic'] ? 'ui.q_good' : 'ui.sec_caution'),
+                'text' => implode(' ', $L['remedies']), 'derivation' => ['rule' => $rule, 'ruleset' => self::VERSION,
+                'from_calculated' => [$this->fact("planets.$pl.house", $L['house']), $this->fact("planets.$pl.benefic", $L['benefic'])]]];
+    }
     public function remedies(string $period, array $k, array $tr, int $weekday): array {
         $items = [];
         $now = $tr['dasha_now'];
@@ -45,13 +51,16 @@ class RuleEngine {
             $wd = $weekday;
             $lord = Zodiac::WEEKDAY_LORDS[$wd];
             $items[] = $this->mantra('day_lord', 'interp.remedy_day_lord', $lord, [$this->fact('today.weekday', Zodiac::WEEKDAYS[$wd])], 'Weekday lord');
+            if ($x = $this->lkItem($k, $lord, 'lk_day', 'House-wise remedy of the weekday lord')) $items[] = $x;
             if ($tr['derived']['chandrashtama']['active'])
                 $items[] = $this->item('chandrashtama', 'caution', 'interp.chandrashtama', [],
                     [$this->fact('transit.Moon.house_from_moon', 8)], $tr['derived']['chandrashtama']['rule']);
         }
+        if ($period === 'weekly' && $now && $now['antardasha'] && ($x = $this->lkItem($k, $now['antardasha'], 'lk_ad', 'House-wise remedy of the running antardasha lord'))) $items[] = $x;
         if ($period === 'weekly' && $now && $now['antardasha'])
             $items[] = $this->mantra('antardasha', 'interp.remedy_mantra', $now['antardasha'],
                 [$this->fact('dasha.current.antardasha', $now['antardasha'])], 'Current antardasha lord');
+        if ($period === 'monthly' && $now && ($x = $this->lkItem($k, $now['mahadasha'], 'lk_md', 'House-wise remedy of the running mahadasha lord'))) $items[] = $x;
         if ($period === 'monthly') {
             if ($now) $items[] = $this->mantra('mahadasha', 'interp.remedy_mantra', $now['mahadasha'],
                 [$this->fact('dasha.mahadasha_in_month', $now['mahadasha'])], 'Mahadasha lord running in this month');
@@ -66,6 +75,7 @@ class RuleEngine {
         if ($period === 'common') {
             $lord = Analysis::houseLord($k['lagna']['sign'], 1);
             $items[] = $this->mantra('lagna_lord', 'interp.remedy_lagna', $lord, [$this->fact('lagna.sign', $k['lagna']['sign_name']), $this->fact('lagna.lord', $lord)], 'Strengthen the lagna lord');
+            foreach ($k['planets'] as $p) if (!$this->lk($k, $p['name'])['benefic'] && ($x = $this->lkItem($k, $p['name'], 'lk_' . $p['name'], 'Planet placed in an unfavourable house'))) $items[] = $x;
             foreach ($k['planets'] as $p) if ($p['dignity'] === 'debilitated' || !empty($p['combust']))
                 $items[] = $this->mantra('weak_' . $p['name'], $p['dignity'] === 'debilitated' ? 'interp.debilitated' : 'interp.remedy_weak', $p['name'], $this->pfacts($p), 'Planet debilitated or combust in the birth chart');
             $m = $k['analysis']['mangal_dosha'];
@@ -178,7 +188,7 @@ class RuleEngine {
         foreach ($k['dasha']['mahadasha'] as $md) {
             $p = $by[$md['lord']];
             $when = $jdNow >= $md['end_jd'] ? 'past' : ($jdNow >= $md['start_jd'] ? 'current' : 'future');
-            $items[] = ['id' => 'mdphal_' . $md['lord'], 'section' => $when, 'points' => $this->dashaPoints($k, $md['lord']),
+            $items[] = ['id' => 'mdphal_' . $md['lord'], 'section' => $when, 'points' => $this->dashaPoints($k, $md['lord']), 'remedies' => $this->lk($k, $md['lord'])['remedies'],
                 'title' => $this->t('interp.md_title', ['planet' => $this->pn($md['lord']), 'start' => $md['start'], 'end' => $md['end']]),
                 'subtitle' => $this->t('interp.planet_in', ['planet' => $this->pn($md['lord']), 'sign' => $this->t('astro.signs.' . $p['sign_name']), 'h' => $p['house']]),
                 'text' => $this->lk($k, $md['lord'])['effect'] . ' ' . $this->c("planet_house.{$md['lord']}." . ($p['house'] - 1)) . ' ' . $this->t('interp.dasha_theme.' . $md['lord'], ['planet' => $this->pn($md['lord'])]) . ' '
@@ -196,7 +206,8 @@ class RuleEngine {
             $rem = []; for ($i = 0; $i < 3; $i++) $rem[] = $this->c("remedies.{$p['name']}.$i");
             $items[] = ['id' => 'pr_' . $p['name'], 'section' => 'planet', 'title' => $this->t('interp.pr_title', ['planet' => $this->pn($p['name'])]),
                 'subtitle' => $this->t('interp.planet_in', ['planet' => $this->pn($p['name']), 'sign' => $this->t('astro.signs.' . $p['sign_name']), 'h' => $p['house']]),
-                'text' => ($L = $this->lk($k, $p['name']))['effect'] . ' ' . $this->c("planet_house.{$p['name']}." . ($p['house'] - 1)), 'remedies' => $L['remedies'] ?: $rem, 'benefic' => $L['benefic'],
+                'text' => ($L = $this->lk($k, $p['name'])) ? $this->c("planet_house.{$p['name']}." . ($p['house'] - 1)) : '', 'remedies' => $L['remedies'] ?: $rem, 'benefic' => $L['benefic'],
+                'points' => ['positive' => [$L['benefic'] ? $L['effect'] : $L['other'], ...($C = $this->lkCombos($k, $p['name']))['g']], 'negative' => [$L['benefic'] ? $L['other'] : $L['effect'], ...$C['c']]],
                 'derivation' => ['rule' => 'Planet results by natal house; remedies are traditional for the planet', 'ruleset' => self::VERSION, 'from_calculated' => $this->pfacts($p)]];
         }
         return $this->wrap('planet_results', $items);
@@ -211,6 +222,29 @@ class RuleEngine {
         $h = $this->by($k)[$pl]['house']; $good = !in_array($h, self::LK_BAD[$pl], true);
         $rem = []; for ($i = 0; $i < 4; $i++) { $x = $this->c("lk.$pl.$h.rem.$i"); if ($x !== '') $rem[] = $x; }
         return ['benefic' => $good, 'house' => $h, 'effect' => $this->c("lk.$pl.$h." . ($good ? 'good' : 'bad')), 'other' => $this->c("lk.$pl.$h." . ($good ? 'bad' : 'good')), 'remedies' => $rem];
+    }
+
+    /** Lal Kitab combination rules (data/lk_combos.php) that match this planet's placement: ['g' => positive texts, 'c' => cautions]. */
+    public function lkCombos(array $k, string $pl): array {
+        static $R = null; $R ??= require __DIR__ . '/../../data/lk_combos.php';
+        $by = $this->by($k); $h = $by[$pl]['house']; $in = fn(string $n, string $hs) => in_array($by[$n]['house'], array_map('intval', explode(',', $hs)), true);
+        $ok = function (string $c) use ($by, $in) {
+            $x = explode(':', $c);
+            return match ($x[0]) {
+                'any' => (bool) array_filter(explode('|', $x[1]), fn($n) => $in($n, $x[2])),
+                'empty' => !array_filter($by, fn($p) => $p['house'] === (int) $x[1]),
+                'good' => !in_array($by[$x[1]]['house'], self::LK_BAD[$x[1]], true),
+                default => $in($x[0], $x[1]),
+            };
+        };
+        $out = ['g' => [], 'c' => []];
+        foreach ($R as [$p, $ph, $st, $conds, $type, $text]) {
+            if ($p !== $pl || $ph !== $h) continue;
+            if ($st !== '' && ($st === 'good') !== !in_array($h, self::LK_BAD[$pl], true)) continue;
+            foreach ($conds as $c) if (!$ok($c)) continue 2;
+            $out[$type][] = $text;
+        }
+        return $out;
     }
 
     /** Positive / caution points for a dasha lord from the houses it rules and occupies, and its strength. */
@@ -249,10 +283,10 @@ class RuleEngine {
                 $items[] = $this->item('dasha_theme', 'mahadasha', 'interp.dasha_theme.' . $md['lord'], ['planet' => $this->pn($md['lord'])],
                     [$this->fact('dasha.current.mahadasha', $md['lord'])], 'Vimshottari mahadasha lord signification');
             foreach ($md['antardasha'] as $ad) if ($jd >= $ad['start_jd'] && $jd < $ad['end_jd'])
-                $items[] = $this->dashaItem('antardasha', 'antardasha', 'interp.antardasha_now', $ad, $k) + ['lord' => $ad['lord'], 'start' => $ad['start'], 'end' => $ad['end'],
+                $items[] = $this->dashaItem('antardasha', 'antardasha', 'interp.antardasha_now', $ad, $k) + ['lord' => $ad['lord'], 'lk' => $this->lk($k, $ad['lord']), 'start' => $ad['start'], 'end' => $ad['end'],
                     'progress' => round(($jd - $ad['start_jd']) / ($ad['end_jd'] - $ad['start_jd']) * 100), 'points' => $this->dashaPoints($k, $ad['lord'])];
             foreach ($md['antardasha'] as $i => $ad) if ($jd >= $ad['start_jd'] && $jd < $ad['end_jd'] && isset($md['antardasha'][$i + 1])) { $nx = $md['antardasha'][$i + 1];
-                $items[] = ['id' => 'next_ad', 'section' => 'next', 'lord' => $nx['lord'], 'start' => $nx['start'], 'end' => $nx['end'], 'text' => '', 'points' => $this->dashaPoints($k, $nx['lord']),
+                $items[] = ['id' => 'next_ad', 'section' => 'next', 'lord' => $nx['lord'], 'start' => $nx['start'], 'end' => $nx['end'], 'text' => $this->lk($k, $nx['lord'])['effect'], 'points' => $this->dashaPoints($k, $nx['lord']),
                     'derivation' => ['rule' => 'Next antardasha', 'ruleset' => self::VERSION, 'from_calculated' => [$this->fact('dasha.antardasha', $nx['lord'])]]]; }
         }
         return $this->wrap('dasha', $items);

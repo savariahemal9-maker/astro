@@ -434,7 +434,7 @@
   const IC = { remedy: 'spa', caution: 'warning', mahadasha: 'hourglass_top', antardasha: 'hourglass_bottom', personality: 'person', mind: 'psychology', present: 'schedule',
     houses: 'home', timeline: 'timeline', auspicious: 'thumb_up', inauspicious: 'thumb_down', mixed: 'balance', gochar: 'public', tara: 'star', summary: 'summarize' };
   const interpItems = (d) => d.items.length ? `<div class="icards">${d.items.map(it => `<article class="icard"><span class="ms ic">${IC[it.section] || 'auto_awesome'}</span>
-      <div>${it.section === 'remedy' ? steps(it.text) : `<p>${esc(it.text)}</p>`}${derivList(it)}</div></article>`).join('')}</div>` : `<p class="muted">${esc(t('ui.none'))}</p>`;
+      <div>${it.title ? `<b class="it-t">${esc(it.title)}</b>` : ''}${it.section === 'remedy' ? steps(it.text) : `<p>${esc(it.text)}</p>`}${derivList(it)}</div></article>`).join('')}</div>` : `<p class="muted">${esc(t('ui.none'))}</p>`;
 
   const grouped = (d) => { const g = {}; d.items.forEach(i => (g[i.section] ??= []).push(i));
     return `` + Object.entries(g).map(([sec, its]) => `<h2>${esc(t('ui.sec_' + sec, ''))}</h2>` + interpItems({ ...d, items: its })).join(''); };
@@ -464,9 +464,9 @@
           ${period(M)}<p class="sub">${esc(M.placement)}</p><p>${esc(M.text)}</p><p>${esc(M.details)}</p>${ptsBox(M.points)}
           <h3>${esc(t('ui.remedies_list'))}</h3>${steps([M.mantra].concat(M.lk_remedies || []).join(' '))}${derivList(M)}</section>` : '')
           + (A ? `<section class="card dcard"><div class="card-h"><span class="ms">hourglass_bottom</span>${esc(tn('planets', A.lord))} ${esc(t('ui.antardasha'))}<span class="chip">${esc(t('ui.current'))}</span></div>
-          ${period(A)}<p>${esc(A.text)}</p>${ptsBox(A.points)}${derivList(A)}</section>` : '')
+          ${period(A)}<p>${esc(A.text)}</p>${A.lk ? `<p class="sub">${esc(A.lk.effect)}</p>` : ''}${ptsBox(A.points)}${A.lk && A.lk.remedies.length ? `<h3>${esc(t('ui.remedies_list'))}</h3>${steps(A.lk.remedies.join(' '))}` : ''}${derivList(A)}</section>` : '')
           + (N ? `<section class="card dcard"><div class="card-h"><span class="ms">skip_next</span>${esc(t('ui.next_antardasha'))}: ${esc(tn('planets', N.lord))}</div>
-          <p class="muted">${esc(N.start)} → ${esc(N.end)}</p>${ptsBox(N.points)}</section>` : ''); }
+          <p class="muted">${esc(N.start)} → ${esc(N.end)}</p><p>${esc(N.text)}</p>${ptsBox(N.points)}</section>` : ''); }
       if (!['life', 'mdphal', 'dasha'].includes(type)) el.prepend(dateBar(date, v => tabPred(id, type, v)));
     } catch (e) { el.innerHTML = errBox(e); }
   }
@@ -495,7 +495,13 @@
         ${rd.items.map((i, n) => collapsible(i.title, `${verdictChip(i.verdict)}<p class="lead">${esc(i.prediction)}</p><div class="kv"><span>${esc(t('ui.reason'))}</span><span>${esc(i.reason)}</span></div>
           <div class="kv"><span>${esc(t('ui.description'))}</span><span>${esc(i.description)}</span></div><div class="kv"><span>${esc(t('ui.guidance'))}</span><span>${esc(i.guidance)}</span></div>${derivList(i)}`, n === 0, t('ui.v_' + i.verdict))).join('')}`;
       const [top, chart] = [html.slice(0, html.indexOf('</div>') + 6), html.slice(html.indexOf('</div>') + 6)];
-      localTabs(el, [['k', t('ui.kundali'), 'grid_view', () => chart], ['p', t('ui.annual_prediction'), 'auto_awesome', () => pred]]);
+      let hv = null; try { hv = await api('GET', `/profiles/${id}/house-varsh?year=${year}&lang=${lang}`); } catch (e) {}
+      const hvChart = () => hv ? `<div class="chartwrap"><section class="card">${interpTag()}${northChart(hv, 'D1')}${legend()}</section><section class="card"><div class="card-h"><span class="ms">speed</span>${esc(t('ui.overall_rating'))}</div>${dial(hv.score)}
+        <table><tr><th>${esc(t('ui.planet'))}</th><th>${esc(t('ui.house'))}</th><th>${esc(t('ui.status'))}</th></tr>${hv.planets.map(x => `<tr><td>${esc(tn('planets', x.name))}</td><td>${x.natal_house} → <b>${x.house}</b></td><td><span class="chip ${x.benefic ? 'ok' : 'warn'}">${esc(t(x.benefic ? 'ui.q_good' : 'ui.sec_caution'))}</span></td></tr>`).join('')}</table></section></div>` : errBox({ message: t('ui.none') });
+      const hvPred = () => hv ? `<div class="tgrid">${hv.planets.map(x => `<article class="card tcard ${x.benefic ? 'strong' : 'weak'}"><div class="card-h"><span class="ms">${x.benefic ? 'thumb_up' : 'warning'}</span>${esc(tn('planets', x.name))} · ${esc(t('ui.house'))} ${x.house}</div>
+        <p class="lead">${esc(x.effect)}</p>${x.remedies.length ? `<h3>${esc(t('ui.remedies_list'))}</h3>${steps(x.remedies.join(' '))}` : ''}</article>`).join('')}</div>` : '';
+      localTabs(el, [['k', t('ui.kundali'), 'grid_view', () => chart], ['p', t('ui.annual_prediction'), 'auto_awesome', () => pred],
+        ['hk', t('ui.house_varsh'), 'grid_on', hvChart], ['hp', t('ui.house_varsh_fal'), 'menu_book', hvPred]]);
       el.insertAdjacentHTML('afterbegin', top);
       el.querySelector('#vy').onchange = e => tabVarsh(id, k, +e.target.value);
     } catch (e) { el.innerHTML = errBox(e); }
@@ -544,9 +550,9 @@
     <div class="tgrid">${d.items.map(i => `<article class="card tcard ${i.verdict}"><div class="card-h"><span class="ms">${TOPIC_IC[i.topic]}</span>${esc(i.title)}${verdictChip(i.verdict)}</div>
       <p class="lead">${esc(i.prediction)}</p>
       <ul class="pts">${(i.points || []).map(x => `<li class="${x.good ? 'g' : 'b'}"><span class="ms">${x.good ? 'arrow_upward' : 'arrow_downward'}</span><div><b>${esc(tn('planets', x.planet))} · ${esc(t('ui.house'))} ${x.house}</b>
-        <small>${esc(t(x.good ? 'ui.q_good' : 'ui.sec_caution'))}: ${esc(x.domain)}</small></div></li>`).join('')}</ul>
+        <small>${esc(t(x.good ? 'ui.q_good' : 'ui.sec_caution'))}: ${esc(x.domain)}</small>${x.lk ? `<small class="lkx">${esc(x.lk)}</small>` : ''}</div></li>`).join('')}</ul>
       ${(i.notes || []).map(n => `<p class="note"><span class="ms">info</span>${esc(n)}</p>`).join('')}
-      <div class="guide"><span class="ms">tips_and_updates</span><span>${esc(i.guidance)}</span></div>${derivList(i)}</article>`).join('')}</div>`;
+      <div class="guide"><span class="ms">tips_and_updates</span><span>${esc(i.guidance)}</span></div>${i.remedy ? `<div class="guide rem"><span class="ms">spa</span><span>${esc(i.remedy)}</span></div>` : ''}${derivList(i)}</article>`).join('')}</div>`;
   async function tabDaily(id, date = today()) {
     const el = document.getElementById('tab'); el.innerHTML = skel();
     try { const d = await api('GET', `/profiles/${id}/daily-reading?date=${date}&tzid=${encodeURIComponent(TZ)}&lang=${lang}`);
@@ -582,6 +588,8 @@
       const d = await api('GET', `/profiles/${id}/dosha-report?tzid=${encodeURIComponent(TZ)}&lang=${lang}`), P = d.items.filter(i => i.present);
       el.innerHTML = `<div class="chips"><span class="chip"><span class="ms">fact_check</span>${esc(t('ui.checked'))}: ${d.checked}</span><span class="chip ${d.present ? 'warn' : 'ok'}"><span class="ms">report</span>${esc(t('ui.present'))}: ${d.present}</span></div>
         <div class="dlist">${d.items.map(i => `<div class="drow ${i.present ? 'on' : ''}"><span class="ms">${i.present ? 'error' : 'check_circle'}</span><b>${esc(i.name)}</b><span class="st">${esc(i.present ? t('ui.present') : t('ui.absent'))}</span></div>`).join('')}</div>
+        ${d.rin ? `<h2><span class="ms">family_restroom</span> ${esc(t('ui.rin'))}</h2><div class="dlist">${d.rin.items.map(i => `<div class="drow ${i.present ? 'on' : ''}"><span class="ms">${i.present ? 'error' : 'check_circle'}</span><b>${esc(i.name)}</b><span class="st">${esc(i.present ? t('ui.present') : t('ui.absent'))}</span></div>`).join('')}</div>
+          ${d.rin.items.filter(i => i.present).map(i => collapsible(i.name, `<ul class="lines"><li>${esc(i.rule)}</li></ul><h3>${esc(t('ui.factors'))}</h3>${factList(i.factors)}<h3>${esc(t('ui.effects'))}</h3><p>${esc(i.effect)}</p><h3>${esc(t('ui.remedy_how'))}</h3>${steps(i.remedy)}`, false, i.effect)).join('')}` : ''}
         ${P.length ? `<h2><span class="ms">help</span> ${esc(t('ui.how_dosha'))}</h2>` + P.map((i, n) => collapsible(i.name, `<ul class="lines">${lines(i.rule).map(x => `<li>${esc(x)}</li>`).join('')}</ul><h3>${esc(t('ui.factors'))}</h3>${factList(i.factors)}
           <h3>${esc(t('ui.effects'))}</h3><p>${esc(i.effects)}</p><h3>${esc(t('ui.remedy_how'))}</h3>${steps(i.remedy)}`, n === 0, i.effects)).join('') : ''}`;
     } catch (e) { el.innerHTML = errBox(e); }

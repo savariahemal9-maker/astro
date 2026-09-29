@@ -93,6 +93,8 @@ final class Routes {
             $m = (string) $q->input('month', $local->format('Y-m')); if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m)) throw new ApiException('validation', 'month must be YYYY-MM', 422);
             [$jd] = self::at($q, $p, "$m-15"); $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
             return $adv($q, $u)->monthly($k, $tr) + ['month' => $m]; });
+        $r->add('GET', '/profiles/{id}/house-varsh', function (Request $q, array $u, array $a) use ($adv) {
+            [$p, , $k] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p); return $adv($q, $u)->lkVarsh($k, (int) $q->input('year', $local->format('Y'))); });
         $r->add('GET', '/profiles/{id}/daily-reading', function (Request $q, array $u, array $a) use ($adv, $trAt) {
             [$p, , $k] = self::ctx($q, $u, $a); [$tr, $local] = $trAt($q, $p, $k);
             return $adv($q, $u)->daily($k, $tr) + ['date' => $local->format('Y-m-d'), 'transits' => $tr]; });

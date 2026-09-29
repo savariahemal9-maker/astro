@@ -73,7 +73,7 @@ final class Advanced extends RuleEngine {
                 'remedy' => $present ? $this->c("dosha.$id.remedy") : null,
                 'period' => $id === 'sade_sati' ? $tr['sade_sati_cycle'] : null];
         }
-        return ['meta' => ['type' => 'interpretation', 'kind' => 'doshas', 'ruleset' => self::VERSION], 'checked' => count($items),
+        return ['meta' => ['type' => 'interpretation', 'kind' => 'doshas', 'ruleset' => self::VERSION], 'rin' => $this->rin($k), 'checked' => count($items),
                 'present' => count(array_filter($items, fn($i) => $i['present'])), 'items' => $items];
     }
 
@@ -259,13 +259,15 @@ final class Advanced extends RuleEngine {
                              'health' => ['Sun', 'Mars', 'Saturn'], 'mind' => ['Saturn', 'Rahu', 'Jupiter'], 'education' => ['Mercury', 'Jupiter', 'Sun']];
     /** Topic reading for a period from transits (daily or monthly). Description is composed of every contributing transit. */
     private function topics(array $k, array $tr, array $map, string $txt, bool $daily): array {
-        $t = []; foreach ($tr['planets'] as $p) $t[$p['name']] = $p; $items = []; $total = 0;
+        $t = []; foreach ($tr['planets'] as $p) $t[$p['name']] = $p; $items = []; $total = 0; $by = $this->by($k);
         $ti = $tr['derived']['tara']['index']; $tara = $ti === 0 ? 0 : (in_array($ti, [2, 4, 6], true) ? -1 : 1);
         $now = $tr['dasha_now'];
         foreach ($map as $topic => $pls) {
             $s = 0; $why = []; $lines = []; $pts = [];
             foreach ($pls as $pl) { $g = in_array($t[$pl]['house_from_moon'], self::GOCHAR_GOOD[$pl], true); $s += $g ? 1 : -1;
-                $pts[] = ['planet' => $pl, 'house' => $t[$pl]['house_from_moon'], 'good' => $g, 'domain' => $this->t("interp.planet_domain.$pl")];
+                $hl = $t[$pl]['house_from_lagna']; $lg = !in_array($hl, self::LK_BAD[$pl], true);
+                $pts[] = ['planet' => $pl, 'house' => $t[$pl]['house_from_moon'], 'good' => $g, 'domain' => $this->t("interp.planet_domain.$pl"),
+                          'lk' => $this->c("lk.$pl.$hl." . ($lg ? 'good' : 'bad')), 'lk_house' => $hl];
                 $why[] = $this->pn($pl) . ' ' . $t[$pl]['house_from_moon'] . ($g ? ' ✓' : ' ✗');
                 $lines[] = $this->t($g ? 'interp.gochar_good' : 'interp.gochar_bad', ['planet' => $this->pn($pl), 'h' => $t[$pl]['house_from_moon'], 'domain' => $this->t("interp.planet_domain.$pl")]); }
             $notes = [];
@@ -277,6 +279,7 @@ final class Advanced extends RuleEngine {
             $items[] = ['id' => "$txt$topic", 'topic' => $topic, 'title' => $this->c("topic.$topic"), 'verdict' => $verdict, 'score' => $pct,
                 'prediction' => $this->c("$txt.$topic.$verdict"), 'description' => implode(' ', $lines), 'points' => $pts, 'notes' => $notes, 'reason' => $this->cv('daily.reason', ['list' => implode(', ', $why)]),
                 'guidance' => $this->c("dguide.$topic.$verdict"),
+                'remedy' => ($bp = array_values(array_filter($pts, fn($x) => !$x['good']))) ? $this->c("lk.{$bp[0]['planet']}." . $by[$bp[0]['planet']]['house'] . '.rem.0') : null,
                 'derivation' => ['rule' => 'Transits from natal Moon (✓ favourable, ✗ unfavourable). Score = 50 ± 50 × net/planets', 'ruleset' => self::VERSION,
                     'from_calculated' => array_map(fn($pl) => $this->fact("transit.$pl.house_from_moon", $t[$pl]['house_from_moon']), $pls)]];
         }
@@ -288,5 +291,40 @@ final class Advanced extends RuleEngine {
     private const DAILY = ['career' => ['Sun', 'Saturn', 'Mercury'], 'finance' => ['Jupiter', 'Venus', 'Mercury'], 'relationships' => ['Venus', 'Moon'],
                            'health' => ['Sun', 'Mars', 'Moon'], 'mind' => ['Moon'], 'education' => ['Mercury', 'Jupiter']];
     public function daily(array $k, array $tr): array { return $this->topics($k, $tr, self::DAILY, 'daily', true); }
+
+    /** Karmic debts (Rin): planet groups in specific houses. */
+    private const RIN = ['pitru' => [['Venus', 'Mercury', 'Rahu'], [2, 5, 9, 12]], 'sva' => [['Venus', 'Rahu', 'Ketu'], [5]], 'matri' => [['Ketu'], [4]],
+        'stri' => [['Sun', 'Rahu', 'Moon'], [2, 7]], 'bandhu' => [['Mercury', 'Ketu'], [1, 8]], 'behen' => [['Moon'], [3, 6]],
+        'nirdayi' => [['Sun', 'Moon', 'Mars'], [10, 11]], 'ajanma' => [['Sun', 'Venus', 'Mars'], [12]], 'daivik' => [['Moon', 'Mars'], [6]]];
+    public function rin(array $k): array {
+        $by = $this->by($k); $items = [];
+        // a debt is active only when houses 2, 5, 9 or 12 are afflicted (a planet unfavourably placed there)
+        $afflicted = (bool) array_filter($k['planets'], fn($p) => in_array($p['house'], [2, 5, 9, 12], true) && in_array($p['house'], self::LK_BAD[$p['name']], true));
+        foreach (self::RIN as $id => [$pls, $hs]) {
+            $hit = $afflicted ? array_values(array_filter($pls, fn($pl) => in_array($by[$pl]['house'], $hs, true))) : [];
+            $items[] = ['id' => $id, 'name' => $this->c("rin.$id.name"), 'present' => (bool) $hit, 'rule' => $this->c("rin.$id.rule"),
+                'effect' => $hit ? $this->c("rin.$id.effect") : null, 'remedy' => $hit ? $this->c("rin.$id.remedy") : null,
+                'factors' => array_map(fn($pl) => $this->fact("planets.$pl.house", $by[$pl]['house']), $hit)];
+        }
+        return ['checked' => count($items), 'present' => count(array_filter($items, fn($i) => $i['present'])), 'items' => $items];
+    }
+
+    /** House-shift annual chart: each natal house moves to a new house by running year of age. */
+    public function lkVarsh(array $k, int $year): array {
+        static $M = null; $M ??= require __DIR__ . '/../../data/lk_matrix.php';
+        $age = $year - (int) substr($k['birth']['local'], 0, 4) + 1;
+        if (!isset($M[$age])) throw new \App\Core\ApiException('validation', 'Supported age: 1–87', 422);
+        $rows = []; $D1 = ['lagna' => 0, 'planets' => [], 'dignity' => []];
+        foreach ($k['planets'] as $p) {
+            $h = $M[$age][$p['house'] - 1]; $good = !in_array($h, self::LK_BAD[$p['name']], true);
+            $rem = []; for ($i = 0; $i < 4; $i++) { $x = $this->c("lk.{$p['name']}.$h.rem.$i"); if ($x !== '') $rem[] = $x; }
+            $rows[] = ['name' => $p['name'], 'natal_house' => $p['house'], 'house' => $h, 'benefic' => $good, 'retrograde' => $p['retrograde'], 'combust' => $p['combust'] ?? false,
+                       'sign_name' => Zodiac::SIGNS[$h - 1], 'effect' => $this->c("lk.{$p['name']}.$h." . ($good ? 'good' : 'bad')), 'remedies' => $rem];
+            $D1['planets'][$p['name']] = $h - 1;
+        }
+        $g = count(array_filter($rows, fn($r) => $r['benefic']));
+        return ['meta' => ['type' => 'interpretation', 'kind' => 'house_varsh', 'ruleset' => self::VERSION], 'year' => $year, 'age' => $age,
+                'score' => (int) round($g / 9 * 100), 'planets' => $rows, 'vargas' => ['D1' => $D1]];
+    }
 
 }
