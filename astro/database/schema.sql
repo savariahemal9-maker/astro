@@ -261,3 +261,8 @@ Avoid carrying too much cash', donts_hi = 'जहाँ तक हो सके 
 Feed a dog before a long journey', upay_hi = 'घर से पानी की छोटी बोतल साथ रखें
 लंबी यात्रा से पहले कुत्ते को रोटी खिलाएँ', upay_gu = 'ઘરેથી પાણીની નાની બોટલ સાથે રાખો
 લાંબી મુસાફરી પહેલાં કૂતરાને રોટલી ખવડાવો' WHERE slug = 'travel';
+
+ALTER TABLE users
+  ADD COLUMN disabled     BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN plan         ENUM('free','premium') NOT NULL DEFAULT 'free',
+  ADD COLUMN plan_expires DATE NULL;
