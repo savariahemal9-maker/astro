@@ -27,7 +27,7 @@ return [
     ],
     'auth' => ['token_ttl_days' => 30],
     // Optional: smarter chat wording via Google Gemini (free key at aistudio.google.com). Empty key = rule-based chat only.
-    'ai'   => ['key' => '', 'model' => 'gemini-2.5-flash'],
+    'ai'   => ['key' => '', 'model' => 'gemini-3.8-flash'],
     'mail' => ['from' => 'no-reply@example.com'], // sender for password-reset emails (PHP mail())
     'app'  => ['base_url' => 'https://example.com', 'debug' => false, 'cors_origins' => ['*']], // admin panel: /admin/ (separate admin accounts)
 ];
