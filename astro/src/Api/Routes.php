@@ -1,7 +1,7 @@
 <?php
 namespace App\Api;
 
-use App\Auth\AuthService;
+use App\Auth\{AdminAuth, AuthService};
 use App\Calc\{Dasha, Ephemeris, KundaliService, PanchangService, TimeResolver, Varga};
 use App\Core\{ApiException, Db, Request, Router};
 use App\Geo\GeoService;
@@ -109,8 +109,21 @@ final class Routes {
         $r->add('GET', '/profiles/{id}/daily-reading', function (Request $q, array $u, array $a) use ($adv, $trAt) {
             [$p, , $k] = self::ctx($q, $u, $a); [$tr, $local] = $trAt($q, $p, $k);
             return $adv($q, $u)->daily($k, $tr) + ['date' => $local->format('Y-m-d'), 'transits' => $tr]; });
-        $adm = function (array $u) { if (!in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)) throw new ApiException('forbidden', 'Admin only', 403); };
-        $r->add('GET', '/admin/remedies', function (Request $q, array $u) use ($adm) { $adm($u); return Db::all('SELECT * FROM remedy_rules ORDER BY planet, house, dosha, priority DESC'); });
+        // admin routes are guarded by admin sessions (separate admin accounts), not by site users
+        $adm = fn(Request $q) => AdminAuth::authenticate($q->token);
+        $r->add('POST', '/admin-auth/register', function (Request $q) { self::limit('adreg', 5); $in = $q->require(['name', 'email', 'password']); return AdminAuth::register($in['name'], $in['email'], $in['password']); }, false);
+        $r->add('POST', '/admin-auth/login', function (Request $q) { self::limit('adlogin', 10); $in = $q->require(['email', 'password']); return AdminAuth::login($in['email'], $in['password']); }, false);
+        $r->add('POST', '/admin-auth/logout', function (Request $q) { AdminAuth::logout($q->token); return ['signed_out' => true]; }, false);
+        $r->add('GET', '/admin-auth/me', fn(Request $q) => AdminAuth::present($adm($q)), false);
+        $r->add('GET', '/admin/admins', function (Request $q) use ($adm) { $adm($q); return array_map([AdminAuth::class, 'present'], Db::all('SELECT * FROM admins ORDER BY status, id')); }, false);
+        $r->add('PATCH', '/admin/admins/{id}', function (Request $q, array $u, array $a) use ($adm) { $me = $adm($q);
+            if ((int) $a['id'] === (int) $me['id']) throw new ApiException('validation', 'You cannot change your own admin status', 422);
+            $st = (string) $q->input('status'); if (!in_array($st, ['active', 'disabled'], true)) throw new ApiException('validation', 'status must be active or disabled', 422);
+            Db::exec('UPDATE admins SET status=? WHERE id=?', [$st, $a['id']]); if ($st !== 'active') Db::exec('DELETE FROM admin_tokens WHERE admin_id=?', [$a['id']]); return ['status' => $st]; }, false);
+        $r->add('DELETE', '/admin/admins/{id}', function (Request $q, array $u, array $a) use ($adm) { $me = $adm($q);
+            if ((int) $a['id'] === (int) $me['id']) throw new ApiException('validation', 'You cannot delete your own admin account', 422);
+            Db::exec('DELETE FROM admins WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
+        $r->add('GET', '/admin/remedies', function (Request $q, array $u) use ($adm) { $adm($q); return Db::all('SELECT * FROM remedy_rules ORDER BY planet, house, dosha, priority DESC'); }, false);
         $save = function (Request $q, ?int $id) {
             $b = $q->body; $pl = $b['planet'] ?? null; $ds = $b['dosha'] ?? null;
             if (!$pl && !$ds) throw new ApiException('validation', 'planet or dosha required', 422);
@@ -119,9 +132,9 @@ final class Routes {
                   (int) ($b['priority'] ?? 50), $b['text_en'], $b['text_hi'] ?? null, $b['text_gu'] ?? null, mb_substr($b['source'], 0, 255), ($b['status'] ?? 'draft') === 'approved' ? 'approved' : 'draft'];
             if ($id) { Db::exec('UPDATE remedy_rules SET planet=?,house=?,dosha=?,cond=?,priority=?,text_en=?,text_hi=?,text_gu=?,source=?,status=? WHERE id=?', array_merge($v, [$id])); return ['id' => $id]; }
             return ['id' => Db::insert('INSERT INTO remedy_rules (planet,house,dosha,cond,priority,text_en,text_hi,text_gu,source,status) VALUES (?,?,?,?,?,?,?,?,?,?)', $v)]; };
-        $r->add('POST', '/admin/remedies', function (Request $q, array $u) use ($adm, $save) { $adm($u); return $save($q, null); });
-        $r->add('PUT', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm, $save) { $adm($u); return $save($q, $a['id']); });
-        $r->add('DELETE', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM remedy_rules WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        $r->add('POST', '/admin/remedies', function (Request $q, array $u) use ($adm, $save) { $adm($q); return $save($q, null); }, false);
+        $r->add('PUT', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm, $save) { $adm($q); return $save($q, $a['id']); }, false);
+        $r->add('DELETE', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM remedy_rules WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
         // ---- personalized category predictions ----
         $r->add('GET', '/categories', function (Request $q, array $u) {
             $l = $q->lang($u); $mine = array_column(Db::all('SELECT category_id FROM user_categories WHERE user_id=?', [$u['id']]), 'category_id');
@@ -142,7 +155,7 @@ final class Routes {
             if (!$cat) throw new ApiException('not_found', 'Category not found', 404);
             return (new \App\Interp\CategoryPredictor($l))->predict($k, $cat, $period, $local, (float) $p['lat'], (float) $p['lon']);
         });
-        $r->add('GET', '/admin/categories', function (Request $q, array $u) use ($adm) { $adm($u); return Db::all('SELECT * FROM prediction_categories ORDER BY sort, id'); });
+        $r->add('GET', '/admin/categories', function (Request $q, array $u) use ($adm) { $adm($q); return Db::all('SELECT * FROM prediction_categories ORDER BY sort, id'); }, false);
         // Admin enters only names and simple advice; the astrology (planets, houses), icon and warning are chosen from the English name.
         $catSave = function (Request $q, ?int $id) {
             $in = $q->require(['name_en']); $nameEn = mb_substr(trim((string) $in['name_en']), 0, 80);
@@ -161,41 +174,38 @@ final class Routes {
             $v['sort'] = (int) (Db::one('SELECT COALESCE(MAX(sort),0)+1 AS n FROM prediction_categories')['n'] ?? 1);
             return Db::one('SELECT * FROM prediction_categories WHERE id=?', [Db::insert('INSERT INTO prediction_categories SET ' . implode('=?, ', array_keys($v)) . '=?', array_values($v))]);
         };
-        $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($u); return $catSave($q, null); });
-        $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($u); return $catSave($q, (int) $a['id']); });
-        $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($q); return $catSave($q, null); }, false);
+        $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($q); return $catSave($q, (int) $a['id']); }, false);
+        $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
         // ---- admin: overview, users and their kundalis ----
-        $r->add('GET', '/admin/stats', function (Request $q, array $u) use ($adm) { $adm($u);
+        $r->add('GET', '/admin/stats', function (Request $q, array $u) use ($adm) { $adm($q);
             $n = fn(string $sql) => (int) (Db::one($sql)['n'] ?? 0);
             return ['users' => $n('SELECT COUNT(*) n FROM users'), 'new_users_7d' => $n('SELECT COUNT(*) n FROM users WHERE created_at > UTC_TIMESTAMP() - INTERVAL 7 DAY'),
                 'premium' => $n("SELECT COUNT(*) n FROM users WHERE plan='premium'"), 'disabled' => $n('SELECT COUNT(*) n FROM users WHERE disabled=1'),
                 'kundalis' => $n('SELECT COUNT(*) n FROM birth_profiles'), 'categories' => $n('SELECT COUNT(*) n FROM prediction_categories WHERE active=1'),
-                'recent' => Db::all('SELECT id, name, email, created_at FROM users ORDER BY id DESC LIMIT 6')]; });
-        $r->add('GET', '/admin/users', function (Request $q, array $u) use ($adm) { $adm($u);
+                'recent' => Db::all('SELECT id, name, email, created_at FROM users ORDER BY id DESC LIMIT 6')]; }, false);
+        $r->add('GET', '/admin/users', function (Request $q, array $u) use ($adm) { $adm($q);
             $s = '%' . trim((string) $q->input('q', '')) . '%'; $page = max(1, (int) $q->input('page', 1)); $per = 25;
             $rows = Db::all('SELECT u.id, u.name, u.email, u.lang, u.plan, u.plan_expires, u.disabled, u.created_at, (SELECT COUNT(*) FROM birth_profiles b WHERE b.user_id=u.id) kundalis
                 FROM users u WHERE u.name LIKE ? OR u.email LIKE ? ORDER BY u.id DESC LIMIT ' . ($per + 1) . ' OFFSET ' . (($page - 1) * $per), [$s, $s]);
-            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; });
-        $r->add('GET', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
+            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; }, false);
+        $r->add('GET', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
             $x = Db::one('SELECT id, name, email, lang, plan, plan_expires, disabled, created_at FROM users WHERE id=?', [$a['id']]);
             if (!$x) throw new ApiException('not_found', 'User not found', 404);
-            return $x + ['profiles' => array_map([ProfileService::class, 'present'], Db::all('SELECT * FROM birth_profiles WHERE user_id=? ORDER BY id DESC', [$a['id']]))]; });
-        $r->add('PATCH', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
-            if ((int) $a['id'] === (int) $u['id'] && $q->input('disabled')) throw new ApiException('validation', 'You cannot disable your own account', 422);
+            return $x + ['profiles' => array_map([ProfileService::class, 'present'], Db::all('SELECT * FROM birth_profiles WHERE user_id=? ORDER BY id DESC', [$a['id']]))]; }, false);
+        $r->add('PATCH', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
             if (($pl = $q->input('plan')) !== null) Db::exec('UPDATE users SET plan=?, plan_expires=? WHERE id=?', [$pl === 'premium' ? 'premium' : 'free',
                 preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $q->input('plan_expires', '')) ? $q->input('plan_expires') : null, $a['id']]);
             if (($d = $q->input('disabled')) !== null) { Db::exec('UPDATE users SET disabled=? WHERE id=?', [(int) (bool) $d, $a['id']]); if ($d) Db::exec('DELETE FROM api_tokens WHERE user_id=?', [$a['id']]); }
-            return Db::one('SELECT id, name, email, plan, plan_expires, disabled FROM users WHERE id=?', [$a['id']]); });
-        $r->add('DELETE', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
-            if ((int) $a['id'] === (int) $u['id']) throw new ApiException('validation', 'You cannot delete your own account', 422);
-            Db::exec('DELETE FROM users WHERE id=?', [$a['id']]); return ['deleted' => true]; });
-        $r->add('GET', '/admin/kundalis', function (Request $q, array $u) use ($adm) { $adm($u);
+            return Db::one('SELECT id, name, email, plan, plan_expires, disabled FROM users WHERE id=?', [$a['id']]); }, false);
+        $r->add('DELETE', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
+            Db::exec('DELETE FROM users WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
+        $r->add('GET', '/admin/kundalis', function (Request $q, array $u) use ($adm) { $adm($q);
             $s = '%' . trim((string) $q->input('q', '')) . '%'; $page = max(1, (int) $q->input('page', 1)); $per = 25;
             $rows = Db::all('SELECT b.id, b.label, b.birth_date, b.birth_time, b.place_name, b.created_at, u.id user_id, u.name user_name, u.email FROM birth_profiles b JOIN users u ON u.id=b.user_id
                 WHERE b.label LIKE ? OR b.place_name LIKE ? OR u.email LIKE ? ORDER BY b.id DESC LIMIT ' . ($per + 1) . ' OFFSET ' . (($page - 1) * $per), [$s, $s, $s]);
-            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; });
-        $r->add('DELETE', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM birth_profiles WHERE id=?', [$a['id']]); return ['deleted' => true]; });
-        $r->add('GET', '/me/admin', function (Request $q, array $u) { return ['admin' => in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)]; });
+            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; }, false);
+        $r->add('DELETE', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM birth_profiles WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
         $r->add('GET', '/profiles/{id}/planet-results', function (Request $q, array $u, array $a) {
             [, $kid, $k, $lang] = self::ctx($q, $u, $a);
             return self::cached($kid, 'planet_results', '', $lang, fn() => (new RuleEngine($lang))->planetResults($k));

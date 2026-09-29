@@ -27,5 +27,5 @@ return [
     ],
     'auth' => ['token_ttl_days' => 30],
     'mail' => ['from' => 'no-reply@example.com'], // sender for password-reset emails (PHP mail())
-    'app'  => ['base_url' => 'https://example.com', 'debug' => false, 'cors_origins' => ['*'], 'admins' => ['your-admin-email@example.com']], // admins can edit remedy rules at #/admin
+    'app'  => ['base_url' => 'https://example.com', 'debug' => false, 'cors_origins' => ['*']], // admin panel: /admin/ (separate admin accounts)
 ];
