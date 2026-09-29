@@ -1,6 +1,6 @@
 // Website client. Uses only the public /api/v1 endpoints, exactly as a mobile app would.
 (() => {
-  const API = window.API_BASE;
+  const API = window.API_BASE, ASSET = API.replace(/\/api\/v1$/, '') + '/public/assets/', LOGO = ASSET + 'brand/logo-wide.webp';
   const $app = document.getElementById('app');
   const $rail = document.getElementById('rail'), $bnav = document.getElementById('bnav'), $prog = document.getElementById('progress');
   let inflight = 0;
@@ -62,7 +62,7 @@
       ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'],
       ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'], ['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
-    document.getElementById('drawer').innerHTML = `<div class="drawer-h"><b>${esc(t('ui.app_name'))}</b></div>${all.map(x => a(x)).join('')}`;
+    document.getElementById('drawer').innerHTML = `<div class="drawer-h"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></div>${all.map(x => a(x)).join('')}`;
     // phones: five destinations
     const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['ai-chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']]
       : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['login', 'ui.sign_in', 'login']];
@@ -81,10 +81,10 @@
   function renderFooter() {
     const el = document.getElementById('sfoot'); if (!el) return;
     const L = (h, l) => `<a href="#/${h}">${esc(t(l))}</a>`;
-    el.innerHTML = `<div class="sf-in"><div class="sf-brand"><b>${esc(t('ui.app_name'))}</b><p>${esc(t('home.foot'))}</p><p class="sf-om">ॐ</p></div>
+    el.innerHTML = `<div class="sf-in"><div class="sf-brand"><span class="sf-logo"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></span><p>${esc(t('home.foot'))}</p></div>
       <div><h4>${esc(t('home.explore_e'))}</h4>${L(token ? 'add' : 'register', 'home.f_kundali')}${L('predict', 'home.f_predict')}${L('ai-chat', 'home.f_ai')}${L('dashboard', 'home.f_remedy')}</div>
       <div><h4>${esc(t('rf.title'))}</h4>${L('rashifal/daily', 'rf.title')}${L('panchang', 'ui.panchang')}${L('home', 'home.nav')}</div></div>
-      <div class="sf-copy">© ${new Date().getFullYear()} ${esc(t('ui.app_name'))} · Vedic · Lal Kitab · Panchang</div>`;
+      <div class="sf-copy">© ${new Date().getFullYear()} KarmYog Astro · Vastu · Vedic · Lal Kitab · Panchang</div>`;
   }
   const closeDrawer = () => document.body.classList.remove('drawer-open');
   document.getElementById('scrim').onclick = closeDrawer;
