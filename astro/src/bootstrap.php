@@ -8,8 +8,10 @@ spl_autoload_register(function (string $cls) {
 function app_config(): array {
     static $c = null;
     if ($c === null) {
-        $f = __DIR__ . '/../config/config.php';
-        $c = require (is_file($f) ? $f : __DIR__ . '/../config/config.example.php');
+        // Live settings live outside the deployed folder (public_html/astro-config.php) so Git deploys never overwrite them.
+        $f = null;
+        foreach ([dirname(__DIR__, 3) . '/astro-config.php', __DIR__ . '/../config/config.php', __DIR__ . '/../config/config.example.php'] as $x) if (is_file($x)) { $f = $x; break; }
+        $c = require $f;
     }
     return $c;
 }
