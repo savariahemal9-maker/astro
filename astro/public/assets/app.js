@@ -504,7 +504,7 @@
     h(`<div class="hero"><div><h1>${esc(prof.label)}</h1>
       <div class="chips"><span class="chip"><span class="ms">event</span>${esc(b.local.slice(0, 16))}</span><span class="chip"><span class="ms">location_on</span>${esc(prof.place_name.split(',')[0])}</span>
       <span class="chip"><span class="ms">public</span>${esc(b.tzid)} · UTC ${esc(b.utc.slice(11, 16))}</span><span class="chip ok"><span class="ms">north_east</span>${esc(t('ui.lagna'))} ${esc(tn('signs', k.lagna.sign_name))}</span></div></div>
-      <a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div>
+      <a class="btn accent" href="#/predict" id="goPredict"><span class="ms">auto_awesome</span>${esc(t('ui.personal_predictions'))}</a><a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div>
       ${b.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}
       ${prof.time_accuracy === 'approximate' ? `<div class="warn">${esc(t('ui.approx_warning'))}</div>` : ''}
       <div class="tabs" role="tablist">${Object.keys(GROUPS).map((x, i) =>
@@ -785,6 +785,8 @@
   const rpItem = (i, n) => `<li class="rp-it"><div class="rp-top">${n ? `<span class="rp-n">${n}</span>` : ''}${i.planet_name ? `<span class="rp-pl">${esc(i.planet_name)}</span>` : ''}
       ${(i.dates || (i.date ? [i.date] : [])).map(d => `<span class="rp-dt">${esc(fmtD(d, { weekday: 'short', day: 'numeric', month: 'short' }))}</span>`).join('')}</div>
     <p>${esc(i.text)}</p>${i.reason ? `<small><span class="ms">person_search</span>${esc(t('ui.why_this'))}: ${esc(i.reason)}</small>` : ''}</li>`;
+  document.addEventListener('click', e => { const a = e.target.closest('#goPredict'); if (!a) return;
+    try { const st = JSON.parse(localStorage.getItem('pp') || '{}'); st.kid = +location.hash.split('/')[2]; localStorage.setItem('pp', JSON.stringify(st)); } catch (er) {} });
   async function tabRemedyPlan(id, view = 'life', date = today()) {
     const el = document.getElementById('tab'); el.innerHTML = skel();
     try {
@@ -792,7 +794,7 @@
       const head = view === 'day' ? fmtD(d.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : view === 'week' ? rangeText(d) : view === 'month' ? fmtD(d.month + '-01', { month: 'long', year: 'numeric' }) : '';
       let body;
       if (view === 'life') body = `${d.planets.length ? `<p class="rp-weak"><b>${esc(t('ui.weak_planets'))}:</b> ${d.planets.map(p => `<span class="rp-pl">${esc(p.name)} ${p.score}/100</span>`).join(' ')}</p>` : ''}
-        <div class="rp-groups">${['daily', 'weekly', 'monthly', 'yearly'].map(f => d.groups[f].length ? `<section class="rp-g rp-${f}"><h3><span class="ms">${{ daily: 'today', weekly: 'date_range', monthly: 'dark_mode', yearly: 'cake' }[f]}</span>${esc(t('ui.f_' + f))}</h3><ul>${d.groups[f].map(i => rpItem(i)).join('')}</ul></section>` : '').join('')}</div>`;
+        <div class="rp-groups">${['daily', 'weekly', 'monthly', 'yearly'].map(f => d.groups[f].length ? `<details class="rp-g rp-${f} cx"${f === 'daily' ? ' open' : ''}><summary><span class="ms">${{ daily: 'today', weekly: 'date_range', monthly: 'dark_mode', yearly: 'cake' }[f]}</span>${esc(t('ui.f_' + f))}<span class="cx-n">${d.groups[f].length}</span></summary><ul>${d.groups[f].map(i => rpItem(i)).join('')}</ul></details>` : '').join('')}</div>`;
       else body = `<ul class="rp-list${view === 'important' ? ' rp-imp' : ''}">${d.items.map((i, n) => rpItem(i, view === 'important' ? n + 1 : 0)).join('')}</ul>`;
       el.innerHTML = `<div class="rp-bar"><div class="pp-seg">${RPV.map(([v, l, ic]) => `<button type="button" data-v="${v}" class="${v === view ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t('ui.' + l))}</span></button>`).join('')}</div>
         ${['day', 'week', 'month'].includes(view) ? `<label class="pp-date"><span class="ms">event</span><input type="date" id="rpd" value="${esc(date)}" aria-label="${esc(t('ui.date'))}"></label>` : ''}</div>
@@ -805,9 +807,8 @@
     const el = document.getElementById('tab'); el.innerHTML = skel();
     try { const d = await api('GET', `/profiles/${id}/poojas?lang=${lang}`);
       const row = (ic, l, v) => `<div class="pj-row"><span class="ms">${ic}</span><div><b>${esc(t('ui.' + l))}</b><p>${esc(v)}</p></div></div>`;
-      el.innerHTML = interpTag() + (d.items.length ? `<div class="pj-list">${d.items.map((p, n) => `<article class="pj-card"><h3><span class="rp-n">${n + 1}</span>${esc(p.name)}</h3>
-          ${row('flag', 'pooja_purpose', p.purpose)}<div class="pj-row"><span class="ms">auto_stories</span><div><b>${esc(t('ui.pooja_factors'))}</b><ul>${p.factors.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div></div>
-          ${row('help', 'pooja_why', p.why)}${row('schedule', 'pooja_timing', p.timing)}${row('local_fire_department', 'pooja_involves', p.involves)}${row('payments', 'pooja_cost', p.cost)}</article>`).join('')}</div>`
+      el.innerHTML = interpTag() + (d.items.length ? `<div class="pj-list">${d.items.map((p, n) => `<details class="pj-card cx"${n ? '' : ' open'}><summary><span class="rp-n">${n + 1}</span><span class="cx-t"><b>${esc(p.name)}</b><small>${esc(p.purpose)}</small></span></summary><div class="pj-row"><span class="ms">auto_stories</span><div><b>${esc(t('ui.pooja_factors'))}</b><ul>${p.factors.map(f => `<li>${esc(f)}</li>`).join('')}</ul></div></div>
+          ${row('help', 'pooja_why', p.why)}${row('schedule', 'pooja_timing', p.timing)}${row('local_fire_department', 'pooja_involves', p.involves)}${row('payments', 'pooja_cost', p.cost)}</details>`).join('')}</div>`
         : `<p class="pp-empty"><span class="ms">self_improvement</span>${esc(t('ui.no_pooja'))}</p>`) + `<p class="pp-disc"><span class="ms">info</span>${esc(d.note)}</p>`;
     } catch (e) { el.innerHTML = errBox(e); } }
   async function tabRemedies(id, period = 'common', month = monthsAhead()[0].v) {
