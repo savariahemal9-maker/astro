@@ -123,12 +123,11 @@ final class CategoryPredictor extends RuleEngine {
         $neg = array_values(array_column(array_filter($F, fn($f) => $f['w'] < 0), 'text'));
         $name = $cat['name_' . $this->lang] ?: $cat['name_en']; $v = ['cat' => $name, 'period' => $this->t("pred.period.$period")];
         [, , $upay, $personal] = $this->advice($cat, $F);
-        if ($period !== 'lifetime') $personal = [];   // the natal Lal Kitab reading does not change by day or month
+        $personal = [];   // general natal readings are not specific to the chosen topic, so they are not shown
         $fx = fn(callable $keep) => array_values(array_map(fn($f) => ['text' => $f['text'], 'effect' => $this->t("pred.fx.{$f['key']}", $f['vars'] + ['cat' => $name]
             + ($f['pl'] ? ['domain' => $this->t("interp.planet_domain.{$f['pl']}")] : []))], array_filter($F, $keep)));
         // "in your favour" / "watch out for": the calculated factors of this chart, in plain words, strongest first
-        $do = array_slice(array_column($fx(fn($f) => $f['w'] > 0), 'effect'), 0, 3);
-        $dont = array_slice(array_column($fx(fn($f) => $f['w'] < 0), 'effect'), 0, 3);
+        $do = []; $dont = [];   // the reasons are available under "Why?"; separate do / avoid lists were too similar across topics
         return ['meta' => ['type' => 'interpretation', 'kind' => 'category_prediction', 'ruleset' => self::VERSION, 'lang' => $this->lang],
                 'category' => ['id' => (int) $cat['id'], 'slug' => $cat['slug'], 'name' => $name, 'icon' => $cat['icon'], 'caution' => (bool) $cat['caution']],
                 'period' => $period, 'range' => $range, 'score' => $score, 'score_label' => $this->t('pred.score_label'), 'level' => $level,

@@ -150,3 +150,5 @@ body:has(.chat) main{padding-bottom:0}
 .chat-in button{flex:none;width:48px;height:48px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center}
 .chat-note{margin:0;padding:0 .8rem .45rem;font-size:.68rem;color:var(--mut);text-align:center;background:#fff}
 @media (max-width:860px){.chat{height:calc(100vh - 64px - 68px - 1rem);border-radius:16px}.msg{max-width:90%}.chat-k{max-width:42%}.chat-who small{display:none}}
+
+.pp-grid{grid-template-columns:1fr!important}
