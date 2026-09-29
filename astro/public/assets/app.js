@@ -501,10 +501,10 @@
     try { [prof, k] = await Promise.all([api('GET', `/profiles/${id}`), api('GET', `/profiles/${id}/kundali`)]); }
     catch (e) { h(errBox(e)); return; }
     const s = k.meta.settings, b = k.birth;
-    h(`<div class="hero"><div><h1>${esc(prof.label)}</h1>
+    h(`<div class="hero kh"><div class="hero-main"><h1>${esc(prof.label)}</h1>
       <div class="chips"><span class="chip"><span class="ms">event</span>${esc(b.local.slice(0, 16))}</span><span class="chip"><span class="ms">location_on</span>${esc(prof.place_name.split(',')[0])}</span>
       <span class="chip"><span class="ms">public</span>${esc(b.tzid)} · UTC ${esc(b.utc.slice(11, 16))}</span><span class="chip ok"><span class="ms">north_east</span>${esc(t('ui.lagna'))} ${esc(tn('signs', k.lagna.sign_name))}</span></div></div>
-      <a class="btn accent" href="#/predict" id="goPredict"><span class="ms">auto_awesome</span>${esc(t('ui.personal_predictions'))}</a><a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div>
+      <div class="hero-actions"><a class="btn accent" href="#/predict" id="goPredict"><span class="ms">auto_awesome</span>${esc(t('ui.personal_predictions'))}</a><a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div></div>
       ${b.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}
       ${prof.time_accuracy === 'approximate' ? `<div class="warn">${esc(t('ui.approx_warning'))}</div>` : ''}
       <div class="tabs" role="tablist">${Object.keys(GROUPS).map((x, i) =>

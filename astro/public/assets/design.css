@@ -1,0 +1,124 @@
+/* =========================================================================
+   Material 3 theme — bright & light. Emerald primary and gold accent from
+   the brand logo. Loaded after app.css; restyles every shared component.
+   ========================================================================= */
+:root{
+  --md-primary:#006d46; --md-on-primary:#fff; --md-primary-c:#c7f0da; --md-on-primary-c:#002114;
+  --md-gold:#b07a12; --md-gold-c:#ffe3b3; --md-on-gold-c:#2a1800;
+  --md-surface:#ffffff; --md-surface-1:#f6faf7; --md-surface-2:#eff5f1; --md-surface-3:#e7efea;
+  --md-on-surface:#161d19; --md-on-surface-v:#46544c; --md-outline:#c3cfc8; --md-outline-v:#e1e9e4;
+  --md-e1:0 1px 2px rgba(16,40,28,.08),0 1px 3px 1px rgba(16,40,28,.05);
+  --md-e2:0 1px 2px rgba(16,40,28,.10),0 2px 8px 2px rgba(16,40,28,.07);
+  /* map onto the tokens app.css already uses */
+  --p:var(--md-primary); --p-d:#00522f; --p-c:var(--md-primary-c); --on-p:#fff; --gold:var(--md-gold); --gold-c:var(--md-gold-c);
+  --bg:#fff; --s:#fff; --s2:var(--md-surface-1); --line:var(--md-outline-v); --line2:var(--md-surface-2);
+  --ink:var(--md-on-surface); --ink2:var(--md-on-surface-v); --mut:#65736b; --r:20px; --rs:12px; --sh:var(--md-e1); --sh2:var(--md-e2);
+}
+body{background:#fff;color:var(--md-on-surface);letter-spacing:.005em}
+h1{font-weight:700;letter-spacing:-.01em;color:var(--md-on-surface)} h2,h3{color:var(--md-on-surface)}
+
+/* ---------- top app bar, navigation rail / drawer, navigation bar ---------- */
+.topbar{background:#fff!important;border-bottom:1px solid var(--md-outline-v);box-shadow:none}
+.rail{background:#fff;border-right:1px solid var(--md-outline-v)}
+.rail a{border-radius:999px;color:var(--md-on-surface-v);font-weight:500;padding:.7rem 1.1rem}
+.rail a:hover{background:var(--md-surface-2)}
+.rail a.on{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)!important;box-shadow:none!important;font-weight:600}
+.rail a.on .ms{color:var(--md-primary)}
+.bnav{background:#fff!important;border-top:1px solid var(--md-outline-v);box-shadow:0 -2px 10px rgba(16,40,28,.05)}
+.bnav a{color:var(--md-on-surface-v)} .bnav a.on{color:var(--md-on-surface)}
+.bnav a.on .ms{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)}
+
+/* ---------- buttons: filled / tonal / outlined / gold ---------- */
+button,.btn{border-radius:999px;font-weight:600;letter-spacing:.01em;min-height:40px;padding:.55rem 1.25rem;box-shadow:none;transition:background .2s,box-shadow .2s,transform .1s}
+button:not(.ghost):not(.tonal):not(.icon-btn):not(.pw-eye):not(.coll-h):not(.pp-chip):not(.pp-person):not(.pp-kbtn):not(.pp-edit):not([role=tab]):not([data-s]):not([data-v]):not([data-l]):not([data-p]):not([data-t2]),.btn{background:var(--md-primary);color:#fff}
+button:hover,.btn:hover{box-shadow:var(--md-e1)} button:active,.btn:active{transform:scale(.98)}
+.btn.tonal,button.tonal{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)!important}
+.btn.ghost,button.ghost{background:#fff!important;color:var(--md-primary)!important;border:1px solid var(--md-outline)!important}
+.btn.accent,button.accent{background:var(--md-gold-c)!important;color:var(--md-on-gold-c)!important;border:0}
+.btn.accent .ms{color:var(--md-gold)}
+.icon-btn{border-radius:50%}
+
+/* ---------- cards & surfaces ---------- */
+.card,.calc,.coll,.icard,.kcard,.pp-card,.pp-controls,.pj-card,.rp-g,.adm-stat,.pp-adv,.rp-list .rp-it{background:#fff;border:1px solid var(--md-outline-v)!important;border-radius:20px;box-shadow:var(--md-e1)}
+.card:hover,.kcard:hover{box-shadow:var(--md-e2)}
+.card-h{color:var(--md-on-surface);font-weight:600}
+.card-h .ms,.pp-h .ms{color:var(--md-primary)}
+
+/* ---------- hero banners: light, bright, readable ---------- */
+.hero,.hero-band,.pp-hero{background:linear-gradient(120deg,#dff6e9 0%,#f3fbf6 45%,#fff3dc 100%)!important;color:var(--md-on-surface);border:1px solid var(--md-outline-v);box-shadow:none}
+.hero h1,.hero-band h1,.pp-hero h1{color:var(--md-on-surface)!important}
+.hero .eyebrow,.hero-band .eyebrow,.pp-hero .eyebrow{color:var(--md-primary)!important;font-weight:600}
+.pp-sub{color:var(--md-on-surface-v)!important}
+.hero-ic,.pp-hero-ic{color:var(--md-gold)!important;opacity:1}
+.hero .chip,.hero-band .chip{background:#fff!important;border:1px solid var(--md-outline)!important;color:var(--md-on-surface)!important}
+.hero .chip .ms,.hero-band .chip .ms{color:var(--md-primary)}
+.pp-hero::after{background:radial-gradient(circle at 100% 100%,rgba(176,122,18,.18),rgba(176,122,18,0) 65%)}
+.pp-kbtn{box-shadow:var(--md-e1);border:1px solid var(--md-outline-v)} .pp-kbtn .avatar{background:var(--md-primary)}
+.pp-kadd{background:#fff;border:1px solid var(--md-outline);color:var(--md-primary)}
+/* kundali header: details on top, all actions in one row below */
+.hero.kh{display:flex;flex-direction:column;align-items:stretch;gap:1rem}
+.hero-actions{display:flex;flex-wrap:wrap;gap:.6rem}
+.hero-actions .btn{flex:0 0 auto}
+
+/* ---------- primary tabs (kundali sections) ---------- */
+.tabs{background:#fff!important;border-bottom:1px solid var(--md-outline-v)}
+.tabs button{color:var(--md-on-surface-v)!important;font-weight:600;border-radius:12px 12px 0 0}
+.tabs button.on{color:var(--md-primary)!important}
+.tabs button.on .ms{color:var(--md-primary)}
+.tabs .ind{background:var(--md-primary)!important;height:3px}
+
+/* ---------- ONE style for every secondary tab / switch in the app ---------- */
+.subtabs,.ltabs,.seg,.pp-seg,.rp-sub,.admin-tabs{display:flex;flex-wrap:wrap;gap:.5rem;background:transparent!important;border:0!important;padding:.2rem 0!important;overflow:visible}
+.subtabs button,.ltabs button,.seg button,.pp-seg button,.rp-sub button,.admin-tabs a{flex:0 0 auto!important;display:inline-flex;align-items:center;gap:.4rem;min-height:36px;
+  padding:.4rem 1rem!important;border-radius:999px!important;border:1px solid var(--md-outline)!important;background:#fff!important;color:var(--md-on-surface-v)!important;
+  font-weight:600;font-size:.88rem;box-shadow:none!important;text-decoration:none}
+.subtabs button:hover,.ltabs button:hover,.seg button:hover,.pp-seg button:hover,.rp-sub button:hover,.admin-tabs a:hover{background:var(--md-surface-2)!important}
+.subtabs button.on,.ltabs button.on,.seg button.on,.pp-seg button.on,.rp-sub button.on,.admin-tabs a.on{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)!important;border-color:transparent!important}
+.subtabs button .ms,.ltabs button .ms,.seg button .ms,.pp-seg button .ms{font-size:1.1rem;display:inline-block!important}
+.rp-bar,.pp-when{gap:.6rem 1rem}
+.rp-bar .pp-seg,.pp-when .pp-seg{flex:0 1 auto}
+
+/* ---------- chips ---------- */
+.chip{background:#fff;border:1px solid var(--md-outline);color:var(--md-on-surface-v)}
+.chip.ok{background:#dcf5e6;border-color:transparent;color:#00522f} .chip.warn{background:#ffe8cc;border-color:transparent;color:#6b3f00}
+.pp-chip{background:#fff;border:1px solid var(--md-outline);color:var(--md-on-surface-v);min-height:36px}
+.pp-chip.on{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)!important;border-color:transparent!important;box-shadow:none!important}
+.pp-chip.on .ms{color:var(--md-primary)!important}
+.rp-pl{background:var(--md-primary-c);color:var(--md-on-primary-c)} .rp-dt{background:var(--md-gold-c);color:var(--md-on-gold-c)}
+.tag.i{background:var(--md-gold-c);color:var(--md-on-gold-c)}
+
+/* ---------- text fields (outlined) ---------- */
+select,input,textarea{background:#fff!important;border:1px solid var(--md-outline)!important;border-radius:12px!important;color:var(--md-on-surface)}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--md-primary)!important;box-shadow:0 0 0 1px var(--md-primary)!important}
+label.fl .fi{color:var(--md-on-surface-v)}
+.pp-date{background:#fff!important;border:1px solid var(--md-outline)!important;border-radius:999px!important;min-height:40px}
+.pp-date input{border:0!important;box-shadow:none!important}
+
+/* ---------- lists, tables, collapsibles ---------- */
+table th{background:var(--md-surface-1);color:var(--md-on-surface-v);font-weight:600}
+table td,table th{border-bottom:1px solid var(--md-outline-v)}
+.coll-h{font-weight:600}
+details.cx>summary::after{color:var(--md-primary)}
+.warn{background:#fff4e0;border:1px solid #ffd9a0;color:#5c3700;border-radius:14px}
+.err{color:#ba1a1a}
+
+/* ---------- predictions & remedies ---------- */
+.pp-card::before{height:5px}
+.pp-says{background:linear-gradient(135deg,#fff6e4,#fffdf8)!important;border:1px solid #f4e2bb!important}
+.pp-adv{background:#fff!important}
+/* remedy groups stack in one column: no empty space beside a closed card */
+.rp-groups{grid-template-columns:1fr!important;gap:.7rem}
+.rp-g{padding:.8rem 1.1rem}
+
+/* ---------- admin ---------- */
+.adm-nav{background:#fff!important;border:1px solid var(--md-outline-v);box-shadow:var(--md-e1)}
+.adm-nav a{color:var(--md-on-surface-v)!important;border-radius:999px}
+.adm-nav a:hover{background:var(--md-surface-2)!important}
+.adm-nav a.on{background:var(--md-primary-c)!important;color:var(--md-on-primary-c)!important}
+.adm-brand{color:var(--md-primary)!important} .adm-back{border-top-color:var(--md-outline-v)!important}
+.adm-stat .ms{color:var(--md-primary)}
+
+@media (max-width:600px){
+  .hero-actions .btn{flex:1 1 100%;justify-content:center}
+  .subtabs,.seg,.pp-seg,.rp-sub{flex-wrap:nowrap;overflow-x:auto!important;scrollbar-width:none}
+}
