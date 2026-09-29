@@ -122,3 +122,19 @@ details.cx>summary::after{color:var(--md-primary)}
   .hero-actions .btn{flex:1 1 100%;justify-content:center}
   .subtabs,.seg,.pp-seg,.rp-sub{flex-wrap:nowrap;overflow-x:auto!important;scrollbar-width:none}
 }
+/* ---------- chat ---------- */
+.chat{display:flex;flex-direction:column;gap:.8rem;max-width:860px;margin:0 auto}
+.chat-h{display:flex;gap:.8rem;align-items:flex-start;background:linear-gradient(120deg,#dff6e9,#fff3dc);border:1px solid var(--md-outline-v);border-radius:20px;padding:1rem 1.2rem}
+.chat-h>.ms{font-size:2rem;color:var(--md-primary)} .chat-h h1{margin:0 0 .2rem} .chat-h small{color:var(--md-on-surface-v)}
+.chat-bar{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap} .chat-bar label{flex:1 1 260px}
+.chat-log{min-height:320px;max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:.7rem;padding:1rem;background:var(--md-surface-1);border:1px solid var(--md-outline-v);border-radius:20px}
+.msg{display:flex;gap:.5rem;max-width:88%} .msg>div{padding:.7rem .95rem;border-radius:18px;line-height:1.55}
+.msg p{margin:.15rem 0} .msg.bot{align-self:flex-start} .msg.bot>div{background:#fff;border:1px solid var(--md-outline-v);border-top-left-radius:6px}
+.msg.me{align-self:flex-end} .msg.me>div{background:var(--md-primary);color:#fff;border-top-right-radius:6px}
+.msg .av{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--md-primary-c);color:var(--md-primary);font-size:1.1rem}
+.msg.typing p{animation:blink 1s infinite} @keyframes blink{50%{opacity:.3}}
+.chat-sug{display:flex;gap:.5rem;flex-wrap:wrap}
+.chat-in{display:flex;gap:.5rem;position:sticky;bottom:.5rem} .chat-in input{flex:1;min-width:0;border-radius:999px!important;padding:.75rem 1.1rem}
+.chat-in button{flex:none;display:inline-flex;align-items:center;gap:.35rem}
+@media (max-width:600px){.msg{max-width:96%} .chat-in button span:last-child{display:none} .chat-log{max-height:55vh}}
+@media (max-width:860px){.chat-in{bottom:calc(76px + env(safe-area-inset-bottom));background:#fff;padding:.4rem 0;z-index:5}.chat-log{max-height:48vh}}

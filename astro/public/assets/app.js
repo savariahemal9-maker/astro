@@ -48,12 +48,12 @@
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
     const links = [['panchang', 'ui.panchang', 'calendar_month']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
+      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html;
     // phones: five short items; admin and sign-out live on the profile page
-    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['add', 'ui.nav_add', 'person_add'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
+    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
     $bnav.innerHTML = bl.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit'].includes(cur)) || (k === 'profile' && cur === 'admin') ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
   }
   // ---------- UI kit: ripple, toast, dialog, floating fields, tabs indicator, collapsibles, count-up ----------
@@ -355,6 +355,39 @@
         .then(d => { if (my === seq) $t.innerHTML = card(d); }).catch(e => { if (my === seq) $t.innerHTML = errBox(e); });
     };
     mark(); chips();
+  }
+
+  // ---------- Chat: rule-based answers from the selected kundali ----------
+  async function viewChat() {
+    loading(); let profs; try { profs = await api('GET', '/profiles'); } catch (e) { h(errBox(e)); return; }
+    if (!profs.length) { h(`<p class="pp-empty">${esc(t('ui.no_kundali'))}</p><a class="btn" href="#/add">${esc(t('ui.new_kundali'))}</a>`); return; }
+    let kid = (() => { try { return +localStorage.getItem('chat_kid'); } catch (e) { return 0; } })();
+    if (!profs.find(p => p.id === kid)) kid = profs[0].id;
+    const key = () => 'chat_' + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
+    let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-60), ctx: st.ctx })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
+    h(`<section class="chat"><header class="chat-h"><span class="ms">forum</span><div><h1>${esc(t('ui.chat'))}</h1><small>${esc(t('chat.disclaimer'))}</small></div></header>
+      <div class="chat-bar"><label>${esc(t('ui.select_kundali'))}<select id="chk">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select></label>
+        <button type="button" class="ghost" id="chn"><span class="ms">add_comment</span>${esc(t('ui.new_chat'))}</button></div>
+      <div class="chat-log" id="chl" aria-live="polite"></div><div class="chat-sug" id="chs"></div>
+      <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button><span class="ms">send</span><span>${esc(t('ui.send'))}</span></button></form></section>`);
+    const $l = document.getElementById('chl'), $s = document.getElementById('chs'), f = document.getElementById('chf');
+    const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}">${m.me ? '' : '<span class="ms av">auto_awesome</span>'}<div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}</div></div>`;
+    const sugg = list => { $s.innerHTML = (list || []).map(x => `<button type="button" class="pp-chip">${esc(x)}</button>`).join(''); $s.querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent)); };
+    const draw = () => { $l.innerHTML = st.msgs.map(bubble).join(''); $l.scrollTop = $l.scrollHeight; };
+    const ask = async text => {
+      text = text.trim(); if (!text) return; st.msgs.push({ me: true, lines: [text] }); draw(); f.m.value = '';
+      $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><span class="ms av">auto_awesome</span><div><p>…</p></div></div>'); $l.scrollTop = $l.scrollHeight;
+      try { const d = await api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx });
+        st.msgs.push({ lines: d.reply }); st.ctx = d.context; sugg(d.suggestions); }
+      catch (e) { st.msgs.push({ lines: [e.message] }); }
+      save(); draw();
+    };
+    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: [t('chat.greet'), t('chat.help')] }); save(); } draw();
+      sugg(['career', 'love', 'finance', 'dasha', 'remedy'].map(x => t('chat.q.' + x))); };
+    f.onsubmit = e => { e.preventDefault(); ask(f.m.value); };
+    document.getElementById('chk').onchange = e => { kid = +e.target.value; start(); };
+    document.getElementById('chn').onclick = () => { try { localStorage.removeItem(key()); } catch (e) {} start(); };
+    start(); f.m.focus();
   }
 
   // ---------- Chart list + add ----------
@@ -1068,7 +1101,7 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict'].includes(page) && !token) { location.hash = '#/login'; return; }
+    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat'].includes(page) && !token) { location.hash = '#/login'; return; }
     if (page === 'login' || page === 'register') return viewAuth(page);
     if (page === 'forgot') return viewForgot();
     if (page === 'reset' && arg) return viewReset(arg);
@@ -1077,6 +1110,7 @@
     if (page === 'charts') { location.hash = '#/dashboard'; return; }
     if (page === 'add') return viewAdd();
     if (page === 'predict') return viewPredict();
+    if (page === 'chat') return viewChat();
     if (page === 'admin') { location.hash = '#/panchang'; return; }
 
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
