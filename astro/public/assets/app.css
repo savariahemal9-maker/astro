@@ -461,3 +461,8 @@ label.fl input:-webkit-autofill~.fl-label{top:6px;transform:scale(.76);color:var
 /* collapsed groups keep their own height instead of stretching to the open one */
 .rp-groups{align-items:start}
 .rp-sub{margin:0} .pp-more{margin:.2rem 0 .8rem} .pp-more a{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
+/* white background (site and admin); cards get a soft border and shadow to stand out */
+:root{--bg:#ffffff;--s:#ffffff;--s2:#f8f6f1}
+body,main{background:#fff}
+.topbar{background:rgba(255,255,255,.96)} .tabs{background:rgba(255,255,255,.95)}
+.bnav{background:rgba(255,255,255,.97)}
