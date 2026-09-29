@@ -191,6 +191,7 @@ final class Routes {
         $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
         // ---- admin: overview, users and their kundalis ----
         $r->add('GET', '/admin/ai-status', function (Request $q) use ($adm) { $adm($q); return \App\Interp\AiChat::status(); }, false);
+        $r->add('GET', '/admin/claude-status', function (Request $q) use ($adm) { $adm($q); return \App\Interp\ClaudeChat::status(); }, false);
         $r->add('GET', '/admin/stats', function (Request $q, array $u) use ($adm) { $adm($q);
             $n = fn(string $sql) => (int) (Db::one($sql)['n'] ?? 0);
             return ['users' => $n('SELECT COUNT(*) n FROM users'), 'new_users_7d' => $n('SELECT COUNT(*) n FROM users WHERE created_at > UTC_TIMESTAMP() - INTERVAL 7 DAY'),
@@ -271,6 +272,14 @@ final class Routes {
                 return $bot->reply($k, $msg, $ctx, $local, (string) $p['label']) + ['engine' => 'rules', 'why' => \App\Interp\AiChat::$lastError];
             }
             return $bot->reply($k, $msg, $ctx, $local, (string) $p['label']) + ['engine' => 'rules', 'why' => 'no_key'];
+        });
+        // separate AI astrologer chat powered by Claude (the rule-based / Gemini chat above is unchanged)
+        $r->add('POST', '/profiles/{id}/claude-chat', function (Request $q, array $u, array $a) {
+            self::limit('claude', 15); [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            $msg = mb_substr(trim((string) $q->input('message', '')), 0, 800); if ($msg === '') throw new ApiException('validation', 'Type a question', 422);
+            if (!\App\Interp\ClaudeChat::enabled()) throw new ApiException('ai_unavailable', 'The AI astrologer is not set up yet.', 503);
+            $hist = array_values(array_filter((array) $q->input('history', []), 'is_array'));
+            return (new \App\Interp\ClaudeChat($l, (float) $p['lat'], (float) $p['lon']))->reply($k, $p, $msg, $hist, $local);
         });
         $r->add('GET', '/profiles/{id}/poojas', function (Request $q, array $u, array $a) {
             [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
