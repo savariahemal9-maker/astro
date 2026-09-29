@@ -51,7 +51,10 @@
       ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
-    $rail.innerHTML = html; $bnav.innerHTML = html;
+    $rail.innerHTML = html;
+    // phones: five short items; admin and sign-out live on the profile page
+    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['add', 'ui.nav_add', 'person_add'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
+    $bnav.innerHTML = bl.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit'].includes(cur)) || (k === 'profile' && cur === 'admin') ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
   }
   // ---------- UI kit: ripple, toast, dialog, floating fields, tabs indicator, collapsibles, count-up ----------
   document.addEventListener('pointerdown', e => {
@@ -247,7 +250,8 @@
           <div id="perr"></div><div><button>${esc(t('ui.save'))}</button></div></form></section>
       <section class="card"><div class="card-h"><span class="ms">lock_reset</span>${esc(t('ui.change_password'))}</div>
         <form class="stack" id="cpf"><label>${esc(t('ui.current_password'))}<input type="password" name="current_password" required autocomplete="current-password"></label>${pwPair()}
-          <div id="cperr"></div><div><button>${esc(t('ui.change_password'))}</button></div></form></section></div>`);
+          <div id="cperr"></div><div><button>${esc(t('ui.change_password'))}</button></div></form></section></div>
+      <section class="card row acct-links">${isAdmin ? `<a class="btn tonal" href="#/admin"><span class="ms">admin_panel_settings</span>${esc(t('ui.admin'))}</a>` : ''}<a class="btn ghost" href="#/logout"><span class="ms">logout</span>${esc(t('ui.sign_out'))}</a></section>`);
     const pf = document.getElementById('pf'), cpf = document.getElementById('cpf');
     pf.email.oninput = () => { const ch = pf.email.value.trim().toLowerCase() !== me.email; document.getElementById('pwc').hidden = !ch; pf.password.required = ch; };
     pf.onsubmit = async e => {
@@ -281,60 +285,69 @@
     if (!profs.find(p => p.id === st.kid)) st.kid = profs[0]?.id;
     if (!PERIODS.includes(st.per)) st.per = 'daily';
     st.date = st.date || today();
-    let mine = cats.filter(c => c.selected), editing = !mine.length;
-    const head = `<section class="hero-band"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.personal_predictions'))}</h1></div><span class="ms hero-ic">auto_awesome</span></section>`;
-    if (!profs.length) { h(head + `<section class="card"><p>${esc(t('ui.no_kundali'))}</p><a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section>`); return; }
-    h(head + `<section class="card pp-bar"><div class="row">
-        <label>${esc(t('ui.select_kundali'))}<select id="ppk">${profs.map(p => `<option value="${p.id}"${p.id === st.kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select></label>
-        <label>${esc(t('ui.date'))}<input type="date" id="ppd" name="date" value="${esc(st.date)}"></label></div>
-        <div class="card-h"><span class="ms">category</span>${esc(t('ui.my_categories'))}<button class="ghost" id="ppe" type="button"><span class="ms">tune</span>${esc(t('ui.manage_categories'))}</button></div>
-        <div id="ppc"></div></section><div id="ppt"></div>`);
+    let mine = cats.filter(c => c.selected), editing = !mine.length, seq = 0;
+    const PI = { daily: 'today', weekly: 'date_range', monthly: 'calendar_month', yearly: 'event_repeat', lifetime: 'all_inclusive' };
+    const hero = `<section class="pp-hero"><div class="pp-hero-top"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.personal_predictions'))}</h1>
+      <p class="pp-sub">${esc(t('ui.pp_sub'))}</p></div><span class="ms pp-hero-ic" aria-hidden="true">auto_awesome</span></div>`;
+    if (!profs.length) { h(hero + `<a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section><p class="muted">${esc(t('ui.no_kundali'))}</p>`); return; }
+    h(hero + `<div class="pp-people" role="radiogroup" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<button type="button" role="radio" class="pp-person" data-k="${p.id}">
+        <span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><span class="pp-pn"><b>${esc(p.label)}</b><small>${esc(p.birth_date)}</small></span></button>`).join('')}
+        <a class="pp-person add" href="#/add" aria-label="${esc(t('ui.new_kundali'))}"><span class="ms">add</span></a></div></section>
+      <section class="pp-controls"><div class="pp-row"><h2 class="pp-h"><span class="ms">category</span>${esc(t('ui.my_categories'))}</h2>
+        <button type="button" class="pp-edit" id="ppe"><span class="ms">tune</span>${esc(t('ui.manage_categories'))}</button></div>
+        <div id="ppc"></div>
+        <div class="pp-when"><div class="pp-seg" id="ppp" role="tablist">${PERIODS.map(p => `<button type="button" role="tab" data-p="${p}"><span class="ms">${PI[p]}</span><span>${esc(t('ui.p_' + p))}</span></button>`).join('')}</div>
+          <label class="pp-date"><span class="ms">event</span><input type="date" id="ppd" value="${esc(st.date)}" aria-label="${esc(t('ui.date'))}"></label></div></section>
+      <div id="ppt" aria-live="polite"></div>`);
     const $c = document.getElementById('ppc'), $t = document.getElementById('ppt');
+    const mark = () => {
+      $app.querySelectorAll('[data-k]').forEach(b => { const on = +b.dataset.k === st.kid; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+      $app.querySelectorAll('[data-p]').forEach(b => { const on = b.dataset.p === st.per; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+      document.getElementById('ppd').closest('.pp-date').hidden = st.per === 'lifetime';
+    };
     const chips = () => {
       if (editing) {
-        $c.innerHTML = `<div class="chips">${cats.map(c => `<label class="chip-btn pick${c.selected ? ' on' : ''}"><input type="checkbox" value="${c.id}"${c.selected ? ' checked' : ''} hidden><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</label>`).join('')}</div>
-          <div class="row"><button id="pps">${esc(t('ui.save'))}</button>${mine.length ? `<button class="ghost" id="ppx" type="button">${esc(t('ui.cancel'))}</button>` : ''}</div>`;
+        $c.innerHTML = `<div class="pp-pick">${cats.map(c => `<label class="pp-chip pick${c.selected ? ' on' : ''}"><input type="checkbox" value="${c.id}"${c.selected ? ' checked' : ''}><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</label>`).join('')}</div>
+          <div class="row pp-pick-act"><button id="pps"><span class="ms">check</span>${esc(t('ui.save'))}</button>${mine.length ? `<button class="ghost" id="ppx" type="button">${esc(t('ui.cancel'))}</button>` : ''}</div>`;
         $c.querySelectorAll('.pick input').forEach(i => i.onchange = () => i.parentElement.classList.toggle('on', i.checked));
         document.getElementById('ppx')?.addEventListener('click', () => { editing = false; chips(); });
         document.getElementById('pps').onclick = async () => {
           const ids = [...$c.querySelectorAll('.pick input:checked')].map(i => +i.value);
           try { const r = await api('PUT', '/me/categories', { ids }); cats.forEach(c => c.selected = r.ids.includes(c.id)); mine = cats.filter(c => c.selected);
-            toast(t('ui.saved')); editing = !mine.length; if (!mine.find(c => c.id === st.cat)) st.cat = mine[0]?.id; save(); chips(); } catch (e) { toast(e.message, 'error'); } };
+            toast(t('ui.saved')); editing = !mine.length; save(); chips(); } catch (e) { toast(e.message, 'error'); } };
       } else {
         if (!mine.find(c => c.id === st.cat)) st.cat = mine[0]?.id;
-        $c.innerHTML = `<div class="chips">${mine.map(c => `<button type="button" class="chip-btn${c.id === st.cat ? ' on' : ''}" data-c="${c.id}"><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</button>`).join('')}</div>`;
+        $c.innerHTML = `<div class="pp-cats">${mine.map(c => `<button type="button" class="pp-chip${c.id === st.cat ? ' on' : ''}" data-c="${c.id}"><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</button>`).join('')}</div>`;
         $c.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { st.cat = +b.dataset.c; save(); chips(); });
       }
       show();
     };
+    $app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { st.kid = +b.dataset.k; save(); mark(); show(); });
+    $app.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { st.per = b.dataset.p; save(); mark(); show(); });
     document.getElementById('ppe').onclick = () => { editing = !editing; chips(); };
-    document.getElementById('ppk').onchange = e => { st.kid = +e.target.value; save(); show(); };
     document.getElementById('ppd').onchange = e => { st.date = e.target.value || today(); save(); show(); };
     const yr = d => d.slice(0, 4);
-    const box = (cls, icon, title, list) => list && list.length ? `<div class="pp-box ${cls}"><h3><span class="ms">${icon}</span> ${esc(title)}</h3><ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
-    const card = d => `<section class="card pp-res ${d.level}"><div class="pp-top"><div><p class="pp-cat"><span class="ms">${esc(d.category.icon)}</span> ${esc(d.category.name)}</p>
-        <h2 class="pp-head">${esc(d.headline)}</h2><p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p>
-        <span class="chip ${d.level === 'favourable' ? 'ok' : d.level === 'challenging' ? 'warn' : ''}">${esc(d.level_text)}</span></div>
-        <div class="pp-score">${dial(d.score, d.score_label)}</div></div>
-      <p class="lead">${esc(d.explanation)}</p>
-      ${d.caution ? `<div class="warn"><span class="ms">report</span> ${esc(d.caution)}</div>` : ''}
-      ${d.personal && d.personal.length ? `<div class="pp-kundali"><h3><span class="ms">menu_book</span> ${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span>${esc(x.text)}</li>`).join('')}</ul></div>` : ''}
-      <div class="pp-boxes">${box('do', 'check_circle', t('ui.what_to_do'), d.do)}${box('dont', 'block', t('ui.what_to_avoid'), d.dont)}${box('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
-      ${d.timeline && d.timeline.length ? `<h3><span class="ms">timeline</span> ${esc(t('ui.life_phases'))}</h3><ul class="pp-phases">${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span class="chip ${x.favourable ? 'ok' : 'warn'}">${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ul>` : ''}
+    const list = (cls, icon, title, items) => items && items.length ? `<section class="pp-adv ${cls}"><h3><span class="ms">${icon}</span>${esc(title)}</h3><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : '';
+    const card = d => `<article class="pp-card lvl-${d.level}">
+      <header class="pp-sum"><div class="pp-sum-l"><span class="pp-badge"><span class="ms">${esc(d.category.icon)}</span>${esc(d.category.name)}</span>
+          <h2>${esc(d.headline)}</h2><p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p></div>
+        <div class="pp-meter" title="${esc(d.score_label)}">${ring(d.score)}<div class="pp-meter-v"><b>${d.score}</b><small>/100</small></div></div></header>
+      <div class="pp-lvlrow"><span class="pp-lvl">${esc(d.level_text)}</span><small>${esc(d.score_label)}</small></div>
+      <p class="pp-exp">${esc(d.explanation)}</p>
+      ${d.caution ? `<div class="pp-caution"><span class="ms">report</span><span>${esc(d.caution)}</span></div>` : ''}
+      ${d.personal && d.personal.length ? `<section class="pp-says"><h3><span class="ms">menu_book</span>${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span><span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
+      <div class="pp-grid">${list('do', 'check_circle', t('ui.what_to_do'), d.do)}${list('dont', 'do_not_disturb_on', t('ui.what_to_avoid'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
+      ${d.timeline && d.timeline.length ? `<section class="pp-life"><h3><span class="ms">timeline</span>${esc(t('ui.life_phases'))}</h3><ol>${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span>${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ol></section>` : ''}
       ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
         <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
-      <p class="muted pp-disc"><span class="ms">info</span> ${esc(d.disclaimer)}</p></section>`;
-    let seq = 0;
+      <p class="pp-disc"><span class="ms">info</span>${esc(d.disclaimer)}</p></article>`;
     const show = () => {
-      if (!st.cat) { $t.innerHTML = `<p class="muted">${esc(t('ui.no_categories'))}</p>`; return; }
-      localTabs($t, PERIODS.map(p => [p, t('ui.p_' + p), { daily: 'today', weekly: 'date_range', monthly: 'calendar_month', yearly: 'event_repeat', lifetime: 'all_inclusive' }[p], () => {
-        const my = ++seq; st.per = p; save();
-        api('GET', `/profiles/${st.kid}/category-prediction?category=${st.cat}&period=${p}&date=${st.date}&lang=${lang}`)
-          .then(d => { if (my === seq) $t.querySelector('.lbody').innerHTML = card(d); }).catch(e => { if (my === seq) $t.querySelector('.lbody').innerHTML = errBox(e); });
-        return skel();
-      }]), PERIODS.indexOf(st.per));
+      if (!st.cat) { $t.innerHTML = `<p class="pp-empty"><span class="ms">touch_app</span>${esc(t('ui.no_categories'))}</p>`; return; }
+      const my = ++seq; $t.innerHTML = skel();
+      api('GET', `/profiles/${st.kid}/category-prediction?category=${st.cat}&period=${st.per}&date=${st.date}&lang=${lang}`)
+        .then(d => { if (my === seq) $t.innerHTML = card(d); }).catch(e => { if (my === seq) $t.innerHTML = errBox(e); });
     };
-    chips();
+    mark(); chips();
   }
 
   // ---------- Chart list + add ----------
