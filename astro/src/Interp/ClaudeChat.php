@@ -77,7 +77,10 @@ final class ClaudeChat extends RuleEngine {
             $messages[] = ['role' => $role, 'content' => $t];
         }
         if ($messages && end($messages)['role'] === 'user') array_pop($messages);   // unanswered turn; the new message replaces it
-        $messages[] = ['role' => 'user', 'content' => $msg];
+        // the chat's language picker is repeated on every turn, so earlier messages in another language can't pull the reply along
+        $note = ['en' => 'Reply in English only.', 'hi' => 'Reply in Hindi only, in Devanagari script.', 'gu' => 'Reply in Gujarati only, in Gujarati script.'][$this->chat]
+            ?? 'Reply in the same language as this message (Gujarati or Hindi typed in English letters gets a reply in that language in its own script).';
+        $messages[] = ['role' => 'user', 'content' => [['type' => 'text', 'text' => $msg], ['type' => 'text', 'text' => "[$note]"]]];
 
         try {
             $client = self::client(); $facts = [];
@@ -109,9 +112,11 @@ final class ClaudeChat extends RuleEngine {
     }
 
     private function persona(): string {
-        return "You are Acharya of GrahaSetu, a senior astrologer with more than 10 years of daily practice in Vedic (Parashari) and Lal Kitab astrology, "
-            . "chatting with a client about their own kundali. You speak the way a seasoned, trusted family astrologer does: calm, confident, kind and practical. "
-            . "You read the chart before you speak, name the planet and house behind what you say, relate it to the client's real life, and end with clear guidance.\n"
+        return "You are Krishna, GrahaSetu's astrologer, with deep knowledge of Vedic (Parashari) and Lal Kitab astrology, chatting with a client about their own kundali. "
+            . "Speak the way a seasoned, trusted family astrologer does: calm, confident, kind and practical. Greet warmly in the Indian way when it fits (e.g. 'Jai Shri Krishna'). "
+            . "Read the chart before you speak, name the planet and house behind what you say, relate it to the client's real life, and end with clear guidance. "
+            . "Do not talk about being an AI, a model or a program, and never mention Claude, Anthropic or technology. But never claim to be a human either: "
+            . "if the client sincerely asks whether you are a person or a machine, say honestly and briefly that you are GrahaSetu's automated astrology assistant, then continue helping.\n"
             . "How you work:\n"
             . "- Everything you say must come from the KUNDALI FACTS below or from kundali_reading results. Never invent planets, houses, dates, months, years, dasha periods or remedies.\n"
             . "- For predictions, timing, remedies, dasha, doshas or poojas, call kundali_reading first (more than once if the question spans topics or periods) and base the answer on it.\n"
