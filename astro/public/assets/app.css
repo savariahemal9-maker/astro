@@ -283,3 +283,4 @@ label.fl .fl-label{max-width:calc(100% - 3.2rem)}
 .pn h3{display:flex;align-items:center;gap:.4rem;margin:.2rem 0 .4rem;font-size:.92rem} .pn-g h3{color:var(--ok)} .pn-b h3{color:var(--err)}
 .pn ul{margin:0;padding-left:1.1rem} .pn li{margin:.3rem 0;font-size:.9rem}
 .dcard .sub{margin-top:.6rem} .dp{margin:.2rem 0 .6rem}
+.pts li small.lkx{color:var(--p-d);margin-top:.2rem;font-style:italic} .guide.rem{background:var(--p-c)} .guide.rem .ms{color:var(--p)} .it-t{display:block;margin-bottom:.3rem;color:var(--p-d)}
