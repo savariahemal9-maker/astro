@@ -342,7 +342,7 @@
       <p class="pp-exp">${esc(d.explanation)}</p>
       ${d.caution ? `<div class="pp-caution"><span class="ms">report</span><span>${esc(d.caution)}</span></div>` : ''}
       ${d.personal && d.personal.length ? `<section class="pp-says"><h3><span class="ms">menu_book</span>${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span><span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
-      <div class="pp-grid">${list('do', 'check_circle', t('ui.what_to_do'), d.do)}${list('dont', 'do_not_disturb_on', t('ui.what_to_avoid'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), (d.upay || []).slice(0, 2))}</div>
+      <div class="pp-grid">${list('do', 'trending_up', t('ui.in_favour'), d.do)}${list('dont', 'warning', t('ui.watch_out'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), (d.upay || []).slice(0, 2))}</div>
       <p class="pp-more"><a href="#/chart/${st.kid}" data-open-tab="remedies"><span class="ms">spa</span>${esc(t('ui.all_remedies'))}</a></p>
       ${d.timeline && d.timeline.length ? `<section class="pp-life"><h3><span class="ms">timeline</span>${esc(t('ui.life_phases'))}</h3><ol>${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span>${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ol></section>` : ''}
       ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
@@ -365,11 +365,13 @@
     if (!profs.find(p => p.id === kid)) kid = profs[0].id;
     const key = () => 'chat_' + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
     let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-60), ctx: st.ctx })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
-    h(`<section class="chat"><header class="chat-h"><span class="ms">forum</span><div><h1>${esc(t('ui.chat'))}</h1><small>${esc(t('chat.disclaimer'))}</small></div></header>
-      <div class="chat-bar"><label>${esc(t('ui.select_kundali'))}<select id="chk">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select></label>
-        <button type="button" class="ghost" id="chn"><span class="ms">add_comment</span>${esc(t('ui.new_chat'))}</button></div>
-      <div class="chat-log" id="chl" aria-live="polite"></div><div class="chat-sug" id="chs"></div>
-      <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button><span class="ms">send</span><span>${esc(t('ui.send'))}</span></button></form></section>`);
+    h(`<section class="chat"><div class="chat-top"><span class="ms chat-ic">forum</span>
+        <select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select>
+        <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">add_comment</span></button></div>
+      <div class="chat-log" id="chl" aria-live="polite"></div>
+      <div class="chat-foot"><div class="chat-sug" id="chs"></div>
+        <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
+        <p class="chat-note">${esc(t('chat.disclaimer'))}</p></div></section>`);
     const $l = document.getElementById('chl'), $s = document.getElementById('chs'), f = document.getElementById('chf');
     const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}">${m.me ? '' : '<span class="ms av">auto_awesome</span>'}<div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}</div></div>`;
     const sugg = list => { $s.innerHTML = (list || []).map(x => `<button type="button" class="pp-chip">${esc(x)}</button>`).join(''); $s.querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent)); };
@@ -377,7 +379,7 @@
     const ask = async text => {
       text = text.trim(); if (!text) return; st.msgs.push({ me: true, lines: [text] }); draw(); f.m.value = '';
       $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><span class="ms av">auto_awesome</span><div><p>…</p></div></div>'); $l.scrollTop = $l.scrollHeight;
-      try { const d = await api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx });
+      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx }), new Promise(r => setTimeout(r, 700))]);
         st.msgs.push({ lines: d.reply }); st.ctx = d.context; sugg(d.suggestions); }
       catch (e) { st.msgs.push({ lines: [e.message] }); }
       save(); draw();

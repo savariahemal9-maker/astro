@@ -122,10 +122,13 @@ final class CategoryPredictor extends RuleEngine {
         $pos = array_values(array_column(array_filter($F, fn($f) => $f['w'] > 0), 'text'));
         $neg = array_values(array_column(array_filter($F, fn($f) => $f['w'] < 0), 'text'));
         $name = $cat['name_' . $this->lang] ?: $cat['name_en']; $v = ['cat' => $name, 'period' => $this->t("pred.period.$period")];
-        [$do, $dont, $upay, $personal] = $this->advice($cat, $F);
+        [, , $upay, $personal] = $this->advice($cat, $F);
         if ($period !== 'lifetime') $personal = [];   // the natal Lal Kitab reading does not change by day or month
         $fx = fn(callable $keep) => array_values(array_map(fn($f) => ['text' => $f['text'], 'effect' => $this->t("pred.fx.{$f['key']}", $f['vars'] + ['cat' => $name]
             + ($f['pl'] ? ['domain' => $this->t("interp.planet_domain.{$f['pl']}")] : []))], array_filter($F, $keep)));
+        // "in your favour" / "watch out for": the calculated factors of this chart, in plain words, strongest first
+        $do = array_slice(array_column($fx(fn($f) => $f['w'] > 0), 'effect'), 0, 3);
+        $dont = array_slice(array_column($fx(fn($f) => $f['w'] < 0), 'effect'), 0, 3);
         return ['meta' => ['type' => 'interpretation', 'kind' => 'category_prediction', 'ruleset' => self::VERSION, 'lang' => $this->lang],
                 'category' => ['id' => (int) $cat['id'], 'slug' => $cat['slug'], 'name' => $name, 'icon' => $cat['icon'], 'caution' => (bool) $cat['caution']],
                 'period' => $period, 'range' => $range, 'score' => $score, 'score_label' => $this->t('pred.score_label'), 'level' => $level,
@@ -138,6 +141,13 @@ final class CategoryPredictor extends RuleEngine {
     }
 
     /** End date (Y-m-d) of the running mahadasha / antardasha at $date. */
+    /** English wording of a localized Lal Kitab remedy, used to judge whether it fits the topic. */
+    private function enOf(string $text): string {
+        foreach ($this->by as $pl => $p) for ($i = 0; $i < 4; $i++)
+            if ($this->c("lk.$pl.{$p['house']}.rem.$i") === $text) return \App\I18n\Lang::content('en', "lk.$pl.{$p['house']}.rem.$i");
+        return $text;
+    }
+
     private function dashaEnd(string $lvl, string $date): ?string {
         foreach ($this->k['dasha']['mahadasha'] as $md) if ($md['start'] <= $date && $date < $md['end']) {
             if ($lvl === 'mahadasha') return $md['end'];
@@ -173,7 +183,13 @@ final class CategoryPredictor extends RuleEngine {
             $h = $this->by[$pl]['house'];
             for ($i = 0; $i < 4; $i++) if (($x = $this->c("lk.$pl.$h.rem.$i")) !== '') $upay[] = $x;
         }
-        $upay = array_slice(array_values(array_unique($upay)), 0, 5);
+        $upay = array_values(array_unique($upay));
+        if (!in_array($cat['slug'], ['love', 'marriage'], true)) {
+            $off = '/marr|wedding|spouse|wife|husband|son|daughter|child|\\b\\d{2}\\b|in-law|widow/i';
+            $keep = []; foreach ($upay as $x) { $en = $this->enOf($x); if (!preg_match($off, $en)) $keep[] = $x; }
+            $upay = $keep ?: array_map(fn($pl) => $this->t("pred.pl.$pl.upay"), array_slice($weak ?: $rel, 0, 1));
+        }
+        $upay = array_slice($upay, 0, 3);
         $one = fn(string $k) => array_slice($this->field($cat, $k), 0, 1);
         $u = fn(array $a) => array_values(array_unique($a));
         // the admin's general tip only fills in when the chart gives little to say
