@@ -26,5 +26,6 @@ return [
         'geonames_username' => '', // free account at geonames.org; needed for timezones outside India
     ],
     'auth' => ['token_ttl_days' => 30],
-    'app'  => ['debug' => false, 'cors_origins' => ['*'], 'admins' => ['your-admin-email@example.com']], // admins can edit remedy rules at #/admin
+    'mail' => ['from' => 'no-reply@example.com'], // sender for password-reset emails (PHP mail())
+    'app'  => ['base_url' => 'https://example.com', 'debug' => false, 'cors_origins' => ['*'], 'admins' => ['your-admin-email@example.com']], // admins can edit remedy rules at #/admin
 ];

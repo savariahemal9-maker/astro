@@ -48,7 +48,7 @@
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
     const links = [['panchang', 'ui.panchang', 'calendar_month']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['logout', 'ui.sign_out', 'logout']])
+      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html; $bnav.innerHTML = html;
@@ -79,6 +79,11 @@
       if (inp.tagName === 'SELECT' || ['date', 'time'].includes(inp.type)) l.classList.add('fixed');
       const ic = FIELD_ICONS[inp.name]; if (ic) { l.classList.add('has-ic'); l.insertAdjacentHTML('afterbegin', `<span class="ms fi">${ic}</span>`); }
       const sp = document.createElement('span'); sp.className = 'fl-label'; sp.textContent = txt; inp.after(sp);
+      if (inp.type === 'password') {
+        l.classList.add('has-eye'); const eb = document.createElement('button'); eb.type = 'button'; eb.className = 'pw-eye';
+        const set = show => { inp.type = show ? 'text' : 'password'; eb.innerHTML = `<span class="ms">${show ? 'visibility_off' : 'visibility'}</span>`; eb.setAttribute('aria-label', t(show ? 'ui.hide_password' : 'ui.show_password')); eb.setAttribute('aria-pressed', show); };
+        set(false); eb.onclick = e => { e.preventDefault(); set(inp.type === 'password'); inp.focus(); }; l.appendChild(eb);
+      }
     });
   }
   function tabIndicator(tabs) {
@@ -190,7 +195,7 @@
         <label>${esc(t('ui.password'))}<input type="password" name="password" minlength="8" required autocomplete="${reg ? 'new-password' : 'current-password'}"></label>
         <div id="aerr"></div>
         <div><button>${esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</button></div>
-        <a href="#/${reg ? 'login' : 'register'}">${esc(t(reg ? 'ui.have_account' : 'ui.no_account'))}</a>
+        <div class="row"><a href="#/${reg ? 'login' : 'register'}">${esc(t(reg ? 'ui.have_account' : 'ui.no_account'))}</a>${reg ? '' : `<a href="#/forgot">${esc(t('ui.forgot_password'))}</a>`}</div>
       </form>`);
     const f = document.getElementById('af');
     f.onsubmit = async e => {
@@ -202,6 +207,62 @@
         setToken(d.token); if (d.user.lang !== lang) await loadLang(d.user.lang);
         location.hash = '#/dashboard';
       } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; }
+    };
+  }
+
+  function viewForgot() {
+    h(`<h1>${esc(t('ui.forgot_password'))}</h1><p class="muted">${esc(t('ui.forgot_hint'))}</p>
+      <form class="stack" id="ff"><label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
+        <div id="ferr"></div><div><button>${esc(t('ui.send_reset_link'))}</button></div><a href="#/login">${esc(t('ui.back_to_login'))}</a></form>`);
+    const f = document.getElementById('ff');
+    f.onsubmit = async e => {
+      e.preventDefault(); const b = f.querySelector('button'); b.disabled = true;
+      try { await api('POST', '/auth/forgot', { email: f.email.value }); f.outerHTML = `<section class="card"><span class="ms">mark_email_read</span> ${esc(t('ui.reset_sent'))}</section><p><a href="#/login">${esc(t('ui.back_to_login'))}</a></p>`; }
+      catch (err) { document.getElementById('ferr').innerHTML = errBox(err); b.disabled = false; }
+    };
+  }
+  // new password + confirmation; used by reset and change-password forms
+  const pwPair = () => `<label>${esc(t('ui.new_password'))}<input type="password" name="new_password" minlength="8" required autocomplete="new-password"></label>
+    <label>${esc(t('ui.confirm_password'))}<input type="password" name="confirm_password" minlength="8" required autocomplete="new-password"></label>`;
+  const pwMismatch = f => f.new_password.value !== f.confirm_password.value ? errBox({ message: t('ui.password_mismatch') }) : '';
+  function viewReset(token) {
+    h(`<h1>${esc(t('ui.reset_password'))}</h1><form class="stack" id="rf">${pwPair()}<div id="rerr"></div><div><button>${esc(t('ui.reset_password'))}</button></div></form>`);
+    const f = document.getElementById('rf');
+    f.onsubmit = async e => {
+      e.preventDefault(); const err = document.getElementById('rerr'); if ((err.innerHTML = pwMismatch(f))) return;
+      const b = f.querySelector('button'); b.disabled = true;
+      try { await api('POST', '/auth/reset', { token, password: f.new_password.value }); toast(t('ui.reset_done')); location.hash = '#/login'; }
+      catch (e2) { err.innerHTML = errBox(e2); b.disabled = false; }
+    };
+  }
+  async function viewProfile() {
+    loading(); let me; try { me = await api('GET', '/me'); } catch (e) { h(errBox(e)); return; }
+    h(`<section class="hero-band"><div><p class="eyebrow">${esc(me.email)}</p><h1>${esc(t('ui.my_profile'))}</h1></div><span class="ms hero-ic">account_circle</span></section>
+      <div class="addwrap"><section class="card"><div class="card-h"><span class="ms">edit</span>${esc(t('ui.edit_profile'))}</div>
+        <form class="stack" id="pf"><label>${esc(t('ui.name'))}<input name="name" required maxlength="120" autocomplete="name" value="${esc(me.name)}"></label>
+          <label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email" value="${esc(me.email)}"></label>
+          <label>${esc(t('ui.language'))}<select name="lang">${[['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']].map(([v, n]) => `<option value="${v}"${me.lang === v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
+          <div id="pwc" hidden><label>${esc(t('ui.current_password'))}<input type="password" name="password" autocomplete="current-password"></label><p class="muted">${esc(t('ui.email_change_hint'))}</p></div>
+          <div id="perr"></div><div><button>${esc(t('ui.save'))}</button></div></form></section>
+      <section class="card"><div class="card-h"><span class="ms">lock_reset</span>${esc(t('ui.change_password'))}</div>
+        <form class="stack" id="cpf"><label>${esc(t('ui.current_password'))}<input type="password" name="current_password" required autocomplete="current-password"></label>${pwPair()}
+          <div id="cperr"></div><div><button>${esc(t('ui.change_password'))}</button></div></form></section></div>`);
+    const pf = document.getElementById('pf'), cpf = document.getElementById('cpf');
+    pf.email.oninput = () => { const ch = pf.email.value.trim().toLowerCase() !== me.email; document.getElementById('pwc').hidden = !ch; pf.password.required = ch; };
+    pf.onsubmit = async e => {
+      e.preventDefault(); const b = pf.querySelector('button'); b.disabled = true; document.getElementById('perr').innerHTML = '';
+      try {
+        const body = { name: pf.name.value, email: pf.email.value, lang: pf.lang.value }; if (pf.password.value) body.password = pf.password.value;
+        const u = await api('PATCH', '/me', body); toast(t('ui.saved'));
+        if (u.lang !== lang) await loadLang(u.lang); route();
+      } catch (err) { document.getElementById('perr').innerHTML = errBox(err); b.disabled = false; }
+    };
+    cpf.onsubmit = async e => {
+      e.preventDefault(); const err = document.getElementById('cperr'); if ((err.innerHTML = pwMismatch(cpf))) return;
+      const b = cpf.querySelector('button'); b.disabled = true;
+      try { await api('POST', '/me/password', { current_password: cpf.current_password.value, new_password: cpf.new_password.value }); toast(t('ui.password_changed')); cpf.reset(); }
+      catch (e2) { err.innerHTML = errBox(e2); }
+      b.disabled = false;
     };
   }
 
@@ -242,8 +303,13 @@
     </form>`;
   }
 
-  function bindChartForm() {
+  function bindChartForm(edit = null) {
     const f = document.getElementById('cf'); let place = null, confirmed = null;
+    if (edit) {
+      for (const k of ['label', 'gender', 'birth_date', 'time_accuracy', 'tzid']) f[k].value = edit[k] ?? '';
+      f.birth_time.value = edit.birth_time; f.place_q.value = edit.place_name; place = { lat: edit.lat, lon: edit.lon };
+      if (edit.offset_source === 'manual') f.manual_offset_minutes.value = edit.offset_minutes;
+    }
     api('GET', '/meta/timezones').then(z => document.getElementById('tzlist').innerHTML = z.map(x => `<option value="${esc(x)}">`).join('')).catch(() => {});
     placePicker(f, p => { place = p; if (p.tzid) f.tzid.value = p.tzid; reset(); });
     const reset = () => { confirmed = null; document.getElementById('resolved').innerHTML = ''; f.check.textContent = t('ui.check_details'); };
@@ -267,7 +333,8 @@
             ${r.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}</section>`;
           f.check.textContent = t('ui.confirm_save');
         } else {
-          const p = await api('POST', '/profiles', { ...body(), confirmed: true });
+          const p = await api(edit ? 'PUT' : 'POST', edit ? '/profiles/' + edit.id : '/profiles', { ...body(), confirmed: true });
+          if (edit) toast(t('ui.saved'));
           location.hash = '#/chart/' + p.id;
         }
       } catch (e2) {
@@ -346,7 +413,7 @@
     h(`<div class="hero"><div><h1>${esc(prof.label)}</h1>
       <div class="chips"><span class="chip"><span class="ms">event</span>${esc(b.local.slice(0, 16))}</span><span class="chip"><span class="ms">location_on</span>${esc(prof.place_name.split(',')[0])}</span>
       <span class="chip"><span class="ms">public</span>${esc(b.tzid)} · UTC ${esc(b.utc.slice(11, 16))}</span><span class="chip ok"><span class="ms">north_east</span>${esc(t('ui.lagna'))} ${esc(tn('signs', k.lagna.sign_name))}</span></div></div>
-      <a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div>
+      <a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div>
       ${b.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}
       ${prof.time_accuracy === 'approximate' ? `<div class="warn">${esc(t('ui.approx_warning'))}</div>` : ''}
       <div class="tabs" role="tablist">${Object.keys(GROUPS).map((x, i) =>
@@ -700,6 +767,13 @@
       <aside class="card tips"><div class="card-h"><span class="ms">lightbulb</span>${esc(t('ui.tips'))}</div><ul><li>${esc(t('ui.tip1'))}</li><li>${esc(t('ui.tip2'))}</li><li>${esc(t('ui.tip3'))}</li></ul></aside></div>`);
     bindChartForm();
   }
+  async function viewEdit(id) {
+    loading(); let p; try { p = await api('GET', '/profiles/' + id); } catch (e) { h(errBox(e)); return; }
+    h(`<section class="hero-band"><div><p class="eyebrow">${esc(p.label)}</p><h1>${esc(t('ui.edit_kundali'))}</h1></div><span class="ms hero-ic">edit_calendar</span></section>
+      <div class="addwrap"><section class="card">${chartForm()}</section>
+      <aside class="card tips"><div class="card-h"><span class="ms">info</span>${esc(t('ui.tips'))}</div><ul><li>${esc(t('ui.edit_hint'))}</li><li>${esc(t('ui.tip1'))}</li></ul></aside></div>`);
+    bindChartForm(p);
+  }
   // local in-tab tabs
   function localTabs(el, list, i0 = 0) {
     el.innerHTML = `<div class="ltabs">${list.map(([k, l, ic], i) => `<button data-l="${i}" class="${i === i0 ? 'on' : ''}"><span class="ms">${ic}</span>${esc(l)}</button>`).join('')}</div><div class="lbody"></div>`;
@@ -751,7 +825,7 @@
         <div class="kgrid">${list.map(p => `<section class="card kcard"><div class="kc-h"><span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><div><h3>${esc(p.label)}</h3>
             <small class="muted">${esc(p.birth_date)} · ${esc(p.birth_time.slice(0, 5))} · ${esc(p.place_name.split(',')[0])}</small></div></div>
             <div class="row"><a class="btn" href="#/chart/${p.id}"><span class="ms">open_in_new</span>${esc(t('ui.open'))}</a><a class="btn tonal" href="#/print/${p.id}"><span class="ms">download</span>PDF</a>
-            <button class="icon-btn" data-del="${p.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div></section>`).join('')}
+            <a class="icon-btn" href="#/edit/${p.id}" aria-label="${esc(t('ui.edit_kundali'))}"><span class="ms">edit</span></a><button class="icon-btn" data-del="${p.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div></section>`).join('')}
           <a class="card kcard add" href="#/add"><span class="ms">add_circle</span>${esc(t('ui.new_kundali'))}</a></div>`);
       $app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         if (!(await confirmDialog(t('ui.confirm_delete')))) return;
@@ -764,8 +838,12 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-    if (['charts', 'chart', 'print', 'dashboard', 'add'].includes(page) && !token) { location.hash = '#/login'; return; }
+    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile'].includes(page) && !token) { location.hash = '#/login'; return; }
     if (page === 'login' || page === 'register') return viewAuth(page);
+    if (page === 'forgot') return viewForgot();
+    if (page === 'reset' && arg) return viewReset(arg);
+    if (page === 'profile') return viewProfile();
+    if (page === 'edit' && arg) return viewEdit(parseInt(arg, 10));
     if (page === 'charts') { location.hash = '#/dashboard'; return; }
     if (page === 'add') return viewAdd();
     if (page === 'admin') return viewAdmin();
