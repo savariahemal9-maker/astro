@@ -404,3 +404,7 @@ body.admin-mode main>*{max-width:none}
 .danger{color:var(--err)!important;border-color:var(--err-c)!important}
 @media (max-width:860px){.adm{grid-template-columns:minmax(0,1fr);gap:1rem}.adm-nav{position:static;flex-direction:row;overflow-x:auto;scrollbar-width:none;border-radius:16px;padding:.4rem}
   .adm-brand{display:none}.adm-nav a{flex:none;padding:.5rem .75rem}.adm-back{margin:0;border:0;padding-top:.5rem!important}}
+/* let the kundali list drop below the banner */
+.pp-hero{overflow:visible;z-index:10}
+.pp-hero::after{inset:auto 0 0 auto;width:240px;height:240px;border-radius:0 0 24px 0;background:radial-gradient(circle at 100% 100%,rgba(217,162,59,.35),rgba(217,162,59,0) 65%)}
+.pp-kpanel{z-index:30}
