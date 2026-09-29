@@ -1,0 +1,232 @@
+<?php
+namespace App\Api;
+
+use App\Auth\AuthService;
+use App\Calc\{Dasha, Ephemeris, KundaliService, PanchangService, TimeResolver, Varga};
+use App\Core\{ApiException, Db, Request, Router};
+use App\Geo\GeoService;
+use App\I18n\Lang;
+use App\Interp\RuleEngine;
+
+final class Routes {
+    public static function register(Router $r): void {
+        // ---- public ----
+        $r->add('GET', '/meta/settings', fn() => ['settings' => (new Ephemeris())->settings(), 'engine' => (new Ephemeris())->info()['engine'],
+            'vargas' => array_map(fn($d) => 'D' . $d, Varga::SUPPORTED), 'ruleset' => RuleEngine::VERSION], false);
+        $r->add('GET', '/meta/i18n', fn(Request $q) => Lang::all($q->lang()), false);
+        $r->add('GET', '/meta/timezones', fn() => \DateTimeZone::listIdentifiers(), false);
+
+        $r->add('POST', '/auth/register', function (Request $q) {
+            self::limit('reg', 10); $in = $q->require(['name', 'email', 'password']);
+            return AuthService::register($in['name'], $in['email'], $in['password'], $q->lang());
+        }, false);
+        $r->add('POST', '/auth/login', function (Request $q) {
+            self::limit('login', 20); $in = $q->require(['email', 'password']);
+            return AuthService::login($in['email'], $in['password'], (string) $q->input('client', 'web'));
+        }, false);
+
+        $r->add('GET', '/geo/search', function (Request $q) { self::limit('geo', 30); return GeoService::search((string) $q->input('q', '')); }, false);
+        $r->add('GET', '/geo/timezone', function (Request $q) {
+            $in = $q->require(['lat', 'lon']);
+            return ['tzid' => GeoService::timezone((float) $in['lat'], (float) $in['lon'], strtolower((string) $q->input('country_code', '')))];
+        }, false);
+        $r->add('POST', '/birth/resolve', fn(Request $q) => ProfileService::validate($q->body)['_resolved'], false);
+
+        $r->add('GET', '/panchang', function (Request $q) {
+            $in = $q->require(['date', 'lat', 'lon', 'tzid']);
+            $eph = new Ephemeris();
+            $key = hash('sha256', json_encode(['v2', $in['date'], round((float) $in['lat'], 3), round((float) $in['lon'], 3), $in['tzid'], $eph->settings(), $eph->info()['engine']]));
+            if ($c = Db::one('SELECT payload FROM panchang_cache WHERE cache_key = ?', [$key])) return json_decode($c['payload'], true);
+            $p = (new PanchangService($eph))->compute((string) $in['date'], (float) $in['lat'], (float) $in['lon'], (string) $in['tzid']);
+            Db::exec('REPLACE INTO panchang_cache (cache_key, payload) VALUES (?,?)', [$key, json_encode($p)]);
+            return $p;
+        }, false);
+
+        // ---- authenticated ----
+        $r->add('POST', '/auth/logout', function (Request $q) { AuthService::logout($q->token); return ['signed_out' => true]; });
+        $r->add('GET', '/me', fn(Request $q, array $u) => AuthService::publicUser($u));
+        $r->add('PATCH', '/me', function (Request $q, array $u) {
+            if ($l = $q->input('lang')) Db::exec('UPDATE users SET lang=? WHERE id=?', [in_array($l, ['en','hi','gu'], true) ? $l : 'en', $u['id']]);
+            if ($n = $q->input('name')) Db::exec('UPDATE users SET name=? WHERE id=?', [mb_substr(trim($n), 0, 120), $u['id']]);
+            return AuthService::publicUser(AuthService::find((int) $u['id']));
+        });
+
+        $r->add('GET', '/profiles', fn(Request $q, array $u) => array_map([ProfileService::class, 'present'],
+            Db::all('SELECT * FROM birth_profiles WHERE user_id = ? ORDER BY created_at DESC', [$u['id']])));
+        $r->add('POST', '/profiles', fn(Request $q, array $u) => ProfileService::save((int) $u['id'], $q->body));
+        $r->add('GET', '/profiles/{id}', fn(Request $q, array $u, array $a) => ProfileService::get((int) $u['id'], $a['id']));
+        $r->add('PUT', '/profiles/{id}', fn(Request $q, array $u, array $a) => ProfileService::save((int) $u['id'], $q->body, $a['id']));
+        $r->add('DELETE', '/profiles/{id}', function (Request $q, array $u, array $a) {
+            ProfileService::get((int) $u['id'], $a['id']); Db::exec('DELETE FROM birth_profiles WHERE id=?', [$a['id']]); return ['deleted' => true];
+        });
+
+        $r->add('GET', '/profiles/{id}/kundali', function (Request $q, array $u, array $a) {
+            [, $k] = ProfileService::kundali(ProfileService::get((int) $u['id'], $a['id'])); return $k;
+        });
+        $r->add('GET', '/profiles/{id}/transits', function (Request $q, array $u, array $a) {
+            [$p, , $k] = self::ctx($q, $u, $a); [$jd] = self::at($q, $p);
+            return (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+        });
+        $r->add('GET', '/profiles/{id}/predictions', function (Request $q, array $u, array $a) {
+            [$p, $kid, $k, $lang] = self::ctx($q, $u, $a);
+            return self::prediction((string) $q->input('type', 'daily'), $q, $p, $kid, $k, $lang);
+        });
+        $r->add('GET', '/profiles/{id}/doshas', function (Request $q, array $u, array $a) {
+            [$p, $kid, $k, $lang] = self::ctx($q, $u, $a); return self::doshas($q, $p, $kid, $k, $lang);
+        });
+        $adv = fn(Request $q, array $u) => new \App\Interp\Advanced($q->lang($u));
+        $trAt = function (Request $q, array $p, array $k) { [$jd, $local] = self::at($q, $p); return [(new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']), $local]; };
+        $r->add('GET', '/profiles/{id}/summary', function (Request $q, array $u, array $a) use ($adv) { [, , $k] = self::ctx($q, $u, $a); return $adv($q, $u)->summary($k); });
+        $r->add('GET', '/profiles/{id}/dosha-report', function (Request $q, array $u, array $a) use ($adv, $trAt) {
+            [$p, , $k] = self::ctx($q, $u, $a); [$tr, $local] = $trAt($q, $p, $k); return $adv($q, $u)->doshaReport($k, $tr) + ['as_on' => $local->format('Y-m-d')]; });
+        $r->add('GET', '/profiles/{id}/priority-remedies', function (Request $q, array $u, array $a) use ($adv, $trAt) {
+            [$p, , $k] = self::ctx($q, $u, $a); [$tr] = $trAt($q, $p, $k); return $adv($q, $u)->priorityRemedies($k, $tr); });
+        $r->add('GET', '/profiles/{id}/gem-report', function (Request $q, array $u, array $a) use ($adv) { [, , $k] = self::ctx($q, $u, $a); return $adv($q, $u)->gemReport($k); });
+        $r->add('GET', '/profiles/{id}/annual', function (Request $q, array $u, array $a) use ($adv) {
+            [$p, , $k] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            $v = (new \App\Calc\VarshphalService())->compute($k, (int) $q->input('year', $local->format('Y')));
+            return ['chart' => $v, 'reading' => $adv($q, $u)->annual($k, $v)]; });
+        $r->add('GET', '/profiles/{id}/luck', function (Request $q, array $u, array $a) use ($adv) { [, , $k] = self::ctx($q, $u, $a); return $adv($q, $u)->luck($k); });
+        $r->add('GET', '/profiles/{id}/yogas', function (Request $q, array $u, array $a) use ($adv) { [, , $k] = self::ctx($q, $u, $a); return $adv($q, $u)->yogas($k); });
+        $r->add('GET', '/profiles/{id}/monthly-reading', function (Request $q, array $u, array $a) use ($adv) {
+            [$p, , $k] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            $m = (string) $q->input('month', $local->format('Y-m')); if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m)) throw new ApiException('validation', 'month must be YYYY-MM', 422);
+            [$jd] = self::at($q, $p, "$m-15"); $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+            return $adv($q, $u)->monthly($k, $tr) + ['month' => $m]; });
+        $r->add('GET', '/profiles/{id}/house-varsh', function (Request $q, array $u, array $a) use ($adv) {
+            [$p, , $k] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p); return $adv($q, $u)->lkVarsh($k, (int) $q->input('year', $local->format('Y'))); });
+        $r->add('GET', '/profiles/{id}/daily-reading', function (Request $q, array $u, array $a) use ($adv, $trAt) {
+            [$p, , $k] = self::ctx($q, $u, $a); [$tr, $local] = $trAt($q, $p, $k);
+            return $adv($q, $u)->daily($k, $tr) + ['date' => $local->format('Y-m-d'), 'transits' => $tr]; });
+        $adm = function (array $u) { if (!in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)) throw new ApiException('forbidden', 'Admin only', 403); };
+        $r->add('GET', '/admin/remedies', function (Request $q, array $u) use ($adm) { $adm($u); return Db::all('SELECT * FROM remedy_rules ORDER BY planet, house, dosha, priority DESC'); });
+        $save = function (Request $q, ?int $id) {
+            $b = $q->body; $pl = $b['planet'] ?? null; $ds = $b['dosha'] ?? null;
+            if (!$pl && !$ds) throw new ApiException('validation', 'planet or dosha required', 422);
+            if (empty($b['text_en']) || empty($b['source'])) throw new ApiException('validation', 'text_en and source are required', 422);
+            $v = [$pl ?: null, ($b['house'] ?? '') === '' ? null : (int) $b['house'], $ds ?: null, in_array($b['cond'] ?? 'any', ['any', 'weak', 'strong', 'malefic', 'benefic'], true) ? ($b['cond'] ?? 'any') : 'any',
+                  (int) ($b['priority'] ?? 50), $b['text_en'], $b['text_hi'] ?? null, $b['text_gu'] ?? null, mb_substr($b['source'], 0, 255), ($b['status'] ?? 'draft') === 'approved' ? 'approved' : 'draft'];
+            if ($id) { Db::exec('UPDATE remedy_rules SET planet=?,house=?,dosha=?,cond=?,priority=?,text_en=?,text_hi=?,text_gu=?,source=?,status=? WHERE id=?', array_merge($v, [$id])); return ['id' => $id]; }
+            return ['id' => Db::insert('INSERT INTO remedy_rules (planet,house,dosha,cond,priority,text_en,text_hi,text_gu,source,status) VALUES (?,?,?,?,?,?,?,?,?,?)', $v)]; };
+        $r->add('POST', '/admin/remedies', function (Request $q, array $u) use ($adm, $save) { $adm($u); return $save($q, null); });
+        $r->add('PUT', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm, $save) { $adm($u); return $save($q, $a['id']); });
+        $r->add('DELETE', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM remedy_rules WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        $r->add('GET', '/me/admin', function (Request $q, array $u) { return ['admin' => in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)]; });
+        $r->add('GET', '/profiles/{id}/planet-results', function (Request $q, array $u, array $a) {
+            [, $kid, $k, $lang] = self::ctx($q, $u, $a);
+            return self::cached($kid, 'planet_results', '', $lang, fn() => (new RuleEngine($lang))->planetResults($k));
+        });
+        $r->add('GET', '/profiles/{id}/varshphal', function (Request $q, array $u, array $a) {
+            [$p, , $k] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            $y = (int) $q->input('year', $local->format('Y'));
+            return (new \App\Calc\VarshphalService())->compute($k, $y);
+        });
+        $r->add('GET', '/profiles/{id}/gemstones', function (Request $q, array $u, array $a) {
+            [, $kid, $k, $lang] = self::ctx($q, $u, $a); return self::gems($kid, $k, $lang);
+        });
+        $r->add('GET', '/profiles/{id}/full-report', function (Request $q, array $u, array $a) {
+            [$p, $kid, $k, $lang] = self::ctx($q, $u, $a); [$jd, $local] = self::at($q, $p);
+            $pred = []; foreach (['life', 'mdphal', 'dasha', 'monthly', 'daily'] as $t) $pred[$t] = self::prediction($t, $q, $p, $kid, $k, $lang);
+            return ['profile' => $p, 'kundali' => $k, 'transits' => (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']),
+                    'as_on' => $local->format('Y-m-d H:i T'), 'predictions' => $pred, 'doshas' => self::doshas($q, $p, $kid, $k, $lang),
+                    'gemstones' => self::gems($kid, $k, $lang), 'planet_results' => self::cached($kid, 'planet_results', '', $lang, fn() => (new RuleEngine($lang))->planetResults($k)),
+                    'varshphal' => $vp = (new \App\Calc\VarshphalService())->compute($k, (int) $local->format('Y')), 'generated_utc' => gmdate('c')]
+                    + (function () use ($k, $p, $lang, $vp, $jd) { $A = new \App\Interp\Advanced($lang); $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+                        return ['summary' => $A->summary($k), 'dosha_report' => $A->doshaReport($k, $tr), 'priority_remedies' => $A->priorityRemedies($k, $tr),
+                                'gem_report' => $A->gemReport($k), 'annual' => $A->annual($k, $vp), 'daily_reading' => $A->daily($k, $tr), 'luck' => $A->luck($k), 'yogas' => $A->yogas($k), 'monthly_reading' => $A->monthly($k, $tr)]; })();
+        });
+        $r->add('GET', '/profiles/{id}/report', function (Request $q, array $u, array $a) {
+            $p = ProfileService::get((int) $u['id'], $a['id']); [$kid, $k] = ProfileService::kundali($p); $lang = $q->lang($u);
+            return self::cached($kid, 'report', gmdate('Y-m'), $lang, fn() => (new RuleEngine($lang))->report($k,
+                Dasha::current(['mahadasha' => $k['dasha']['mahadasha']], TimeResolver::nowJd())));
+        });
+        $r->add('GET', '/profiles/{id}/remedies', function (Request $q, array $u, array $a) {
+            $period = (string) $q->input('period', 'common');
+            if (!in_array($period, ['common', 'daily', 'weekly', 'monthly'], true)) throw new ApiException('validation', 'period must be common, daily, weekly or monthly', 422);
+            [$p, $kid, $k, $lang] = self::ctx($q, $u, $a);
+            [$jd, $local] = self::at($q, $p);
+            if ($period === 'monthly') {
+                $m = (string) $q->input('month', $local->format('Y-m'));
+                if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $m)) throw new ApiException('validation', 'month must be YYYY-MM', 422);
+                [$jd, $local] = self::at($q, $p, $m . '-15');   // mid-month transits
+            }
+            $pk = ['common' => '', 'daily' => $local->format('Y-m-d'), 'weekly' => $local->format('o-\WW'), 'monthly' => $local->format('Y-m')][$period];
+            return self::cached($kid, 'remedy_' . $period . '_' . $local->getTimezone()->getName(), $pk, $lang, function () use ($k, $p, $period, $lang, $jd, $local) {
+                $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+                return (new RuleEngine($lang))->remedies($period, $k, $tr, (int) $local->format('w'))
+                    + ['as_on' => $local->format($period === 'monthly' ? 'Y-m' : 'Y-m-d'), 'transits_used' => $tr];
+            });
+        });
+        $r->add('POST', '/prashna', function (Request $q, array $u) {
+            $in = $q->require(['lat', 'lon', 'tzid']);
+            $now = new \DateTimeImmutable('now', new \DateTimeZone((string) $in['tzid']));
+            $b = TimeResolver::resolve($now->format('Y-m-d'), $now->format('H:i:s'), (string) $in['tzid']);
+            $k = (new KundaliService())->compute($b, (float) $in['lat'], (float) $in['lon']);
+            return ['question' => mb_substr((string) $q->input('question', ''), 0, 500), 'chart' => $k,
+                    'interpretation' => null, 'note' => 'Prashna interpretation rules are not implemented yet; chart data only.'];
+        });
+    }
+
+    /** @return array{0:array,1:int,2:array,3:string} profile, kundali id, kundali, lang */
+    private static function ctx(Request $q, array $u, array $a): array {
+        $p = ProfileService::get((int) $u['id'], $a['id']); [$kid, $k] = ProfileService::kundali($p);
+        return [$p, $kid, $k, $q->lang($u)];
+    }
+
+    /** Target moment: ?date=YYYY-MM-DD (local noon) in ?tzid= (default: birth timezone); no date = now. */
+    private static function at(Request $q, array $p, ?string $forceDate = null): array {
+        try { $tz = new \DateTimeZone((string) $q->input('tzid', $p['tzid'])); } catch (\Exception) { throw new ApiException('invalid_timezone', 'Unknown timezone', 422); }
+        $date = $forceDate ?? $q->input('date');
+        if ($date === null || $date === '') { $local = new \DateTimeImmutable('now', $tz); return [TimeResolver::nowJd(), $local]; }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $date)) throw new ApiException('invalid_date', 'date must be YYYY-MM-DD', 422);
+        $local = new \DateTimeImmutable($date . ' 12:00:00', $tz);
+        return [$local->getTimestamp() / 86400 + 2440587.5, $local];
+    }
+
+    private static function prediction(string $type, Request $q, array $p, int $kid, array $k, string $lang): array {
+        if (!in_array($type, ['life', 'dasha', 'mdphal', 'monthly', 'daily'], true)) throw new ApiException('validation', 'type must be life, dasha, mdphal, monthly or daily', 422);
+        [$jd, $local] = self::at($q, $p);
+        if ($type === 'monthly') [$jd, $local] = self::at($q, $p, $local->format('Y-m-15'));
+        $pk = ['mdphal' => $local->format('Y-m'), 'life' => $local->format('Y-m'), 'dasha' => $local->format('Y-m-d'), 'monthly' => $local->format('Y-m'), 'daily' => $local->format('Y-m-d')][$type];
+        return self::cached($kid, 'pred_' . $type . '_' . $local->getTimezone()->getName(), $pk, $lang, function () use ($type, $k, $p, $jd, $lang, $local) {
+            $r = new RuleEngine($lang);
+            if ($type === 'life') { $l = $r->life($k, $jd); $l['sections'] = $r->lifeSections($k)['items']; return $l; }
+            if ($type === 'mdphal') return $r->mahadashaPhal($k, $jd);
+            if ($type === 'dasha') return $r->dashaNow($k, $jd);
+            $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+            return $r->horoscope($type, $k, $tr) + ['as_on' => $local->format('Y-m-d H:i T')];
+        });
+    }
+
+    private static function doshas(Request $q, array $p, int $kid, array $k, string $lang): array {
+        [$jd, $local] = self::at($q, $p);
+        $tr = (new KundaliService())->transits($k, $jd, $p['lat'], $p['lon']);
+        return ['calculated' => ['type' => 'calculated', 'mangal_dosha' => $k['analysis']['mangal_dosha'], 'kaal_sarp' => $k['analysis']['kaal_sarp'],
+                    'sade_sati' => $tr['derived']['sade_sati'] + ['period' => $tr['sade_sati_cycle']], 'shani_dhaiya' => $tr['derived']['shani_dhaiya'],
+                    'as_on' => $local->format('Y-m-d H:i T')],
+                'interpretation' => self::cached($kid, 'doshas_' . $local->getTimezone()->getName(), $local->format('Y-m-d'), $lang, fn() => (new RuleEngine($lang))->doshas($k, $tr))];
+    }
+
+    private static function gems(int $kid, array $k, string $lang): array {
+        return ['gemstones' => self::cached($kid, 'gemstones', '', $lang, fn() => (new RuleEngine($lang))->gemstones($k)),
+                'influences' => self::cached($kid, 'influences', '', $lang, fn() => (new RuleEngine($lang))->influences($k))];
+    }
+
+    private static function cached(int $kid, string $kind, string $pk, string $lang, callable $make): array {
+        $row = Db::one('SELECT payload_json FROM interpretations WHERE kundali_id=? AND kind=? AND period_key=? AND lang=? AND ruleset_version=?',
+            [$kid, $kind, $pk, $lang, RuleEngine::VERSION]);
+        if ($row) return json_decode($row['payload_json'], true);
+        $data = $make();
+        Db::exec('INSERT INTO interpretations (kundali_id, kind, period_key, lang, ruleset_version, payload_json) VALUES (?,?,?,?,?,?)',
+            [$kid, $kind, $pk, $lang, RuleEngine::VERSION, json_encode($data, JSON_UNESCAPED_UNICODE)]);
+        return $data;
+    }
+
+    private static function limit(string $bucket, int $perMinute): void {
+        $key = $bucket . ':' . ($_SERVER['REMOTE_ADDR'] ?? 'cli'); $now = time();
+        $row = Db::one('SELECT hits, window_start FROM rate_limits WHERE bucket=?', [$key]);
+        if (!$row || $now - (int) $row['window_start'] >= 60) { Db::exec('REPLACE INTO rate_limits (bucket, hits, window_start) VALUES (?,1,?)', [$key, $now]); return; }
+        if ((int) $row['hits'] >= $perMinute) throw new ApiException('rate_limited', 'Too many requests. Wait a minute and try again.', 429);
+        Db::exec('UPDATE rate_limits SET hits = hits + 1 WHERE bucket=?', [$key]);
+    }
+}

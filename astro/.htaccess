@@ -1,0 +1,3 @@
+# Deny direct access to internals when the project root is the web root.
+RedirectMatch 404 ^/(src|config|database|engine|lang|tests|docs)(/|$)
+DirectoryIndex public/index.php

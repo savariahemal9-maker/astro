@@ -1,0 +1,82 @@
+{
+ "jd0": 2378496.5,
+ "jd1": 2597641.5,
+ "swisseph": "2.10.03",
+ "series": {
+  "sun": {
+   "seg": 16,
+   "n": 13,
+   "angle": true
+  },
+  "moon": {
+   "seg": 4,
+   "n": 15,
+   "angle": true
+  },
+  "moonlat": {
+   "seg": 8,
+   "n": 15,
+   "angle": false
+  },
+  "moondist": {
+   "seg": 8,
+   "n": 13,
+   "angle": false
+  },
+  "mercury": {
+   "seg": 8,
+   "n": 15,
+   "angle": true
+  },
+  "venus": {
+   "seg": 8,
+   "n": 15,
+   "angle": true
+  },
+  "mars": {
+   "seg": 8,
+   "n": 13,
+   "angle": true
+  },
+  "jupiter": {
+   "seg": 16,
+   "n": 13,
+   "angle": true
+  },
+  "saturn": {
+   "seg": 16,
+   "n": 13,
+   "angle": true
+  },
+  "meannode": {
+   "seg": 32,
+   "n": 9,
+   "angle": true
+  },
+  "truenode": {
+   "seg": 4,
+   "n": 15,
+   "angle": true
+  },
+  "dpsi": {
+   "seg": 8,
+   "n": 15,
+   "angle": false
+  },
+  "eps": {
+   "seg": 8,
+   "n": 15,
+   "angle": false
+  },
+  "aeff": {
+   "seg": 8,
+   "n": 15,
+   "angle": false
+  },
+  "stcorr": {
+   "seg": 8,
+   "n": 13,
+   "angle": false
+  }
+ }
+}

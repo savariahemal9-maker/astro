@@ -1,0 +1,749 @@
+{
+ "_instructions": [
+  "Fill 'expected' from a trusted reference (e.g. Jagannatha Hora with Lahiri ayanamsa, same node setting as config; Drik Panchang for panchang).",
+  "Set 'source' to the tool+version+settings used and 'status' to 'filled'. Longitudes in decimal degrees (sidereal) or \"Sign dd:mm:ss\".",
+  "D9/D10 values are sign names. Times are local 'YYYY-MM-DD HH:MM'. Run: php tests/compare_reference.php"
+ ],
+ "charts": [
+  {
+   "id": "surat_1990",
+   "why": "baseline modern IST",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1990-05-15",
+    "time": "14:30",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 21.1702,
+    "lon": 72.8311
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "ahmedabad_2001",
+   "why": "baseline, different latitude",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "2001-01-26",
+    "time": "08:46",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 23.0225,
+    "lon": 72.5714
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "mumbai_1950_bombay_time",
+   "why": "pre-1955 Bombay Time (manual offset +4:51)",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1950-08-10",
+    "time": "06:15",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": 291,
+    "lat": 19.076,
+    "lon": 72.8777
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "delhi_1943_war_time",
+   "why": "WWII war time UTC+6:30",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1943-11-03",
+    "time": "22:05",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 28.6139,
+    "lon": 77.209
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "kolkata_1935",
+   "why": "pre-IST local time",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1935-02-18",
+    "time": "04:40",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 22.5726,
+    "lon": 88.3639
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "new_york_dst",
+   "why": "DST abroad",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1985-07-04",
+    "time": "21:10",
+    "tzid": "America/New_York",
+    "manual_offset_minutes": null,
+    "lat": 40.7128,
+    "lon": -74.006
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "london_winter",
+   "why": "UTC+0, northern latitude",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1978-12-22",
+    "time": "03:33",
+    "tzid": "Europe/London",
+    "manual_offset_minutes": null,
+    "lat": 51.5074,
+    "lon": -0.1278
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "sydney_south",
+   "why": "southern hemisphere",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1995-03-09",
+    "time": "11:50",
+    "tzid": "Australia/Sydney",
+    "manual_offset_minutes": null,
+    "lat": -33.8688,
+    "lon": 151.2093
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "oslo_high_lat",
+   "why": "high latitude (fast/slow rising signs)",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "2010-06-21",
+    "time": "12:00",
+    "tzid": "Europe/Oslo",
+    "manual_offset_minutes": null,
+    "lat": 59.9139,
+    "lon": 10.7522
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "chennai_2024",
+   "why": "recent date, south India",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "2024-10-31",
+    "time": "23:59",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 13.0827,
+    "lon": 80.2707
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "rajkot_midnight",
+   "why": "time at midnight boundary",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "1999-12-31",
+    "time": "00:00",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 22.3039,
+    "lon": 70.8022
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  },
+  {
+   "id": "vadodara_2015",
+   "why": "extra baseline",
+   "status": "TO_FILL",
+   "source": "",
+   "birth": {
+    "date": "2015-08-15",
+    "time": "17:20",
+    "tzid": "Asia/Kolkata",
+    "manual_offset_minutes": null,
+    "lat": 22.3072,
+    "lon": 73.1812
+   },
+   "expected": {
+    "lagna_lon": null,
+    "planets": {
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D9": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    },
+    "D10": {
+     "Lagna": null,
+     "Sun": null,
+     "Moon": null,
+     "Mars": null,
+     "Mercury": null,
+     "Jupiter": null,
+     "Venus": null,
+     "Saturn": null,
+     "Rahu": null,
+     "Ketu": null
+    }
+   }
+  }
+ ],
+ "panchang": [
+  {
+   "id": "surat_diwali_2026",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2026-11-08",
+   "lat": 21.1702,
+   "lon": 72.8311,
+   "tzid": "Asia/Kolkata",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  },
+  {
+   "id": "ahmedabad_2026_09_27",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2026-09-27",
+   "lat": 23.0225,
+   "lon": 72.5714,
+   "tzid": "Asia/Kolkata",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  },
+  {
+   "id": "delhi_2025_01_14",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2025-01-14",
+   "lat": 28.6139,
+   "lon": 77.209,
+   "tzid": "Asia/Kolkata",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  },
+  {
+   "id": "mumbai_2024_04_08",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2024-04-08",
+   "lat": 19.076,
+   "lon": 72.8777,
+   "tzid": "Asia/Kolkata",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  },
+  {
+   "id": "varanasi_2025_03_14",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2025-03-14",
+   "lat": 25.3176,
+   "lon": 82.9739,
+   "tzid": "Asia/Kolkata",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  },
+  {
+   "id": "london_2026_06_21",
+   "status": "TO_FILL",
+   "source": "",
+   "date": "2026-06-21",
+   "lat": 51.5074,
+   "lon": -0.1278,
+   "tzid": "Europe/London",
+   "expected": {
+    "sunrise": null,
+    "sunset": null,
+    "tithi": null,
+    "tithi_ends": null,
+    "nakshatra": null,
+    "nakshatra_ends": null,
+    "yoga": null,
+    "karana": null
+   }
+  }
+ ]
+}
