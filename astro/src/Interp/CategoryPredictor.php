@@ -14,13 +14,15 @@ final class CategoryPredictor extends RuleEngine {
     private const FAST = ['Moon', 'Sun', 'Mercury', 'Venus', 'Mars'];
     private const SLOW = ['Jupiter', 'Saturn', 'Rahu', 'Ketu'];
     private const BENEFIC = ['Jupiter', 'Venus', 'Mercury', 'Moon'];
+    private array $weakPlanets = [];
 
     /** @param array $cat category row; $local = reference local date (DateTimeImmutable, profile timezone). */
     public function predict(array $k, array $cat, string $period, \DateTimeImmutable $local, float $lat, float $lon): array {
         $P = array_values(array_filter(array_map('trim', explode(',', $cat['planets'])), fn($x) => isset(self::LK_BAD[$x])));
         $H = array_values(array_filter(array_map('intval', explode(',', $cat['houses'])), fn($x) => $x >= 1 && $x <= 12));
         [$range, $refs] = $this->range($period, $local);
-        $by = $this->by($k); $F = [];
+        $by = $this->by($k); $F = []; $this->weakPlanets = [];
+        foreach ($P as $pl) if (in_array($by[$pl]['house'], self::LK_BAD[$pl], true)) $this->weakPlanets[$pl] = $by[$pl]['house'];
 
         // 1. natal strength of significators (always; heavier for lifetime)
         $wN = $period === 'lifetime' ? 2 : 1;
@@ -106,6 +108,9 @@ final class CategoryPredictor extends RuleEngine {
 
     private function f(float $w, string $key, array $vars): array { return ['w' => $w, 'key' => $key, 'text' => $this->t("pred.f.$key", $vars)]; }
 
+    private function lines(?string $s): array { return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $s)))); }
+    private function field(array $cat, string $k): array { return $this->lines($cat["{$k}_{$this->lang}"] ?? '') ?: $this->lines($cat["{$k}_en"] ?? ''); }
+
     private function finish(array $cat, string $period, array $range, array $F): array {
         $sum = array_sum(array_column($F, 'w')); $max = array_sum(array_map(fn($f) => abs($f['w']), $F)) ?: 1;
         $score = (int) max(5, min(95, round(50 + 45 * $sum / $max)));
@@ -113,14 +118,22 @@ final class CategoryPredictor extends RuleEngine {
         usort($F, fn($a, $b) => abs($b['w']) <=> abs($a['w']));
         $pos = array_values(array_column(array_filter($F, fn($f) => $f['w'] > 0), 'text'));
         $neg = array_values(array_column(array_filter($F, fn($f) => $f['w'] < 0), 'text'));
-        $name = $cat['name_' . $this->lang] ?: $cat['name_en'];
-        $text = $this->t("pred.summary.$level", ['cat' => $name, 'period' => $this->t("pred.period.$period")]) . ' '
-              . $this->t('pred.summary.counts', ['p' => count($pos), 'n' => count($neg)]) . ' '
-              . $this->t("pred.advice.$level") . ($cat['caution'] ? ' ' . $this->t('pred.caution') : '');
+        $name = $cat['name_' . $this->lang] ?: $cat['name_en']; $v = ['cat' => $name, 'period' => $this->t("pred.period.$period")];
+        // plain-language advice: the category's own tips (admin) first, then general tips for this kind of period
+        $gen = fn(string $k) => $this->lines(str_replace('|', "\n", $this->t("pred.$k.$level", $v)));
+        $upay = $this->field($cat, 'upay');
+        // no upay written by the admin: fall back to the Lal Kitab remedy of the category's weakest planets
+        if (!$upay) foreach ($this->weakPlanets as $pl => $h) { $x = $this->c("lk.$pl.$h.rem.0"); if ($x !== '' && count($upay) < 2) $upay[] = $x; }
         return ['meta' => ['type' => 'interpretation', 'kind' => 'category_prediction', 'ruleset' => self::VERSION, 'lang' => $this->lang],
                 'category' => ['id' => (int) $cat['id'], 'slug' => $cat['slug'], 'name' => $name, 'icon' => $cat['icon'], 'caution' => (bool) $cat['caution']],
                 'period' => $period, 'range' => $range, 'score' => $score, 'score_label' => $this->t('pred.score_label'), 'level' => $level,
-                'level_text' => $this->t("pred.level.$level"), 'explanation' => $text, 'positive' => $pos, 'challenging' => $neg,
+                'level_text' => $this->t("pred.level.$level"), 'headline' => $this->t("pred.headline.$level", $v),
+                'explanation' => $this->t("pred.simple.$level", $v) . ' ' . $this->t('pred.summary.counts', ['p' => count($pos), 'n' => count($neg)]),
+                'do' => array_values(array_unique([...$this->field($cat, 'dos'), ...$gen('do')])),
+                'dont' => array_values(array_unique([...$this->field($cat, 'donts'), ...$gen('dont')])),
+                'upay' => array_values(array_unique($upay)) ?: [$this->t('pred.upay_default')],
+                'caution' => $cat['caution'] ? $this->t('pred.caution') : null,
+                'details' => ['positive' => $pos, 'challenging' => $neg], 'positive' => $pos, 'challenging' => $neg,
                 'disclaimer' => $this->t('pred.disclaimer')];
     }
 }

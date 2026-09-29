@@ -300,3 +300,10 @@ label.fl.has-eye input{padding-right:3rem} label.fl.has-eye .fl-label{max-width:
 .admin-tabs a.on{background:var(--p);color:var(--on-p);border-color:transparent}
 label.check{display:flex;align-items:center;gap:.5rem}
 @media (max-width:640px){.pp-res .two{grid-template-columns:1fr}}
+.pp-cat{display:flex;align-items:center;gap:.35rem;color:var(--p);font-weight:600;margin:0} .pp-head{margin:.2rem 0 .1rem;font-size:1.45rem}
+.pp-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:1rem 0}
+.pp-box{border-radius:14px;padding:.8rem 1rem;border:1px solid var(--line)} .pp-box h3{margin:0 0 .4rem;display:flex;align-items:center;gap:.35rem;font-size:1rem}
+.pp-box ul{margin:0;padding-left:1.1rem} .pp-box li{margin:.3rem 0}
+.pp-box.do{background:#1b9e5a14} .pp-box.do h3{color:#1b7a47} .pp-box.dont{background:#e5484d12} .pp-box.dont h3{color:#c0343a} .pp-box.upay{background:#f5a52418} .pp-box.upay h3{color:#a86a00}
+.pp-phases{list-style:none;padding:0;margin:.3rem 0 1rem} .pp-phases li{display:flex;justify-content:space-between;align-items:center;padding:.45rem 0;border-bottom:1px dashed var(--line)}
+@media (max-width:900px){.pp-boxes{grid-template-columns:1fr}}
