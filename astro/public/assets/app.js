@@ -47,13 +47,13 @@
 
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
-    const links = [['panchang', 'ui.panchang', 'calendar_month']].concat(token
+    const links = [['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars']].concat(token
       ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html;
     // phones: five short items; admin and sign-out live on the profile page
-    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
+    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
     $bnav.innerHTML = bl.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit'].includes(cur)) || (k === 'profile' && cur === 'admin') ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
   }
   // ---------- UI kit: ripple, toast, dialog, floating fields, tabs indicator, collapsibles, count-up ----------
@@ -1099,6 +1099,23 @@
     } catch (e) { h(errBox(e)); }
   }
 
+  // ---------- Rashifal: all 12 Moon signs, daily / weekly / monthly (public) ----------
+  async function viewRashifal(period) {
+    const P = ['daily', 'weekly', 'monthly'], names = t('rf.tabs').split('|'), IC = { overall: 'insights', career: 'work', money: 'payments', love: 'favorite', health: 'health_and_safety', moon: 'dark_mode', caution: 'warning', lucky: 'star', remedy: 'spa' };
+    h(`<section class="hero-band"><div><p class="eyebrow">${esc(names[P.indexOf(period)])}</p><h1>${esc(t('rf.title'))}</h1><p class="muted">${esc(t('rf.sub'))}</p></div></section>
+      <div class="tabs" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}">${esc(names[i])}</button>`).join('')}</div><div id="rfo"></div>`);
+    tabIndicator($app.querySelector('.tabs'));
+    $app.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { location.hash = '#/rashifal/' + b.dataset.rp; });
+    const out = document.getElementById('rfo'); out.innerHTML = skel();
+    try {
+      const d = await api('GET', `/rashifal?period=${period}&lang=${lang}`);
+      const star = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+      out.innerHTML = `<p class="muted rf-range">${esc(d.from === d.to ? d.from : d.from + ' – ' + d.to)}</p><div class="rf-grid">${d.rashis.map(r => `
+        <article class="card rf-card rf-${r.overall}"><header class="rf-h"><span class="rf-ic">${r.icon}</span><div><h3>${esc(r.name)}</h3><span class="rf-st" aria-label="${r.score}/5">${star(r.score)}</span></div></header>
+        <ul class="rf-l">${r.lines.map(l => `<li class="t-${l.tone}"><span class="ms">${IC[l.area] || 'circle'}</span><div><b>${esc(t('rf.lbl.' + l.area))}</b><p>${esc(l.text)}</p></div></li>`).join('')}</ul></article>`).join('')}</div>`;
+    } catch (e) { out.innerHTML = errBox(e); }
+  }
+
   // ---------- Router ----------
   async function route() {
     if (window.ADMIN_APP) return adminRoute();
@@ -1115,6 +1132,7 @@
     if (page === 'add') return viewAdd();
     if (page === 'predict') return viewPredict();
     if (page === 'chat') return viewChat();
+    if (page === 'rashifal') return viewRashifal(['daily', 'weekly', 'monthly'].includes(arg) ? arg : 'daily');
     if (page === 'admin') { location.hash = '#/panchang'; return; }
 
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
