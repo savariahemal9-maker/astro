@@ -19,6 +19,7 @@ final class AuthService {
     public static function login(string $email, string $password, string $client): array {
         $u = Db::one('SELECT * FROM users WHERE email = ?', [strtolower(trim($email))]);
         if (!$u || !password_verify($password, $u['password_hash'])) throw new ApiException('invalid_credentials', 'Email or password is incorrect', 401);
+        if (!empty($u['disabled'])) throw new ApiException('account_disabled', 'This account has been disabled.', 403);
         if (password_needs_rehash($u['password_hash'], PASSWORD_DEFAULT))
             Db::exec('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $u['id']]);
         return self::issue((int) $u['id'], $client);
@@ -38,6 +39,7 @@ final class AuthService {
         $row = Db::one('SELECT u.* FROM api_tokens t JOIN users u ON u.id = t.user_id WHERE t.token_hash = ? AND t.expires_at > UTC_TIMESTAMP()',
             [hash('sha256', $token)]);
         if (!$row) throw new ApiException('unauthorized', 'Session expired. Sign in again.', 401);
+        if (!empty($row['disabled'])) throw new ApiException('unauthorized', 'This account has been disabled.', 401);
         return $row;
     }
 
@@ -95,5 +97,5 @@ final class AuthService {
 
     public static function logout(string $token): void { Db::exec('DELETE FROM api_tokens WHERE token_hash = ?', [hash('sha256', $token)]); }
     public static function find(int $id): array { return Db::one('SELECT * FROM users WHERE id = ?', [$id]) ?? []; }
-    public static function publicUser(array $u): array { return ['id' => (int) $u['id'], 'name' => $u['name'], 'email' => $u['email'], 'lang' => $u['lang']]; }
+    public static function publicUser(array $u): array { return ['id' => (int) $u['id'], 'name' => $u['name'], 'email' => $u['email'], 'lang' => $u['lang'], 'plan' => $u['plan'] ?? 'free']; }
 }

@@ -164,6 +164,37 @@ final class Routes {
         $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($u); return $catSave($q, null); });
         $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($u); return $catSave($q, (int) $a['id']); });
         $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        // ---- admin: overview, users and their kundalis ----
+        $r->add('GET', '/admin/stats', function (Request $q, array $u) use ($adm) { $adm($u);
+            $n = fn(string $sql) => (int) (Db::one($sql)['n'] ?? 0);
+            return ['users' => $n('SELECT COUNT(*) n FROM users'), 'new_users_7d' => $n('SELECT COUNT(*) n FROM users WHERE created_at > UTC_TIMESTAMP() - INTERVAL 7 DAY'),
+                'premium' => $n("SELECT COUNT(*) n FROM users WHERE plan='premium'"), 'disabled' => $n('SELECT COUNT(*) n FROM users WHERE disabled=1'),
+                'kundalis' => $n('SELECT COUNT(*) n FROM birth_profiles'), 'categories' => $n('SELECT COUNT(*) n FROM prediction_categories WHERE active=1'),
+                'recent' => Db::all('SELECT id, name, email, created_at FROM users ORDER BY id DESC LIMIT 6')]; });
+        $r->add('GET', '/admin/users', function (Request $q, array $u) use ($adm) { $adm($u);
+            $s = '%' . trim((string) $q->input('q', '')) . '%'; $page = max(1, (int) $q->input('page', 1)); $per = 25;
+            $rows = Db::all('SELECT u.id, u.name, u.email, u.lang, u.plan, u.plan_expires, u.disabled, u.created_at, (SELECT COUNT(*) FROM birth_profiles b WHERE b.user_id=u.id) kundalis
+                FROM users u WHERE u.name LIKE ? OR u.email LIKE ? ORDER BY u.id DESC LIMIT ' . ($per + 1) . ' OFFSET ' . (($page - 1) * $per), [$s, $s]);
+            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; });
+        $r->add('GET', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
+            $x = Db::one('SELECT id, name, email, lang, plan, plan_expires, disabled, created_at FROM users WHERE id=?', [$a['id']]);
+            if (!$x) throw new ApiException('not_found', 'User not found', 404);
+            return $x + ['profiles' => array_map([ProfileService::class, 'present'], Db::all('SELECT * FROM birth_profiles WHERE user_id=? ORDER BY id DESC', [$a['id']]))]; });
+        $r->add('PATCH', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
+            if ((int) $a['id'] === (int) $u['id'] && $q->input('disabled')) throw new ApiException('validation', 'You cannot disable your own account', 422);
+            if (($pl = $q->input('plan')) !== null) Db::exec('UPDATE users SET plan=?, plan_expires=? WHERE id=?', [$pl === 'premium' ? 'premium' : 'free',
+                preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $q->input('plan_expires', '')) ? $q->input('plan_expires') : null, $a['id']]);
+            if (($d = $q->input('disabled')) !== null) { Db::exec('UPDATE users SET disabled=? WHERE id=?', [(int) (bool) $d, $a['id']]); if ($d) Db::exec('DELETE FROM api_tokens WHERE user_id=?', [$a['id']]); }
+            return Db::one('SELECT id, name, email, plan, plan_expires, disabled FROM users WHERE id=?', [$a['id']]); });
+        $r->add('DELETE', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u);
+            if ((int) $a['id'] === (int) $u['id']) throw new ApiException('validation', 'You cannot delete your own account', 422);
+            Db::exec('DELETE FROM users WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        $r->add('GET', '/admin/kundalis', function (Request $q, array $u) use ($adm) { $adm($u);
+            $s = '%' . trim((string) $q->input('q', '')) . '%'; $page = max(1, (int) $q->input('page', 1)); $per = 25;
+            $rows = Db::all('SELECT b.id, b.label, b.birth_date, b.birth_time, b.place_name, b.created_at, u.id user_id, u.name user_name, u.email FROM birth_profiles b JOIN users u ON u.id=b.user_id
+                WHERE b.label LIKE ? OR b.place_name LIKE ? OR u.email LIKE ? ORDER BY b.id DESC LIMIT ' . ($per + 1) . ' OFFSET ' . (($page - 1) * $per), [$s, $s, $s]);
+            return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; });
+        $r->add('DELETE', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM birth_profiles WHERE id=?', [$a['id']]); return ['deleted' => true]; });
         $r->add('GET', '/me/admin', function (Request $q, array $u) { return ['admin' => in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)]; });
         $r->add('GET', '/profiles/{id}/planet-results', function (Request $q, array $u, array $a) {
             [, $kid, $k, $lang] = self::ctx($q, $u, $a);

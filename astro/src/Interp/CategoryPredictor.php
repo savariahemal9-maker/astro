@@ -109,7 +109,7 @@ final class CategoryPredictor extends RuleEngine {
         return array_values(array_filter($o, fn($f) => abs($f['w']) > 0.01));
     }
 
-    private function f(float $w, string $key, array $vars, ?string $pl = null): array { return ['w' => $w, 'key' => $key, 'pl' => $pl, 'text' => $this->t("pred.f.$key", $vars)]; }
+    private function f(float $w, string $key, array $vars, ?string $pl = null): array { return ['w' => $w, 'key' => $key, 'pl' => $pl, 'vars' => $vars, 'text' => $this->t("pred.f.$key", $vars)]; }
 
     private function lines(?string $s): array { return array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) $s)))); }
     private function field(array $cat, string $k): array { return $this->lines($cat["{$k}_{$this->lang}"] ?? '') ?: $this->lines($cat["{$k}_en"] ?? ''); }
@@ -123,6 +123,9 @@ final class CategoryPredictor extends RuleEngine {
         $neg = array_values(array_column(array_filter($F, fn($f) => $f['w'] < 0), 'text'));
         $name = $cat['name_' . $this->lang] ?: $cat['name_en']; $v = ['cat' => $name, 'period' => $this->t("pred.period.$period")];
         [$do, $dont, $upay, $personal] = $this->advice($cat, $F);
+        if ($period !== 'lifetime') $personal = [];   // the natal Lal Kitab reading does not change by day or month
+        $fx = fn(callable $keep) => array_values(array_map(fn($f) => ['text' => $f['text'], 'effect' => $this->t("pred.fx.{$f['key']}", $f['vars'] + ['cat' => $name]
+            + ($f['pl'] ? ['domain' => $this->t("interp.planet_domain.{$f['pl']}")] : []))], array_filter($F, $keep)));
         return ['meta' => ['type' => 'interpretation', 'kind' => 'category_prediction', 'ruleset' => self::VERSION, 'lang' => $this->lang],
                 'category' => ['id' => (int) $cat['id'], 'slug' => $cat['slug'], 'name' => $name, 'icon' => $cat['icon'], 'caution' => (bool) $cat['caution']],
                 'period' => $period, 'range' => $range, 'score' => $score, 'score_label' => $this->t('pred.score_label'), 'level' => $level,
@@ -130,7 +133,7 @@ final class CategoryPredictor extends RuleEngine {
                 'explanation' => $this->t("pred.simple.$level", $v) . ' ' . $this->t('pred.summary.counts', ['p' => count($pos), 'n' => count($neg)]),
                 'personal' => $personal, 'do' => $do, 'dont' => $dont, 'upay' => $upay,
                 'caution' => $cat['caution'] ? $this->t('pred.caution') : null,
-                'details' => ['positive' => $pos, 'challenging' => $neg], 'positive' => $pos, 'challenging' => $neg,
+                'details' => ['positive' => $fx(fn($f) => $f['w'] > 0), 'challenging' => $fx(fn($f) => $f['w'] < 0)], 'positive' => $pos, 'challenging' => $neg,
                 'disclaimer' => $this->t('pred.disclaimer')];
     }
 
@@ -165,16 +168,17 @@ final class CategoryPredictor extends RuleEngine {
         // nearest change: the antardasha if it matters here, else the mahadasha
         foreach (array_slice(array_reverse($this->timing), 0, 1) as $tm) if ($tm['until']) ($tm['good'] ? $do[] = $this->t('pred.time.good', ['date' => $tm['until']]) : $dont[] = $this->t('pred.time.bad', ['date' => $tm['until']]));
         foreach ($this->day as $d) ($d === 'tara_good' ? $do[] = $this->t("pred.time.$d") : $dont[] = $this->t("pred.time.$d"));
-        // remedies from the Lal Kitab for the weak planets, in the houses they occupy in this chart
-        foreach (array_slice($weak, 0, 2) as $pl) {
+        // upay: Lal Kitab remedies for the planets that need help, for the houses they occupy in this chart
+        foreach ($weak ?: array_slice($rel, 0, 1) as $pl) {
             $h = $this->by[$pl]['house'];
-            for ($i = 0; $i < 2; $i++) if (($x = $this->c("lk.$pl.$h.rem.$i")) !== '') $upay[] = $x;
-            $upay[] = $this->t("pred.pl.$pl.upay");
+            for ($i = 0; $i < 4; $i++) if (($x = $this->c("lk.$pl.$h.rem.$i")) !== '') $upay[] = $x;
         }
-        if (!$weak && $strong) $upay[] = $this->t("pred.pl.{$strong[0]}.upay");
+        $upay = array_slice(array_values(array_unique($upay)), 0, 5);
         $one = fn(string $k) => array_slice($this->field($cat, $k), 0, 1);
         $u = fn(array $a) => array_values(array_unique($a));
-        return [$u([...$do, ...$one('dos')]), $u([...$dont, ...$one('donts')]), array_slice($u([...$upay, ...$one('upay')]), 0, 5) ?: [$this->t('pred.upay_default')], $personal];
+        // the admin's general tip only fills in when the chart gives little to say
+        $fill = fn(array $a, string $k) => $u(count($a) >= 2 ? $a : [...$a, ...$one($k)]);
+        return [$fill($do, 'dos'), $fill($dont, 'donts'), $upay ?: ($one('upay') ?: [$this->t('pred.upay_default')]), $personal];
     }
 
 }

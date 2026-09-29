@@ -290,9 +290,9 @@
     const hero = `<section class="pp-hero"><div class="pp-hero-top"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.personal_predictions'))}</h1>
       <p class="pp-sub">${esc(t('ui.pp_sub'))}</p></div><span class="ms pp-hero-ic" aria-hidden="true">auto_awesome</span></div>`;
     if (!profs.length) { h(hero + `<a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section><p class="muted">${esc(t('ui.no_kundali'))}</p>`); return; }
-    h(hero + `<div class="pp-people" role="radiogroup" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<button type="button" role="radio" class="pp-person" data-k="${p.id}">
-        <span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><span class="pp-pn"><b>${esc(p.label)}</b><small>${esc(p.birth_date)}</small></span></button>`).join('')}
-        <a class="pp-person add" href="#/add" aria-label="${esc(t('ui.new_kundali'))}"><span class="ms">add</span></a></div></section>
+    h(hero + `<div class="pp-pickrow"><div class="pp-kpick"><button type="button" class="pp-kbtn" id="ppkb" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div class="pp-kpanel" id="ppkp" hidden><input type="search" id="ppks" placeholder="${esc(t('ui.search'))}…" aria-label="${esc(t('ui.search'))}" autocomplete="off"><ul role="listbox" id="ppkl"></ul></div></div>
+        <a class="pp-kadd" href="#/add" aria-label="${esc(t('ui.new_kundali'))}"><span class="ms">add</span></a></div></section>
       <section class="pp-controls"><div class="pp-row"><h2 class="pp-h"><span class="ms">category</span>${esc(t('ui.my_categories'))}</h2>
         <button type="button" class="pp-edit" id="ppe"><span class="ms">tune</span>${esc(t('ui.manage_categories'))}</button></div>
         <div id="ppc"></div>
@@ -300,8 +300,16 @@
           <label class="pp-date"><span class="ms">event</span><input type="date" id="ppd" value="${esc(st.date)}" aria-label="${esc(t('ui.date'))}"></label></div></section>
       <div id="ppt" aria-live="polite"></div>`);
     const $c = document.getElementById('ppc'), $t = document.getElementById('ppt');
+    const av = p => `<span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><span class="pp-pn"><b>${esc(p.label)}</b><small>${esc(p.birth_date)} · ${esc(p.place_name.split(',')[0])}</small></span>`;
+    const $kb = document.getElementById('ppkb'), $kp = document.getElementById('ppkp'), $ks = document.getElementById('ppks'), $kl = document.getElementById('ppkl');
+    const fill = () => { const q = $ks.value.trim().toLowerCase(), f = profs.filter(p => !q || p.label.toLowerCase().includes(q) || p.place_name.toLowerCase().includes(q)).slice(0, 200);
+      $kl.innerHTML = f.map(p => `<li role="option" data-k="${p.id}" aria-selected="${p.id === st.kid}" tabindex="0">${av(p)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`;
+      $kl.querySelectorAll('[data-k]').forEach(li => li.onclick = li.onkeydown = e => { if (e.type === 'keydown' && e.key !== 'Enter') return; st.kid = +li.dataset.k; save(); open(false); mark(); show(); }); };
+    const open = v => { $kp.hidden = !v; $kb.setAttribute('aria-expanded', v); if (v) { $ks.value = ''; fill(); $ks.focus(); } };
+    $kb.onclick = () => open($kp.hidden); $ks.oninput = fill;
+    document.addEventListener('click', e => { if (!e.target.closest('.pp-kpick')) open(false); });
     const mark = () => {
-      $app.querySelectorAll('[data-k]').forEach(b => { const on = +b.dataset.k === st.kid; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+      $kb.innerHTML = av(profs.find(p => p.id === st.kid)) + '<span class="ms">expand_more</span>';
       $app.querySelectorAll('[data-p]').forEach(b => { const on = b.dataset.p === st.per; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
       document.getElementById('ppd').closest('.pp-date').hidden = st.per === 'lifetime';
     };
@@ -322,7 +330,6 @@
       }
       show();
     };
-    $app.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { st.kid = +b.dataset.k; save(); mark(); show(); });
     $app.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { st.per = b.dataset.p; save(); mark(); show(); });
     document.getElementById('ppe').onclick = () => { editing = !editing; chips(); };
     document.getElementById('ppd').onchange = e => { st.date = e.target.value || today(); save(); show(); };
@@ -338,8 +345,8 @@
       ${d.personal && d.personal.length ? `<section class="pp-says"><h3><span class="ms">menu_book</span>${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span><span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
       <div class="pp-grid">${list('do', 'check_circle', t('ui.what_to_do'), d.do)}${list('dont', 'do_not_disturb_on', t('ui.what_to_avoid'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
       ${d.timeline && d.timeline.length ? `<section class="pp-life"><h3><span class="ms">timeline</span>${esc(t('ui.life_phases'))}</h3><ol>${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span>${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ol></section>` : ''}
-      ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
-        <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
+      ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
+        <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
       <p class="pp-disc"><span class="ms">info</span>${esc(d.disclaimer)}</p></article>`;
     const show = () => {
       if (!st.cat) { $t.innerHTML = `<p class="pp-empty"><span class="ms">touch_app</span>${esc(t('ui.no_categories'))}</p>`; return; }
@@ -866,14 +873,60 @@
   }
 
   // ---------- Admin: remedy rules ----------
-  const adminTabs = cur => `<div class="ltabs admin-tabs">${[['categories', t('ui.categories'), 'category'], ['remedies', t('ui.remedy_rules'), 'spa']].map(([k, l, ic]) =>
-    `<a class="${cur === k ? 'on' : ''}" href="#/admin/${k}"><span class="ms">${ic}</span>${esc(l)}</a>`).join('')}</div>`;
+  const ADM = [['overview', 'ui.admin_overview', 'monitoring'], ['users', 'ui.admin_users', 'group'], ['kundalis', 'ui.admin_kundalis', 'auto_stories'],
+    ['categories', 'ui.categories', 'category'], ['remedies', 'ui.remedy_rules', 'spa'], ['plans', 'ui.admin_plans', 'workspace_premium']];
+  const adminTabs = () => '';
+  const admWrap = (cur, html) => `<div class="adm"><aside class="adm-nav"><p class="adm-brand"><span class="ms">admin_panel_settings</span>${esc(t('ui.admin'))}</p>
+    ${ADM.map(([k, l, ic]) => `<a class="${cur === k ? 'on' : ''}" href="#/admin/${k}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('')}
+    <a class="adm-back" href="#/dashboard"><span class="ms">arrow_back</span><span>${esc(t('ui.back_to_site'))}</span></a></aside><div class="adm-main">${html}</div></div>`;
+  const pager = (d, go) => `<div class="row adm-pager">${d.page > 1 ? `<button class="ghost" data-pg="${d.page - 1}">‹</button>` : ''}<span class="muted">${d.page}</span>${d.has_more ? `<button class="ghost" data-pg="${d.page + 1}">›</button>` : ''}</div>`;
+  async function viewAdminOverview() {
+    loading(); try { const d = await api('GET', '/admin/stats');
+      h(admWrap('overview', `<h1>${esc(t('ui.admin_overview'))}</h1><div class="adm-stats">${[['group', 'ui.admin_users', d.users], ['person_add', '7d', d.new_users_7d], ['workspace_premium', 'Premium', d.premium],
+        ['block', 'Disabled', d.disabled], ['auto_stories', 'ui.admin_kundalis', d.kundalis], ['category', 'ui.categories', d.categories]].map(([ic, l, v]) => `<div class="adm-stat"><span class="ms">${ic}</span><b>${v}</b><small>${esc(l.startsWith('ui.') ? t(l) : l)}</small></div>`).join('')}</div>
+        <section class="card"><div class="card-h"><span class="ms">schedule</span>Latest users</div><div class="scroll"><table>${d.recent.map(u => `<tr><td><a href="#/admin/users/${u.id}">${esc(u.name)}</a></td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table></div></section>`));
+    } catch (e) { h(admWrap('overview', errBox(e))); } }
+  async function viewAdminUsers(q = '', page = 1) {
+    loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
+      h(admWrap('users', `<h1>${esc(t('ui.admin_users'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / email"><button><span class="ms">search</span></button></form>
+        <section class="card"><div class="scroll"><table><tr><th>Name</th><th>Email</th><th>Plan</th><th>Kundalis</th><th>Joined</th><th>Status</th></tr>
+        ${d.items.map(u => `<tr><td><a href="#/admin/users/${u.id}"><b>${esc(u.name)}</b></a></td><td>${esc(u.email)}</td><td><span class="chip ${u.plan === 'premium' ? 'ok' : ''}">${esc(u.plan)}</span></td><td>${u.kundalis}</td><td>${esc(u.created_at.slice(0, 10))}</td><td>${+u.disabled ? '<span class="chip warn">Disabled</span>' : 'Active'}</td></tr>`).join('')}</table></div>${pager(d)}</section>`));
+      document.getElementById('aq').onsubmit = e => { e.preventDefault(); viewAdminUsers(e.target.q.value); };
+      $app.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => viewAdminUsers(q, +b.dataset.pg));
+    } catch (e) { h(admWrap('users', errBox(e))); } }
+  async function viewAdminUser(id) {
+    loading(); try { const u = await api('GET', '/admin/users/' + id);
+      h(admWrap('users', `<p><a href="#/admin/users">‹ ${esc(t('ui.admin_users'))}</a></p><h1>${esc(u.name)}</h1><p class="muted">${esc(u.email)} · ${esc(u.created_at)}</p>
+        <section class="card"><div class="card-h"><span class="ms">workspace_premium</span>Plan & access</div><form class="stack" id="uf"><div class="row">
+          <label>Plan<select name="plan"><option value="free"${u.plan === 'free' ? ' selected' : ''}>Free</option><option value="premium"${u.plan === 'premium' ? ' selected' : ''}>Premium</option></select></label>
+          <label>Premium until<input type="date" name="plan_expires" value="${esc(u.plan_expires || '')}"></label></div>
+          <label class="check"><input type="checkbox" name="disabled"${+u.disabled ? ' checked' : ''}> Disable this account (signs the user out)</label>
+          <div class="row"><button>${esc(t('ui.save'))}</button><button type="button" class="ghost danger" id="ud"><span class="ms">delete</span>Delete user</button></div></form></section>
+        <section class="card"><div class="card-h"><span class="ms">auto_stories</span>${esc(t('ui.admin_kundalis'))} (${u.profiles.length})</div><div class="scroll"><table>
+          ${u.profiles.map(p => `<tr><td><b>${esc(p.label)}</b></td><td>${esc(p.birth_date)} ${esc(p.birth_time.slice(0, 5))}</td><td>${esc(p.place_name)}</td></tr>`).join('') || `<tr><td class="muted">${esc(t('ui.none'))}</td></tr>`}</table></div></section>`));
+      const f = document.getElementById('uf');
+      f.onsubmit = async e => { e.preventDefault(); try { await api('PATCH', '/admin/users/' + id, { plan: f.plan.value, plan_expires: f.plan_expires.value, disabled: f.disabled.checked }); toast(t('ui.saved')); } catch (er) { toast(er.message, 'error'); } };
+      document.getElementById('ud').onclick = async () => { if (await confirmDialog(`Delete ${u.email} and all their kundalis?`)) { try { await api('DELETE', '/admin/users/' + id); toast(t('ui.deleted'), 'delete'); location.hash = '#/admin/users'; } catch (er) { toast(er.message, 'error'); } } };
+    } catch (e) { h(admWrap('users', errBox(e))); } }
+  async function viewAdminKundalis(q = '', page = 1) {
+    loading(); try { const d = await api('GET', `/admin/kundalis?q=${encodeURIComponent(q)}&page=${page}`);
+      h(admWrap('kundalis', `<h1>${esc(t('ui.admin_kundalis'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / place / email"><button><span class="ms">search</span></button></form>
+        <section class="card"><div class="scroll"><table><tr><th>Kundali</th><th>Birth</th><th>Place</th><th>Owner</th><th></th></tr>
+        ${d.items.map(k => `<tr><td><b>${esc(k.label)}</b></td><td>${esc(k.birth_date)} ${esc(k.birth_time.slice(0, 5))}</td><td>${esc(k.place_name.split(',')[0])}</td><td><a href="#/admin/users/${k.user_id}">${esc(k.user_name)}</a><br><small class="muted">${esc(k.email)}</small></td>
+          <td><button class="icon-btn" data-d="${k.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div>${pager(d)}</section>`));
+      document.getElementById('aq').onsubmit = e => { e.preventDefault(); viewAdminKundalis(e.target.q.value); };
+      $app.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => viewAdminKundalis(q, +b.dataset.pg));
+      $app.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { if (await confirmDialog('Delete this kundali?')) { await api('DELETE', '/admin/kundalis/' + b.dataset.d); viewAdminKundalis(q, page); } });
+    } catch (e) { h(admWrap('kundalis', errBox(e))); } }
+  function viewAdminPlans() {
+    h(admWrap('plans', `<h1>${esc(t('ui.admin_plans'))}</h1><section class="card"><p>Every user now has a <b>Free</b> or <b>Premium</b> plan with an optional end date. You can change it from <a href="#/admin/users">${esc(t('ui.admin_users'))}</a>.</p>
+      <p class="muted">Online payments (Razorpay / Stripe) and choosing which features are premium will be added here next.</p></section>`)); }
   async function viewAdminCats(edit = null) {
     loading();
     try {
       const rows = await api('GET', '/admin/categories'), e = edit || {};
       const LG = [['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']];
-      h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.categories'))}</h1></div><span class="ms hero-ic">category</span></section>${adminTabs('categories')}
+      h(admWrap('categories', `<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.categories'))}</h1></div><span class="ms hero-ic">category</span></section>${adminTabs('categories')}
         <section class="card"><div class="card-h"><span class="ms">${e.id ? 'edit' : 'add_circle'}</span>${e.id ? 'Edit category' : 'Add a category'}</div>
           <p class="muted">Type the category name and simple advice in each language. Write one point per line. The astrology behind it is chosen automatically from the English name.</p>
           <form id="cf2" class="stack"><div class="seg" id="lgs">${LG.map(([l, n], i) => `<button type="button" data-lg="${l}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div>
@@ -887,7 +940,7 @@
         <section class="card"><div class="scroll"><table><tr><th></th><th>Category</th><th>Languages</th><th>Tips</th><th>Shown</th><th></th></tr>
           ${rows.map(r => `<tr><td><span class="ms">${esc(r.icon)}</span></td><td><b>${esc(r.name_en)}</b><br><small class="muted">${esc([r.name_hi, r.name_gu].filter(Boolean).join(' · '))}</small></td>
             <td>${LG.map(([l]) => r['name_' + l] ? l.toUpperCase() : '').filter(Boolean).join(' ')}</td><td>${['dos_en', 'donts_en', 'upay_en'].filter(k => r[k]).length}/3</td><td>${+r.active ? '✓' : '—'}</td>
-            <td><button class="icon-btn" data-e="${r.id}" aria-label="Edit"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`);
+            <td><button class="icon-btn" data-e="${r.id}" aria-label="Edit"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`));
       $app.querySelectorAll('[data-lg]').forEach(b => b.onclick = () => { $app.querySelectorAll('[data-lg]').forEach(x => x.classList.toggle('on', x === b));
         $app.querySelectorAll('[data-pane]').forEach(p => p.hidden = p.dataset.pane !== b.dataset.lg); });
       const f = document.getElementById('cf2');
@@ -905,7 +958,7 @@
       const rows = await api('GET', '/admin/remedies'), e = edit || {};
       const PL = ['', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'], DS = ['', 'mangal', 'kaal_sarp', 'sade_sati', 'dhaiya', 'grahan', 'guru_chandal', 'kemadruma', 'pitra'];
       const sel = (n, opts, v) => `<select name="${n}">${opts.map(o => `<option value="${o}" ${String(v ?? '') === String(o) ? 'selected' : ''}>${o || '—'}</option>`).join('')}</select>`;
-      h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.remedy_rules'))}</h1></div></section>${adminTabs('remedies')}
+      h(admWrap('remedies', `<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.remedy_rules'))}</h1></div></section>${adminTabs('remedies')}
         <section class="card"><form id="rf" class="stack"><div class="row"><label>Planet${sel('planet', PL, e.planet)}</label><label>House${sel('house', ['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], e.house)}</label></div>
           <div class="row"><label>Dosha${sel('dosha', DS, e.dosha)}</label><label>Condition${sel('cond', ['any', 'weak', 'strong', 'malefic', 'benefic'], e.cond || 'any')}</label></div>
           <div class="row"><label>Priority<input name="priority" type="number" value="${e.priority ?? 50}"></label><label>Status${sel('status', ['draft', 'approved'], e.status || 'draft')}</label></div>
@@ -915,7 +968,7 @@
           <div class="row"><button>${e.id ? 'Update' : 'Add'}</button>${e.id ? '<button type="button" class="ghost" id="rc">Cancel</button>' : ''}</div></form></section>
         <section class="card"><div class="scroll"><table><tr><th>Planet</th><th>House</th><th>Dosha</th><th>Cond</th><th>Source</th><th>Status</th><th></th></tr>
           ${rows.map(r => `<tr><td>${esc(r.planet || '—')}</td><td>${r.house ?? '—'}</td><td>${esc(r.dosha || '—')}</td><td>${esc(r.cond)}</td><td>${esc(r.source)}</td><td>${esc(r.status)}</td>
-            <td><button class="icon-btn" data-e="${r.id}"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`);
+            <td><button class="icon-btn" data-e="${r.id}"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`));
       const f = document.getElementById('rf');
       f.onsubmit = async ev => { ev.preventDefault(); const b = Object.fromEntries(new FormData(f));
         try { await api(e.id ? 'PUT' : 'POST', '/admin/remedies' + (e.id ? '/' + e.id : ''), b); toast(t('ui.saved')); viewAdmin(); } catch (er) { toast(er.message, 'error'); } };
@@ -952,7 +1005,7 @@
 
   // ---------- Router ----------
   async function route() {
-    renderNav();
+    renderNav(); document.body.classList.toggle('admin-mode', location.hash.startsWith('#/admin') && !!token);
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
     if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict'].includes(page) && !token) { location.hash = '#/login'; return; }
@@ -968,7 +1021,9 @@
       if (!token) return viewAuth('admin');
       if (!isAdmin) { try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e) {} renderNav(); }
       if (!isAdmin) { h(`<h1>${esc(t('ui.admin'))}</h1><section class="card"><p>${esc(t('ui.not_admin'))}</p><a class="btn" href="#/logout">${esc(t('ui.sign_out'))}</a></section>`); return; }
-      return arg === 'remedies' ? viewAdmin() : viewAdminCats();
+      const sub = location.hash.split('/')[3];
+      return ({ overview: viewAdminOverview, users: () => sub ? viewAdminUser(+sub) : viewAdminUsers(), kundalis: () => viewAdminKundalis(), categories: () => viewAdminCats(),
+        remedies: () => viewAdmin(), plans: viewAdminPlans }[arg] || viewAdminOverview)();
     }
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
     if (page === 'chart' && arg) return viewChart(parseInt(arg, 10));
