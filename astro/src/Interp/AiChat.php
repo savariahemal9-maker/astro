@@ -1,6 +1,7 @@
 <?php
 namespace App\Interp;
 
+use App\Core\Db;
 use App\I18n\Lang;
 
 /**
@@ -26,9 +27,10 @@ final class AiChat {
     /** Admin check: is a key set, and does a tiny test request succeed? */
     public static function status(): array {
         $c = app_config()['ai'] ?? []; $key = trim((string) ($c['key'] ?? ''));
-        $out = ['key_set' => $key !== '', 'key_length' => strlen($key), 'model' => (string) ($c['model'] ?? 'gemini-2.5-flash'), 'ok' => false, 'error' => ''];
+        $out = ['key_set' => $key !== '', 'key_length' => strlen($key), 'model' => self::model(), 'ok' => false, 'error' => ''];
         if ($key === '') { $out['error'] = "No key: add 'ai' => ['key' => ...] to astro-config.php"; return $out; }
         $j = (new self('en'))->call('Reply with JSON only.', 'Return {"ok": true}', 0.0);
+        $out['model'] = self::model();                            // may have switched to Google's replacement
         $out['ok'] = ($j['ok'] ?? false) === true; $out['error'] = $out['ok'] ? '' : self::$lastError;
         return $out;
     }
@@ -106,19 +108,35 @@ final class AiChat {
         return array_values(array_unique($out));
     }
 
-    private function call(string $sys, string $user, float $temp): ?array {
-        $c = app_config()['ai'] ?? []; $model = (string) ($c['model'] ?? 'gemini-2.5-flash');
+    public const DEFAULT_MODEL = 'gemini-3.8-flash';
+
+    /** Configured model, unless Google retired it and named a replacement earlier (remembered in the cache table). */
+    private static function model(): string {
+        $cfg = (string) ((app_config()['ai'] ?? [])['model'] ?? self::DEFAULT_MODEL);
+        try { $o = Db::one('SELECT payload FROM panchang_cache WHERE cache_key = ?', ['ai_model:' . $cfg]); } catch (\Throwable $e) { $o = null; }
+        return $o ? (string) json_decode($o['payload'], true) : $cfg;
+    }
+
+    private function call(string $sys, string $user, float $temp, bool $retried = false): ?array {
+        $c = app_config()['ai'] ?? []; $model = self::model();
         $url = rtrim((string) ($c['url'] ?? 'https://generativelanguage.googleapis.com/v1beta'), '/') . '/models/' . rawurlencode($model) . ':generateContent';
         $gen = ['temperature' => $temp, 'responseMimeType' => 'application/json'];
         if (str_contains($model, '2.5-flash')) $gen['thinkingConfig'] = ['thinkingBudget' => 0];   // faster replies
         $body = ['systemInstruction' => ['parts' => [['text' => $sys]]], 'contents' => [['role' => 'user', 'parts' => [['text' => $user]]]], 'generationConfig' => $gen];
         $ch = curl_init($url);
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body), CURLOPT_TIMEOUT => (int) ($c['timeout'] ?? 12),
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body), CURLOPT_TIMEOUT => (int) ($c['timeout'] ?? 20),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-goog-api-key: ' . $c['key']]]);
         $r = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
         if ($r === false || $code !== 200) {
             $why = $r === false ? 'network error' : (string) (json_decode($r, true)['error']['message'] ?? 'no details');
-            self::$lastError = "http_$code: " . mb_substr($why, 0, 200); error_log('[ai] ' . self::$lastError); return null;
+            // "model X is no longer available ... use models/Y": switch to Y once and remember it
+            if ($code === 404 && !$retried && preg_match_all('#models/([a-z0-9.\-]+)#i', $why, $mm) && ($next = end($mm[1])) && $next !== $model) {
+                $cfg = (string) ($c['model'] ?? self::DEFAULT_MODEL);
+                Db::exec('REPLACE INTO panchang_cache (cache_key, payload) VALUES (?,?)', ['ai_model:' . $cfg, json_encode($next)]);
+                error_log("[ai] model $model retired, switching to $next");
+                return $this->call($sys, $user, $temp, true);
+            }
+            self::$lastError = "http_$code ($model): " . mb_substr($why, 0, 200); error_log('[ai] ' . self::$lastError); return null;
         }
         $t = json_decode($r, true)['candidates'][0]['content']['parts'][0]['text'] ?? '';
         $j = json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', $t)), true);
