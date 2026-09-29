@@ -47,15 +47,30 @@
 
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'home');
-    const links = [['home', 'home.nav', 'home'], ['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['ai-chat', 'ui.nav_claude', 'psychology'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
-      : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
-    const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
-    $rail.innerHTML = html;
-    // phones: five short items; admin and sign-out live on the profile page
-    const bl = token ? [['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars'], ['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.nav_predict', 'auto_awesome'], ['chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']] : links;
-    $bnav.innerHTML = bl.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit'].includes(cur)) || (k === 'profile' && cur === 'admin') ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
+    const is = k => cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit', 'add'].includes(cur)) || (k === 'ai-chat' && cur === 'chat') || (k === 'profile' && cur === 'admin');
+    const a = ([k, l, ic], cls = '') => `<a href="#/${k}" class="${cls}${is(k) ? ' on' : ''}"${is(k) ? ' aria-current="page"' : ''}><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`;
+    // desktop top navigation
+    const top = [['home', 'home.nav', 'home'], ...(token ? [['dashboard', 'ui.nav_kundali', 'auto_stories']] : []), ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'],
+      ...(token ? [['predict', 'ui.nav_predict', 'auto_awesome'], ['ai-chat', 'ui.nav_claude', 'psychology']] : [])];
+    $rail.innerHTML = top.map(x => a(x)).join('');
+    // account area
+    document.getElementById('acct').innerHTML = token
+      ? `<a class="acct-btn${is('profile') ? ' on' : ''}" href="#/profile" aria-label="${esc(t('ui.my_profile'))}"><span class="ms">account_circle</span></a>`
+      : `<a class="btn text" href="#/login">${esc(t('ui.sign_in'))}</a><a class="btn" href="#/register">${esc(t('ui.register'))}</a>`;
+    // drawer (phones / narrow screens): everything
+    const all = [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ...(token ? [
+      ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'],
+      ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'], ['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
+      : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
+    document.getElementById('drawer').innerHTML = `<div class="drawer-h"><b>${esc(t('ui.app_name'))}</b></div>${all.map(x => a(x)).join('')}`;
+    // phones: five destinations
+    const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['ai-chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']]
+      : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['login', 'ui.sign_in', 'login']];
+    $bnav.innerHTML = bl.map(x => a(x)).join('');
   }
+  const closeDrawer = () => document.body.classList.remove('drawer-open');
+  document.getElementById('scrim').onclick = closeDrawer;
+  addEventListener('hashchange', closeDrawer);
   // ---------- UI kit: ripple, toast, dialog, floating fields, tabs indicator, collapsibles, count-up ----------
   document.addEventListener('pointerdown', e => {
     const el = e.target.closest('button, .btn, .rail a, .bnav a, .chip-btn'); if (!el || el.disabled) return;
@@ -106,9 +121,11 @@
     if (reduced) return fin(); const t0 = performance.now();
     const step = now => { const k = Math.max(0, Math.min(1, (now - t0) / 900)); el.textContent = (to * (1 - Math.pow(1 - k, 3))).toFixed(dec); if (k < 1) requestAnimationFrame(step); else fin(); };
     requestAnimationFrame(step); }); }
-  document.getElementById('railToggle').onclick = () => document.body.classList.toggle('rail-collapsed');
+  document.getElementById('railToggle').onclick = () => document.body.classList.toggle('drawer-open');
 
   const fmtLoc = (s) => s ? esc(s.slice(11) ? `${s.slice(8, 10)}-${s.slice(5, 7)} ${s.slice(11)}` : s) : '—';
+  // Material page header: icon tile, eyebrow, title, subtitle, actions
+  const ph = (ic, title, sub = '', actions = '', eyebrow = '') => `<header class="ph"><div class="ph-t"><span class="ph-ic"><span class="ms">${ic}</span></span><div>${eyebrow ? `<span class="ph-e">${esc(eyebrow)}</span>` : ''}<h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}</div></div>${actions ? `<div class="ph-a">${actions}</div>` : ''}</header>`;
   const errBox = (e) => `<p class="err" role="alert">${esc(e.message)}</p>`;
   const skel = () => `<div class="skel" role="status" aria-label="${esc(t('ui.loading'))}"><span></span><span></span><span></span></div>`;
   const loading = () => h(skel());
@@ -140,9 +157,9 @@
   // ---------- Panchang ----------
   async function viewPanchang(tab = 'panchang', date = today()) {
     let place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad, Gujarat, India', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
-    h(`<section class="hero-band"><div><p class="eyebrow">${esc(t('ui.panchang'))}</p><h1>${esc(place.name.split(',')[0])}</h1></div>
-        <form class="pbar" id="pf"><label>${esc(t('ui.date'))}<input type="date" name="date" value="${date}" required></label>
-        <label class="grow">${esc(t('ui.location'))}<input name="place_q" value="${esc(place.name)}" autocomplete="off"></label><div class="suggest"></div></form></section>
+    h(`${ph('calendar_month', t('ui.panchang'), place.name)}
+        <form class="pc-bar" id="pf"><label>${esc(t('ui.date'))}<input type="date" name="date" value="${date}" required></label>
+        <label class="grow">${esc(t('ui.location'))}<input name="place_q" value="${esc(place.name)}" autocomplete="off"></label><div class="suggest"></div></form>
       <div class="tabs" role="tablist">${[['panchang', 'calendar_month'], ['choghadiya', 'schedule'], ['panchang_chart', 'grid_view']].map(([x, ic]) =>
         `<button data-t2="${x}" class="${x === tab ? 'on' : ''}"><span class="ms">${ic}</span>${esc(t('ui.' + x))}</button>`).join('')}</div><div id="pout"></div>`);
     const f = document.getElementById('pf');
@@ -189,20 +206,23 @@
   }
 
   // ---------- Auth ----------
+  const authArt = (title, sub) => `<aside class="au-art"><div><h2>${esc(title)}</h2><p>${esc(sub)}</p></div>
+      <ul><li><span class="ms">auto_stories</span>${esc(t('home.f_kundali'))}</li><li><span class="ms">auto_awesome</span>${esc(t('home.f_predict'))}</li>
+        <li><span class="ms">psychology</span>${esc(t('home.f_ai'))}</li><li><span class="ms">spa</span>${esc(t('home.f_remedy'))}</li></ul></aside>`;
+  const authPage = (title, sub, form) => h(`<div class="au">${authArt(t('home.h1a') + ' ' + t('home.h1b'), t('home.eyebrow'))}<div class="au-f"><h1>${esc(title)}</h1>${sub ? `<p>${esc(sub)}</p>` : ''}${form}</div></div>`);
   function viewAuth(mode) {
-    const reg = mode === 'register', adm = mode === 'admin';
-    h(`<h1>${adm ? `<span class="ms">admin_panel_settings</span> ${esc(t('ui.admin_login'))}` : esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</h1>
-      <form class="stack" id="af">
+    const reg = mode === 'register';
+    authPage(t(reg ? 'ui.register' : 'ui.sign_in'), t(reg ? 'ui.register_sub' : 'ui.sign_in_sub'), `<form class="stack" id="af">
         ${reg ? `<label>${esc(t('ui.name'))}<input name="name" required autocomplete="name"></label>` : ''}
         <label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
         <label>${esc(t('ui.password'))}<input type="password" name="password" minlength="8" required autocomplete="${reg ? 'new-password' : 'current-password'}"></label>
         <div id="aerr"></div>
-        <div><button>${esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</button></div>
-        <div class="row"><a href="#/${reg ? 'login' : 'register'}">${esc(t(reg ? 'ui.have_account' : 'ui.no_account'))}</a>${reg ? '' : `<a href="#/forgot">${esc(t('ui.forgot_password'))}</a>`}</div>
+        <button class="btn-full">${esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</button>
+        <div class="au-alt"><a href="#/${reg ? 'login' : 'register'}">${esc(t(reg ? 'ui.have_account' : 'ui.no_account'))}</a>${reg ? '' : `<a href="#/forgot">${esc(t('ui.forgot_password'))}</a>`}</div>
       </form>`);
     const f = document.getElementById('af');
     f.onsubmit = async e => {
-      e.preventDefault(); const b = f.querySelector('button'); b.disabled = true;
+      e.preventDefault(); const b = f.querySelector('button.btn-full'); b.disabled = true;
       try {
         const body = { email: f.email.value, password: f.password.value, lang, client: 'web' };
         if (reg) body.name = f.name.value;
@@ -214,13 +234,12 @@
   }
 
   function viewForgot() {
-    h(`<h1>${esc(t('ui.forgot_password'))}</h1><p class="muted">${esc(t('ui.forgot_hint'))}</p>
-      <form class="stack" id="ff"><label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
-        <div id="ferr"></div><div><button>${esc(t('ui.send_reset_link'))}</button></div><a href="#/login">${esc(t('ui.back_to_login'))}</a></form>`);
+    authPage(t('ui.forgot_password'), t('ui.forgot_hint'), `<form class="stack" id="ff"><label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
+        <div id="ferr"></div><button class="btn-full">${esc(t('ui.send_reset_link'))}</button><div class="au-alt"><a href="#/login">${esc(t('ui.back_to_login'))}</a></div></form>`);
     const f = document.getElementById('ff');
     f.onsubmit = async e => {
-      e.preventDefault(); const b = f.querySelector('button'); b.disabled = true;
-      try { await api('POST', '/auth/forgot', { email: f.email.value }); f.outerHTML = `<section class="card"><span class="ms">mark_email_read</span> ${esc(t('ui.reset_sent'))}</section><p><a href="#/login">${esc(t('ui.back_to_login'))}</a></p>`; }
+      e.preventDefault(); const b = f.querySelector('button.btn-full'); b.disabled = true;
+      try { await api('POST', '/auth/forgot', { email: f.email.value }); f.outerHTML = `<div class="m-card tonal"><span class="ms">mark_email_read</span> ${esc(t('ui.reset_sent'))}</div><p><a href="#/login">${esc(t('ui.back_to_login'))}</a></p>`; }
       catch (err) { document.getElementById('ferr').innerHTML = errBox(err); b.disabled = false; }
     };
   }
@@ -229,7 +248,7 @@
     <label>${esc(t('ui.confirm_password'))}<input type="password" name="confirm_password" minlength="8" required autocomplete="new-password"></label>`;
   const pwMismatch = f => f.new_password.value !== f.confirm_password.value ? errBox({ message: t('ui.password_mismatch') }) : '';
   function viewReset(token) {
-    h(`<h1>${esc(t('ui.reset_password'))}</h1><form class="stack" id="rf">${pwPair()}<div id="rerr"></div><div><button>${esc(t('ui.reset_password'))}</button></div></form>`);
+    authPage(t('ui.reset_password'), '', `<form class="stack" id="rf">${pwPair()}<div id="rerr"></div><button class="btn-full">${esc(t('ui.reset_password'))}</button></form>`);
     const f = document.getElementById('rf');
     f.onsubmit = async e => {
       e.preventDefault(); const err = document.getElementById('rerr'); if ((err.innerHTML = pwMismatch(f))) return;
@@ -240,8 +259,9 @@
   }
   async function viewProfile() {
     loading(); let me; try { me = await api('GET', '/me'); } catch (e) { h(errBox(e)); return; }
-    h(`<section class="hero-band"><div><p class="eyebrow">${esc(me.email)}</p><h1>${esc(t('ui.my_profile'))}</h1></div><span class="ms hero-ic">account_circle</span></section>
-      <div class="addwrap"><section class="card"><div class="card-h"><span class="ms">edit</span>${esc(t('ui.edit_profile'))}</div>
+    h(`${ph('account_circle', t('ui.my_profile'), me.email)}
+      <div class="pf-id"><span class="avatar">${esc(me.name.trim().charAt(0).toUpperCase())}</span><div><b>${esc(me.name)}</b><small>${esc(me.email)}</small></div></div>
+      <div class="pf-grid"><section class="card"><div class="card-h"><span class="ms">edit</span>${esc(t('ui.edit_profile'))}</div>
         <form class="stack" id="pf"><label>${esc(t('ui.name'))}<input name="name" required maxlength="120" autocomplete="name" value="${esc(me.name)}"></label>
           <label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email" value="${esc(me.email)}"></label>
           <label>${esc(t('ui.language'))}<select name="lang">${[['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']].map(([v, n]) => `<option value="${v}"${me.lang === v ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -250,7 +270,9 @@
       <section class="card"><div class="card-h"><span class="ms">lock_reset</span>${esc(t('ui.change_password'))}</div>
         <form class="stack" id="cpf"><label>${esc(t('ui.current_password'))}<input type="password" name="current_password" required autocomplete="current-password"></label>${pwPair()}
           <div id="cperr"></div><div><button>${esc(t('ui.change_password'))}</button></div></form></section></div>
-      <section class="card row acct-links"><a class="btn ghost" href="#/logout"><span class="ms">logout</span>${esc(t('ui.sign_out'))}</a></section>`);
+      <nav class="pf-list"><a href="#/dashboard"><span class="ms">auto_stories</span>${esc(t('ui.my_charts'))}<span class="ms">chevron_right</span></a>
+        <a href="#/ai-chat"><span class="ms">psychology</span>${esc(t('ui.nav_claude'))}<span class="ms">chevron_right</span></a>
+        <a href="#/logout"><span class="ms">logout</span>${esc(t('ui.sign_out'))}<span class="ms">chevron_right</span></a></nav>`);
     const pf = document.getElementById('pf'), cpf = document.getElementById('cpf');
     pf.email.oninput = () => { const ch = pf.email.value.trim().toLowerCase() !== me.email; document.getElementById('pwc').hidden = !ch; pf.password.required = ch; };
     pf.onsubmit = async e => {
@@ -286,8 +308,7 @@
     st.date = st.date || today();
     let mine = cats.filter(c => c.selected), editing = !mine.length, seq = 0;
     const PI = { daily: 'today', weekly: 'date_range', monthly: 'calendar_month', yearly: 'event_repeat', lifetime: 'all_inclusive' };
-    const hero = `<section class="pp-hero"><div class="pp-hero-top"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.personal_predictions'))}</h1>
-      <p class="pp-sub">${esc(t('ui.pp_sub'))}</p></div><span class="ms pp-hero-ic" aria-hidden="true">auto_awesome</span></div>`;
+    const hero = `${ph('auto_awesome', t('ui.personal_predictions'), t('ui.pp_sub'))}<section class="pp-hero">`;
     if (!profs.length) { h(hero + `<a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section><p class="muted">${esc(t('ui.no_kundali'))}</p>`); return; }
     h(hero + `<div class="pp-pickrow"><div class="pp-kpick"><button type="button" class="pp-kbtn" id="ppkb" aria-haspopup="listbox" aria-expanded="false"></button>
         <div class="pp-kpanel" id="ppkp" hidden><input type="search" id="ppks" placeholder="${esc(t('ui.search'))}…" aria-label="${esc(t('ui.search'))}" autocomplete="off"><ul role="listbox" id="ppkl"></ul></div></div>
@@ -584,15 +605,15 @@
     try { [prof, k] = await Promise.all([api('GET', `/profiles/${id}`), api('GET', `/profiles/${id}/kundali`)]); }
     catch (e) { h(errBox(e)); return; }
     const s = k.meta.settings, b = k.birth;
-    h(`<div class="hero kh"><div class="hero-main"><h1>${esc(prof.label)}</h1>
+    h(`<section class="kv-head"><span class="avatar">${esc(prof.label.trim().charAt(0).toUpperCase())}</span><div class="kv-id"><h1>${esc(prof.label)}</h1>
       <div class="chips"><span class="chip"><span class="ms">event</span>${esc(b.local.slice(0, 16))}</span><span class="chip"><span class="ms">location_on</span>${esc(prof.place_name.split(',')[0])}</span>
       <span class="chip"><span class="ms">public</span>${esc(b.tzid)} · UTC ${esc(b.utc.slice(11, 16))}</span><span class="chip ok"><span class="ms">north_east</span>${esc(t('ui.lagna'))} ${esc(tn('signs', k.lagna.sign_name))}</span></div></div>
-      <div class="hero-actions"><a class="btn accent" href="#/predict" id="goPredict"><span class="ms">auto_awesome</span>${esc(t('ui.personal_predictions'))}</a><a class="btn tonal" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a><a class="btn accent" href="#/print/${id}"><span class="ms">download</span>${esc(t('ui.download_report'))}</a></div></div>
+      <div class="kv-act"><a class="btn" href="#/predict" id="goPredict"><span class="ms">auto_awesome</span>${esc(t('ui.personal_predictions'))}</a><a class="btn tonal" href="#/print/${id}"><span class="ms">download</span>PDF</a><a class="btn ghost" href="#/edit/${id}"><span class="ms">edit</span>${esc(t('ui.edit_kundali'))}</a></div></section>
       ${b.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}
       ${prof.time_accuracy === 'approximate' ? `<div class="warn">${esc(t('ui.approx_warning'))}</div>` : ''}
-      <div class="tabs" role="tablist">${Object.keys(GROUPS).map((x, i) =>
+      <div class="kvl"><div class="tabs" role="tablist" aria-orientation="vertical">${Object.keys(GROUPS).map((x, i) =>
         `<button role="tab" data-tab="${x}" class="${i ? '' : 'on'}"><span class="ms">${GROUPS[x].icon}</span>${esc(t('ui.' + x))}</button>`).join('')}</div>
-      <div id="sub" class="subtabs"></div><div id="tab"></div>
+      <div class="kv-body">      <div id="sub" class="subtabs"></div><div id="tab"></div></div></div>
       <details><summary>${esc(t('ui.settings'))}</summary><ul>
         <li>${esc(t('ui.ayanamsa'))}: ${esc(s.ayanamsa)} (${esc(k.meta.ayanamsa_dms)})</li><li>Rahu/Ketu: ${esc(s.node)} node</li>
         <li>Zodiac: ${esc(s.zodiac)}, ${esc(s.positions)}; houses: ${esc(s.house_system)}</li>
@@ -969,14 +990,14 @@
   }
 
   function viewAdd() {
-    h(`<section class="hero-band"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.add_chart'))}</h1></div><span class="ms hero-ic">person_add</span></section>
+    h(`${ph('person_add', t('ui.add_chart'), t('ui.add_sub'))}
       <div class="addwrap"><section class="card">${chartForm()}</section>
       <aside class="card tips"><div class="card-h"><span class="ms">lightbulb</span>${esc(t('ui.tips'))}</div><ul><li>${esc(t('ui.tip1'))}</li><li>${esc(t('ui.tip2'))}</li><li>${esc(t('ui.tip3'))}</li></ul></aside></div>`);
     bindChartForm();
   }
   async function viewEdit(id) {
     loading(); let p; try { p = await api('GET', '/profiles/' + id); } catch (e) { h(errBox(e)); return; }
-    h(`<section class="hero-band"><div><p class="eyebrow">${esc(p.label)}</p><h1>${esc(t('ui.edit_kundali'))}</h1></div><span class="ms hero-ic">edit_calendar</span></section>
+    h(`${ph('edit_calendar', t('ui.edit_kundali'), p.label)}
       <div class="addwrap"><section class="card">${chartForm()}</section>
       <aside class="card tips"><div class="card-h"><span class="ms">info</span>${esc(t('ui.tips'))}</div><ul><li>${esc(t('ui.edit_hint'))}</li><li>${esc(t('ui.tip1'))}</li></ul></aside></div>`);
     bindChartForm(p);
@@ -1132,24 +1153,34 @@
   async function viewDashboard() {
     loading();
     try {
-      const place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
-      const [me, list] = await Promise.all([api('GET', '/me'), api('GET', '/profiles')]), pc = null; void place;
-      h(`<section class="hero-band"><div><p class="eyebrow">${esc(new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang + '-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</p>
-          <h1>${esc(t('ui.welcome'))}, ${esc(me.name)}</h1><div class="chips"><span class="chip"><span class="ms">person_book</span>${esc(t('ui.my_charts'))}: <b data-count="${list.length}">0</b></span></div></div>
-          <a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section>
-        ${pc ? `<section class="card"><div class="card-h"><span class="ms">calendar_month</span>${esc(t('ui.today_panchang'))} · ${esc(place.name.split(',')[0])}${calcTag()}</div>
-          <div class="kpis"><div><span>${esc(t('ui.tithi'))}</span><b>${esc(tn('paksha', pc.tithi[0].paksha) + ' ' + tn('tithis', pc.tithi[0].name))}</b></div>
-          <div><span>${esc(t('ui.nakshatra'))}</span><b>${esc(tn('nakshatras', pc.nakshatra[0].name))}</b></div><div><span>${esc(t('ui.sunrise'))}</span><b>${esc(pc.sunrise.slice(11))}</b></div>
-          <div><span>${esc(t('ui.rahu_kaal'))}</span><b>${esc(pc.rahu_kaal.start.slice(11))}–${esc(pc.rahu_kaal.end.slice(11))}</b></div></div></section>` : ''}
-        <h2>${esc(t('ui.my_charts'))}</h2>
-        <div class="kgrid">${list.map(p => `<section class="card kcard"><div class="kc-h"><span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><div><h3>${esc(p.label)}</h3>
-            <small class="muted">${esc(p.birth_date)} · ${esc(p.birth_time.slice(0, 5))} · ${esc(p.place_name.split(',')[0])}</small></div></div>
-            <div class="row"><a class="btn" href="#/chart/${p.id}"><span class="ms">open_in_new</span>${esc(t('ui.open'))}</a><a class="btn tonal" href="#/print/${p.id}"><span class="ms">download</span>PDF</a>
-            <a class="icon-btn" href="#/edit/${p.id}" aria-label="${esc(t('ui.edit_kundali'))}"><span class="ms">edit</span></a><button class="icon-btn" data-del="${p.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div></section>`).join('')}
-          <a class="card kcard add" href="#/add"><span class="ms">add_circle</span>${esc(t('ui.new_kundali'))}</a></div>`);
+      const place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad, Gujarat, India', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
+      const [me, list] = await Promise.all([api('GET', '/me'), api('GET', '/profiles')]);
+      const dateTxt = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang + '-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const acts = [['add', 'person_add', 'ui.add_chart'], ['predict', 'auto_awesome', 'ui.personal_predictions'], ['ai-chat', 'psychology', 'ui.nav_claude'], ['rashifal', 'stars', 'rf.title']];
+      h(`${ph('waving_hand', `${t('ui.welcome')}, ${me.name}`, dateTxt, `<a class="btn" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a>`)}
+        <div class="db-today">
+          <section class="card"><div class="card-h"><span class="ms">calendar_month</span>${esc(t('ui.today_panchang'))} · ${esc(place.name.split(',')[0])}</div><div id="dbpc"><div class="db-pc">${'<div class="db-kv"><small>&nbsp;</small><b>…</b></div>'.repeat(4)}</div></div>
+            <p style="margin:.8rem 0 0"><a href="#/panchang">${esc(t('ui.panchang'))} →</a></p></section>
+          <section class="card"><div class="card-h"><span class="ms">bolt</span>${esc(t('ui.quick_actions'))}</div>
+            <div class="db-actions">${acts.map(([r, ic, l]) => `<a class="db-act" href="#/${r}"><span class="ms">${ic}</span>${esc(t(l))}</a>`).join('')}</div></section>
+        </div>
+        <div class="m-sec"><h2>${esc(t('ui.my_charts'))} <span class="muted">(${list.length})</span></h2></div>
+        <div class="db-list">${list.map(p => `<article class="db-k"><div class="db-k-h"><span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><div><h3>${esc(p.label)}</h3>
+            <small>${esc(p.place_name.split(',')[0])}</small></div></div>
+            <div class="db-k-m"><span class="chip"><span class="ms">event</span>${esc(p.birth_date)}</span><span class="chip"><span class="ms">schedule</span>${esc(p.birth_time.slice(0, 5))}</span></div>
+            <div class="db-k-a"><a class="btn" href="#/chart/${p.id}">${esc(t('ui.open'))}</a><a class="btn tonal" href="#/print/${p.id}"><span class="ms">download</span>PDF</a>
+              <a class="icon-btn" href="#/edit/${p.id}" aria-label="${esc(t('ui.edit_kundali'))}"><span class="ms">edit</span></a><button class="icon-btn" data-del="${p.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div></article>`).join('')}
+          <a class="db-new" href="#/add"><span class="ms">add_circle</span>${esc(t('ui.new_kundali'))}</a></div>`);
       $app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
         if (!(await confirmDialog(t('ui.confirm_delete')))) return;
         try { await api('DELETE', '/profiles/' + b.dataset.del); toast(t('ui.deleted'), 'delete'); viewDashboard(); } catch (e) { toast(e.message, 'error'); } });
+      apiRaw('GET', `/panchang?date=${today()}&lat=${place.lat}&lon=${place.lon}&tzid=${encodeURIComponent(place.tzid)}`).then(pc => {
+        const el = document.getElementById('dbpc'); if (!el) return; const tm = x => esc((x || '').slice(11));
+        el.innerHTML = `<div class="db-pc"><div class="db-kv"><small>${esc(t('ui.tithi'))}</small><b>${esc(tn('paksha', pc.tithi[0].paksha) + ' ' + tn('tithis', pc.tithi[0].name))}</b></div>
+          <div class="db-kv"><small>${esc(t('ui.nakshatra'))}</small><b>${esc(tn('nakshatras', pc.nakshatra[0].name))}</b></div>
+          <div class="db-kv"><small>${esc(t('ui.sunrise'))} / ${esc(t('ui.sunset'))}</small><b>${tm(pc.sunrise)} · ${tm(pc.sunset)}</b></div>
+          <div class="db-kv"><small>${esc(t('ui.rahu_kaal'))}</small><b>${tm(pc.rahu_kaal.start)} – ${tm(pc.rahu_kaal.end)}</b></div></div>`;
+      }).catch(() => { const el = document.getElementById('dbpc'); if (el) el.innerHTML = `<p class="muted">—</p>`; });
     } catch (e) { h(errBox(e)); }
   }
 
@@ -1159,8 +1190,7 @@
     const IC = { career: 'work', money: 'payments', love: 'favorite', health: 'self_improvement', moon: 'dark_mode', caution: 'warning' };
     let sign = (() => { try { return +(localStorage.getItem('rf_sign') || 0); } catch (e) { return 0; } })() % 12;
     h(`<section class="rf">
-      <header class="rf-hero"><div><p class="eyebrow">${esc(t('rf.title'))}</p><h1>${esc(names[P.indexOf(period)])} ${esc(t('rf.title'))}</h1><p class="muted">${esc(t('rf.sub'))}</p></div>
-        <div class="rf-seg" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}" aria-selected="${x === period}">${esc(names[i])}</button>`).join('')}</div></header>
+      ${ph('stars', names[P.indexOf(period)] + ' ' + t('rf.title'), t('rf.sub'), `<div class="rf-seg" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}" aria-selected="${x === period}">${esc(names[i])}</button>`).join('')}</div>`)}
       <p class="rf-pick">${esc(t('rf.pick'))} <span class="rf-range" id="rfr"></span></p>
       <div class="rf-signs" role="tablist" id="rfs"></div><div id="rfo"></div></section>`);
     $app.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { location.hash = '#/rashifal/' + b.dataset.rp; });
@@ -1199,39 +1229,38 @@
     const c = 200, P = (r, deg) => [(c + r * Math.cos(deg * Math.PI / 180)).toFixed(1), (c + r * Math.sin(deg * Math.PI / 180)).toFixed(1)];
     let seg = '', gl = '', dots = '';
     for (let i = 0; i < 12; i++) {
-      const [x1, y1] = P(122, i * 30 - 90), [x2, y2] = P(180, i * 30 - 90), [gx, gy] = P(151, i * 30 - 75);
+      const [x1, y1] = P(128, i * 30 - 90), [x2, y2] = P(184, i * 30 - 90), [gx, gy] = P(156, i * 30 - 75);
       seg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
       gl += `<text x="${gx}" y="${gy}">${GLYPH[i]}</text>`;
-      const [dx, dy] = P(104, i * 30 - 75); dots += `<circle cx="${dx}" cy="${dy}" r="${i % 3 ? 1.6 : 2.6}"/>`;
+      const [dx, dy] = P(108, i * 30 - 75); dots += `<circle cx="${dx}" cy="${dy}" r="${i % 3 ? 2 : 3.2}"/>`;
     }
-    return `<div class="cz-wheel" aria-hidden="true"><svg viewBox="0 0 400 400">
-      <defs><radialGradient id="czSun" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fff8dc"/><stop offset=".55" stop-color="#f5d27a"/><stop offset="1" stop-color="#b5801f"/></radialGradient>
-        <radialGradient id="czHalo"><stop offset="0" stop-color="#f5d27a" stop-opacity=".45"/><stop offset="1" stop-color="#f5d27a" stop-opacity="0"/></radialGradient></defs>
-      <circle cx="200" cy="200" r="198" fill="url(#czHalo)"/>
-      <g class="ring" fill="none" stroke="#f5d27a" stroke-opacity=".75"><circle cx="200" cy="200" r="180" stroke-width="1.6"/><circle cx="200" cy="200" r="122" stroke-width="1"/><g stroke-width=".9">${seg}</g>
-        <g fill="#f5d27a" stroke="none" font-size="25" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','DejaVu Sans',serif">${gl}</g></g>
-      <g class="ring2"><circle cx="200" cy="200" r="104" fill="none" stroke="#b9a6ff" stroke-opacity=".6" stroke-dasharray="2 6"/><g fill="#fff">${dots}</g></g>
-      <g class="core"><circle cx="200" cy="200" r="60" fill="url(#czSun)"/><path d="M200 152l9 30 31-1-25 18 10 30-25-18-25 18 10-30-25-18 31 1z" fill="#fff" fill-opacity=".55"/></g>
-    </svg><div class="cz-orbit"><i></i></div><div class="cz-orbit o2"><i></i></div></div>`;
+    return `<div class="hm-art" aria-hidden="true"><svg viewBox="0 0 400 400">
+      <circle cx="200" cy="200" r="196" fill="#fff" stroke="#dee0ff" stroke-width="2"/>
+      <g class="ring" fill="none" stroke="#4355b9" stroke-opacity=".55"><circle cx="200" cy="200" r="184" stroke-width="1.5"/><circle cx="200" cy="200" r="128" stroke-width="1.2"/><g stroke-width="1">${seg}</g>
+        <g fill="#4355b9" stroke="none" font-size="24" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','DejaVu Sans',sans-serif">${gl}</g></g>
+      <g class="ring2"><circle cx="200" cy="200" r="108" fill="#eef0ff"/><g fill="#8b95e6">${dots}</g></g>
+      <circle cx="200" cy="200" r="64" fill="#f4a62a"/><circle cx="200" cy="200" r="64" fill="none" stroke="#ffdcbe" stroke-width="10" stroke-opacity=".7"/>
+      <path d="M200 160l8.5 27 28.5-.5-23 16.5 9 27-23-16.5-23 16.5 9-27-23-16.5 28.5.5z" fill="#fff"/>
+    </svg><div class="orb"><i></i></div><div class="orb o2"><i></i></div></div>`;
   }
   function viewHome() {
-    const T = k => esc(t('home.' + k)), feat = [['add', 'f_kundali', 'auto_stories'], ['rashifal', 'f_rashifal', 'stars'], ['panchang', 'f_panchang', 'calendar_month'],
+    const T = k => esc(t('home.' + k)), need = r => !token && ['add', 'predict', 'ai-chat', 'dashboard'].includes(r) ? 'register' : r;
+    const feat = [['add', 'f_kundali', 'auto_stories'], ['rashifal', 'f_rashifal', 'stars'], ['panchang', 'f_panchang', 'calendar_month'],
       ['predict', 'f_predict', 'auto_awesome'], ['ai-chat', 'f_ai', 'psychology'], ['dashboard', 'f_remedy', 'spa']];
-    const need = r => !token && ['add', 'predict', 'ai-chat', 'dashboard'].includes(r) ? 'register' : r;
-    h(`<div class="cz-home">
-      <section class="cz-hero"><div><p class="eyebrow">${T('eyebrow')}</p><h1>${T('h1a')} <em>${T('h1b')}</em></h1><p>${T('sub')}</p>
-        <div class="cz-cta"><a class="btn accent" href="#/${token ? 'add' : 'register'}"><span class="ms">auto_stories</span>${T('cta1')}</a><a class="btn ghost" href="#/rashifal"><span class="ms">stars</span>${T('cta2')}</a></div>
-        <div class="cz-trust"><span><span class="ms">verified</span>${T('t1')}</span><span><span class="ms">spa</span>${T('t2')}</span><span><span class="ms">translate</span>${T('t3')}</span></div></div>
+    h(`<div class="hm">
+      <section class="hm-hero"><div><span class="ph-e"><span class="ms">verified</span>${T('eyebrow')}</span><h1>${T('h1a')} <em>${T('h1b')}</em></h1><p>${T('sub')}</p>
+        <div class="hm-cta"><a class="btn" href="#/${token ? 'add' : 'register'}"><span class="ms">auto_stories</span>${T('cta1')}</a><a class="btn ghost" href="#/rashifal"><span class="ms">stars</span>${T('cta2')}</a></div>
+        <div class="hm-trust"><span><span class="ms">check_circle</span>${T('t1')}</span><span><span class="ms">check_circle</span>${T('t2')}</span><span><span class="ms">check_circle</span>${T('t3')}</span></div></div>
         ${zodiacWheel()}</section>
-      <section><div class="cz-sec-h"><p class="eyebrow">${T('explore_e')}</p><h2>${T('explore_h')}</h2><p>${T('explore_p')}</p></div>
-        <div class="cz-feats" style="margin-top:1.2rem">${feat.map(([r, k, ic], i) => `<a class="cz-feat" style="--i:${i}" href="#/${need(r)}"><span class="ic"><span class="ms">${ic}</span></span><b>${T(k)}</b><p>${T(k + '_p')}</p><span class="go">${T('open')}<span class="ms">arrow_forward</span></span></a>`).join('')}</div></section>
-      <section><div class="cz-sec-h"><p class="eyebrow">${T('signs_e')}</p><h2>${T('signs_h')}</h2><p>${T('signs_p')}</p></div>
-        <div class="cz-signs" style="margin-top:1.2rem">${SIGNS.map((s, i) => `<a class="cz-sign" style="--i:${i}" href="#/rashifal" data-sign="${i}"><span class="g">${GLYPH[i]}</span><small>${esc(t('astro.signs.' + s))}</small></a>`).join('')}</div></section>
-      <section><div class="cz-sec-h"><p class="eyebrow">${T('how_e')}</p><h2>${T('how_h')}</h2></div>
-        <div class="cz-steps" style="margin-top:1.2rem">${[['edit_calendar', 's1'], ['travel_explore', 's2'], ['task_alt', 's3']].map(([ic, k]) => `<div class="cz-step"><span class="ms">${ic}</span><b>${T(k)}</b><p>${T(k + 'p')}</p></div>`).join('')}</div></section>
-      <section class="cz-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn accent" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section>
-      <p class="cz-foot">${T('foot')}</p></div>`);
-    $app.querySelectorAll('[data-sign]').forEach(a => a.onclick = () => { try { localStorage.setItem('rf_sign', a.dataset.sign); } catch (e) {} });
+      <div class="m-sec"><h2>${T('explore_h')}</h2></div>
+      <div class="hm-tiles">${feat.map(([r, k, ic]) => `<a class="hm-tile" href="#/${need(r)}"><span class="ic"><span class="ms">${ic}</span></span><div><b>${T(k)}</b><p>${T(k + '_p')}</p></div><span class="ms go">chevron_right</span></a>`).join('')}</div>
+      <div class="m-sec"><h2>${T('signs_h')}</h2><a href="#/rashifal">${T('signs_e')}<span class="ms">arrow_forward</span></a></div>
+      <div class="hm-signs">${SIGNS.map((sg, i) => `<a class="hm-sign" href="#/rashifal" data-sign="${i}"><span class="g">${GLYPH[i]}</span><small>${esc(t('astro.signs.' + sg))}</small></a>`).join('')}</div>
+      <div class="m-sec"><h2>${T('how_h')}</h2></div>
+      <div class="hm-steps">${['s1', 's2', 's3'].map((k, i) => `<div class="hm-step"><span class="n">${i + 1}</span><b>${T(k)}</b><p>${T(k + 'p')}</p></div>`).join('')}</div>
+      <section class="hm-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section>
+      <p class="hm-foot">${T('foot')}</p></div>`);
+    $app.querySelectorAll('[data-sign]').forEach(el => el.onclick = () => { try { localStorage.setItem('rf_sign', el.dataset.sign); } catch (e) {} });
   }
 
   // ---------- Router ----------
