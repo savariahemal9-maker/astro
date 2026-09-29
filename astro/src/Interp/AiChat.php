@@ -18,7 +18,20 @@ final class AiChat {
         'Jupiter' => 'guru|brihaspati', 'Venus' => 'shukra|sukra', 'Saturn' => 'shani|sani', 'Rahu' => 'rahu', 'Ketu' => 'ketu'];
     private const MONTHS_EN = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 
+    /** Why the last call fell back to the rule-based answer (shown to admins, never contains the key). */
+    public static string $lastError = '';
+
     public function __construct(private string $lang) {}
+
+    /** Admin check: is a key set, and does a tiny test request succeed? */
+    public static function status(): array {
+        $c = app_config()['ai'] ?? []; $key = trim((string) ($c['key'] ?? ''));
+        $out = ['key_set' => $key !== '', 'key_length' => strlen($key), 'model' => (string) ($c['model'] ?? 'gemini-2.5-flash'), 'ok' => false, 'error' => ''];
+        if ($key === '') { $out['error'] = "No key: add 'ai' => ['key' => ...] to astro-config.php"; return $out; }
+        $j = (new self('en'))->call('Reply with JSON only.', 'Return {"ok": true}', 0.0);
+        $out['ok'] = ($j['ok'] ?? false) === true; $out['error'] = $out['ok'] ? '' : self::$lastError;
+        return $out;
+    }
 
     public static function enabled(): bool { return trim((string) (app_config()['ai']['key'] ?? '')) !== ''; }
 
@@ -44,16 +57,28 @@ final class AiChat {
     public function phrase(string $msg, array $history, array $facts): ?array {
         $sys = "You are a warm, experienced Vedic astrologer chatting with a client. Rewrite the FACTS into a natural, caring reply to the client's last message.\n"
             . "Strict rules:\n- Use only what is in FACTS. Never add a planet, house, sign, month, year, date, number, remedy or prediction that is not in FACTS.\n"
+            . "- Answer the client's actual question first, in your own words, like a real astrologer talking — do not copy the FACTS sentence by sentence.\n"
             . "- You may shorten, reorder and join the facts; keep every remedy's meaning exactly.\n"
+            . "- If the question asks for something FACTS do not contain (e.g. an exact count or a yes/no the facts don't settle), say honestly the chart does not show that, then share what FACTS do say.\n"
             . "- If FACTS say the question cannot be answered, say so kindly and mention what they can ask.\n"
             . "- 2 to 5 short sentences, no headings or markdown; remedies may be separate short lines.\n"
             . '- Reply in the same language and script as the client\'s last message (default ' . self::LANGS[$this->lang] . ").\n"
             . 'Return only JSON: {"reply": ["paragraph", ...]}';
-        $j = $this->call($sys, $this->convo($history) . "Client: $msg\n\nFACTS:\n" . implode("\n", $facts), 0.4);
-        $out = array_values(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', (array) ($j['reply'] ?? [])), 'strlen'));
+        $user = $this->convo($history) . "Client: $msg\n\nFACTS:\n" . implode("\n", $facts);
+        // numbers, months and planets the client or the facts already used are fine to repeat
+        $allowed = $this->marks(implode(' ', $facts) . ' ' . $msg . ' ' . implode(' ', array_map(fn($h) => (string) ($h['text'] ?? ''), $history)));
+        $out = null;
+        for ($try = 0; $try < 2 && !$out; $try++) {                // one retry, told what it added
+            $j = $this->call($sys, $user, $try ? 0.1 : 0.5);
+            $out = array_values(array_filter(array_map(fn($x) => is_string($x) ? trim($x) : '', (array) ($j['reply'] ?? [])), 'strlen'));
+            if (!$out) return null;
+            if ($extra = array_values(array_diff($this->marks(implode(' ', $out)), $allowed))) {
+                self::$lastError = 'rewrite_rejected: added ' . implode(', ', $extra); error_log('[ai] ' . self::$lastError);
+                $user .= "\n\nYour previous reply mentioned things that are not in FACTS (" . implode(', ', $extra) . '). Write it again using only FACTS.';
+                $out = null;
+            }
+        }
         if (!$out) return null;
-        $allowed = $this->marks(implode(' ', $facts));
-        foreach ($this->marks(implode(' ', $out)) as $m) if (!in_array($m, $allowed, true)) { error_log("[ai] rewrite rejected: added $m"); return null; }
         return array_slice($out, 0, 8);
     }
 
@@ -91,9 +116,13 @@ final class AiChat {
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_POSTFIELDS => json_encode($body), CURLOPT_TIMEOUT => (int) ($c['timeout'] ?? 12),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'x-goog-api-key: ' . $c['key']]]);
         $r = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
-        if ($r === false || $code !== 200) { error_log("[ai] request failed ($code)"); return null; }
+        if ($r === false || $code !== 200) {
+            $why = $r === false ? 'network error' : (string) (json_decode($r, true)['error']['message'] ?? 'no details');
+            self::$lastError = "http_$code: " . mb_substr($why, 0, 200); error_log('[ai] ' . self::$lastError); return null;
+        }
         $t = json_decode($r, true)['candidates'][0]['content']['parts'][0]['text'] ?? '';
         $j = json_decode(trim(preg_replace('/^```(?:json)?|```$/m', '', $t)), true);
-        return is_array($j) ? $j : null;
+        if (!is_array($j)) { self::$lastError = 'bad_json: ' . mb_substr($t, 0, 120); error_log('[ai] ' . self::$lastError); return null; }
+        return $j;
     }
 }
