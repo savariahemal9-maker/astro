@@ -6,6 +6,7 @@ use App\Calc\{Analysis, Zodiac};
 /** Chart-wide readings. All inputs are calculated kundali/transit data; outputs are interpretation. */
 final class Advanced extends RuleEngine {
     protected const DAY = ['Sun' => 0, 'Moon' => 1, 'Mars' => 2, 'Mercury' => 3, 'Jupiter' => 4, 'Venus' => 5, 'Saturn' => 6, 'Rahu' => 6, 'Ketu' => 2];
+    public const DAY_OF = self::DAY;
     private const GEM_COLOR = ['Sun' => '#c8102e', 'Moon' => '#eef1f4', 'Mars' => '#e0533d', 'Mercury' => '#1f9d55', 'Jupiter' => '#f2c230', 'Venus' => '#dfe9f5', 'Saturn' => '#2447a8'];
     /** Traditional incompatible stone pairs (planetary enmity). */
     private const GEM_CONFLICT = ['Sun' => ['Saturn', 'Venus'], 'Moon' => [], 'Mars' => ['Mercury'], 'Mercury' => ['Mars', 'Moon'],

@@ -224,6 +224,18 @@ final class Routes {
             return self::cached($kid, 'report', gmdate('Y-m'), $lang, fn() => (new RuleEngine($lang))->report($k,
                 Dasha::current(['mahadasha' => $k['dasha']['mahadasha']], TimeResolver::nowJd())));
         });
+        // personal remedy plan (life / date / week / month / most important) and pooja suggestions — all from this kundali
+        $r->add('GET', '/profiles/{id}/remedy-plan', function (Request $q, array $u, array $a) {
+            [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p); $rp = new \App\Interp\RemedyPlanner($l, (float) $p['lat'], (float) $p['lon']);
+            return match ((string) $q->input('view', 'life')) {
+                'life' => $rp->lifelong($k, $local->setTime(12, 0)->getTimestamp() / 86400 + 2440587.5), 'day' => $rp->day($k, $local), 'week' => $rp->week($k, $local),
+                'month' => $rp->month($k, $local), 'important' => $rp->important($k, $local),
+                default => throw new ApiException('validation', 'view must be life, day, week, month or important', 422) };
+        });
+        $r->add('GET', '/profiles/{id}/poojas', function (Request $q, array $u, array $a) {
+            [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            return (new \App\Interp\RemedyPlanner($l, (float) $p['lat'], (float) $p['lon']))->poojas($k, $local);
+        });
         $r->add('GET', '/profiles/{id}/remedies', function (Request $q, array $u, array $a) {
             $period = (string) $q->input('period', 'common');
             if (!in_array($period, ['common', 'daily', 'weekly', 'monthly'], true)) throw new ApiException('validation', 'period must be common, daily, weekly or monthly', 422);
