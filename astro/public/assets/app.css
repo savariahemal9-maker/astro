@@ -460,3 +460,4 @@ body.admin-mode main>.adm-auth{max-width:440px;margin:6vh auto}
 label.fl input:-webkit-autofill~.fl-label{top:6px;transform:scale(.76);color:var(--p)}
 /* collapsed groups keep their own height instead of stretching to the open one */
 .rp-groups{align-items:start}
+.rp-sub{margin:0} .pp-more{margin:.2rem 0 .8rem} .pp-more a{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
