@@ -16,6 +16,8 @@ final class Rashifal extends RuleEngine {
         'monthly' => ['career' => ['Sun', 'Saturn', 'Mercury', 'Jupiter'], 'money' => ['Jupiter', 'Venus', 'Mercury', 'Rahu'], 'love' => ['Venus', 'Jupiter', 'Mars'], 'health' => ['Mars', 'Saturn', 'Sun', 'Ketu']],
     ];
     private const NUM = ['Sun' => 1, 'Moon' => 2, 'Jupiter' => 3, 'Rahu' => 4, 'Mercury' => 5, 'Venus' => 6, 'Ketu' => 7, 'Saturn' => 8, 'Mars' => 9];
+    private const HEX = ['Sun' => '#f28c28', 'Moon' => '#eef1f4', 'Mars' => '#d93025', 'Mercury' => '#1e8e3e', 'Jupiter' => '#f4c20d',
+        'Venus' => '#f8f4ec', 'Saturn' => '#1f3a93', 'Rahu' => '#607d8b', 'Ketu' => '#8d6e63'];
     private const ICON = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 
     /** @param \DateTimeImmutable $date local date (India) */
@@ -59,11 +61,13 @@ final class Rashifal extends RuleEngine {
         $best = 'Jupiter'; foreach ($rank as $pl) if ($good[$pl]) { $best = $pl; break; }
         $worst = $troubled[0] ?? 'Saturn';
         if (!$troubled) foreach (['Saturn', 'Rahu', 'Mars', 'Sun', 'Ketu'] as $pl) if (!$good[$pl]) { $worst = $pl; break; }
-        $lines[] = ['area' => 'lucky', 'tone' => 'good', 'text' => $this->t('rf.lucky', ['color' => explode(', ', $this->c("color.$best"))[0], 'num' => self::NUM[$best],
-            'day' => $this->t('astro.weekdays.' . Zodiac::WEEKDAYS[self::DAY[$best]])])];
-        $lines[] = ['area' => 'remedy', 'tone' => 'mixed', 'text' => $this->t('rf.remedy', ['planet' => $this->pn($worst), 'mantra' => self::MANTRA[$worst]])];
+        $lucky = ['color' => explode(', ', $this->c("color.$best"))[0], 'hex' => self::HEX[$best], 'num' => self::NUM[$best],
+            'day' => $this->t('astro.weekdays.' . Zodiac::WEEKDAYS[self::DAY[$best]])];
+        $remedy = ['planet' => $this->pn($worst), 'mantra' => $this->lang === 'gu' ? \App\I18n\Lang::gu(self::MANTRA[$worst]) : self::MANTRA[$worst]];
+        $lines[] = ['area' => 'lucky', 'tone' => 'good', 'text' => $this->t('rf.lucky', $lucky)];
+        $lines[] = ['area' => 'remedy', 'tone' => 'mixed', 'text' => $this->t('rf.remedy', $remedy)];
         $name = Zodiac::SIGNS[$r];
         return ['sign' => $r, 'key' => $name, 'name' => $this->t("astro.signs.$name"), 'icon' => self::ICON[$r], 'overall' => $ov,
-                'score' => max(1, min(5, 3 + intdiv($total, 2))), 'areas' => $areas, 'lines' => $lines];
+                'score' => max(1, min(5, 3 + intdiv($total, 2))), 'areas' => $areas, 'lines' => $lines, 'lucky' => $lucky, 'remedy' => $remedy];
     }
 }

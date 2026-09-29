@@ -1101,19 +1101,41 @@
 
   // ---------- Rashifal: all 12 Moon signs, daily / weekly / monthly (public) ----------
   async function viewRashifal(period) {
-    const P = ['daily', 'weekly', 'monthly'], names = t('rf.tabs').split('|'), IC = { overall: 'insights', career: 'work', money: 'payments', love: 'favorite', health: 'health_and_safety', moon: 'dark_mode', caution: 'warning', lucky: 'star', remedy: 'spa' };
-    h(`<section class="hero-band"><div><p class="eyebrow">${esc(names[P.indexOf(period)])}</p><h1>${esc(t('rf.title'))}</h1><p class="muted">${esc(t('rf.sub'))}</p></div></section>
-      <div class="tabs" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}">${esc(names[i])}</button>`).join('')}</div><div id="rfo"></div>`);
-    tabIndicator($app.querySelector('.tabs'));
+    const P = ['daily', 'weekly', 'monthly'], names = t('rf.tabs').split('|');
+    const IC = { career: 'work', money: 'payments', love: 'favorite', health: 'self_improvement', moon: 'dark_mode', caution: 'warning' };
+    let sign = (() => { try { return +(localStorage.getItem('rf_sign') || 0); } catch (e) { return 0; } })() % 12;
+    h(`<section class="rf">
+      <header class="rf-hero"><div><p class="eyebrow">${esc(t('rf.title'))}</p><h1>${esc(names[P.indexOf(period)])} ${esc(t('rf.title'))}</h1><p class="muted">${esc(t('rf.sub'))}</p></div>
+        <div class="rf-seg" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}" aria-selected="${x === period}">${esc(names[i])}</button>`).join('')}</div></header>
+      <p class="rf-pick">${esc(t('rf.pick'))} <span class="rf-range" id="rfr"></span></p>
+      <div class="rf-signs" role="tablist" id="rfs"></div><div id="rfo"></div></section>`);
     $app.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { location.hash = '#/rashifal/' + b.dataset.rp; });
-    const out = document.getElementById('rfo'); out.innerHTML = skel();
-    try {
-      const d = await api('GET', `/rashifal?period=${period}&lang=${lang}`);
-      const star = n => '★'.repeat(n) + '☆'.repeat(5 - n);
-      out.innerHTML = `<p class="muted rf-range">${esc(d.from === d.to ? d.from : d.from + ' – ' + d.to)}</p><div class="rf-grid">${d.rashis.map(r => `
-        <article class="card rf-card rf-${r.overall}"><header class="rf-h"><span class="rf-ic">${r.icon}</span><div><h3>${esc(r.name)}</h3><span class="rf-st" aria-label="${r.score}/5">${star(r.score)}</span></div></header>
-        <ul class="rf-l">${r.lines.map(l => `<li class="t-${l.tone}"><span class="ms">${IC[l.area] || 'circle'}</span><div><b>${esc(t('rf.lbl.' + l.area))}</b><p>${esc(l.text)}</p></div></li>`).join('')}</ul></article>`).join('')}</div>`;
-    } catch (e) { out.innerHTML = errBox(e); }
+    const out = document.getElementById('rfo'), bar = document.getElementById('rfs'); out.innerHTML = skel();
+    let d; try { d = await api('GET', `/rashifal?period=${period}&lang=${lang}`); } catch (e) { out.innerHTML = errBox(e); return; }
+    document.getElementById('rfr').textContent = d.from === d.to ? d.from : d.from + ' – ' + d.to;
+    bar.innerHTML = d.rashis.map(r => `<button role="tab" data-sg="${r.sign}" class="rf-sg"><span class="rf-gl">${r.icon}</span><span class="rf-nm">${esc(r.name)}</span><i class="rf-dot t-${r.overall}"></i></button>`).join('');
+    const strip = x => x.replace(/^[^:：]{1,24}[:：]\s*/, '');
+    const badge = tone => `<span class="rf-badge t-${tone}">${esc(t('rf.tone.' + tone))}</span>`;
+    const show = () => {
+      const r = d.rashis[sign], L = a => r.lines.find(l => l.area === a);
+      bar.querySelectorAll('.rf-sg').forEach(b => { const on = +b.dataset.sg === sign; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); });
+      const notes = r.lines.filter(l => l.area === 'moon' || l.area === 'caution');
+      out.innerHTML = `<article class="rf-card t-${r.overall}">
+        <div class="rf-top"><span class="rf-big">${r.icon}</span><div class="rf-tt"><h2>${esc(r.name)}</h2>
+          <div class="rf-meta"><span class="rf-stars" aria-label="${r.score}/5">${'★'.repeat(r.score)}<s>${'★'.repeat(5 - r.score)}</s></span>${badge(r.overall)}</div></div></div>
+        <p class="rf-lead">${esc(L('overall').text)}</p>
+        ${notes.map(n => `<div class="rf-note t-${n.tone}"><span class="ms">${IC[n.area]}</span><p>${esc(n.text)}</p></div>`).join('')}
+        <div class="rf-areas">${['career', 'money', 'love', 'health'].map(a => { const l = L(a); return `<section class="rf-area t-${l.tone}">
+          <div class="rf-ah"><span class="rf-ai"><span class="ms">${IC[a]}</span></span><b>${esc(t('rf.lbl.' + a))}</b>${badge(l.tone)}</div><p>${esc(strip(l.text))}</p></section>`; }).join('')}</div>
+        <div class="rf-bottom"><section class="rf-lucky"><h3>${esc(t('rf.lbl.lucky'))}</h3><div class="rf-lk">
+            <div><span class="rf-sw" style="background:${r.lucky.hex}"></span><small>${esc(t('rf.l_color'))}</small><b>${esc(r.lucky.color)}</b></div>
+            <div><span class="rf-num">${r.lucky.num}</span><small>${esc(t('rf.l_num'))}</small><b>${r.lucky.num}</b></div>
+            <div><span class="rf-num"><span class="ms">event</span></span><small>${esc(t('rf.l_day'))}</small><b>${esc(r.lucky.day)}</b></div></div></section>
+          <section class="rf-remedy"><h3><span class="ms">spa</span>${esc(t('rf.lbl.remedy'))}</h3><p class="rf-mantra">${esc(r.remedy.mantra)}</p><small>${esc(t('rf.chant').replace('{planet}', r.remedy.planet))}</small></section></div>
+      </article>`;
+    };
+    bar.querySelectorAll('.rf-sg').forEach(b => b.onclick = () => { sign = +b.dataset.sg; try { localStorage.setItem('rf_sign', sign); } catch (e) {} show(); });
+    show();
   }
 
   // ---------- Router ----------
