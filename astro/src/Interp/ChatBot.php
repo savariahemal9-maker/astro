@@ -14,9 +14,9 @@ final class ChatBot extends RuleEngine {
     private const BUILTIN = ['child' => ['Jupiter', '5,9', 'child_care'], 'marriage' => ['Venus,Jupiter', '7,2', 'diversity_1'], 'property' => ['Mars,Saturn', '4,11', 'home'],
         'business' => ['Mercury,Jupiter', '7,10,11', 'storefront'], 'legal' => ['Saturn,Mars', '6,7', 'gavel'], 'family' => ['Moon,Sun', '2,4,9', 'family_restroom']];
     private const TOPICS = [
+        'stock' => 'stock|share|market|trading|invest|crypto|शेयर|निवेश|શેર|રોકાણ',
         'love' => 'propose|prapose|gf|bf|girlfriend|boyfriend|crush|prem|pyar|pyaar|love|partner|relationship|प्रेम|प्यार|પ્રેમ|સંબંધ',
         'finance' => 'paisa|paise|rupiya|kamai|dhan|money|finance|wealth|income|saving|loan|debt|धन|पैसा|आय|कर्ज|ધન|પૈસ|આવક|લોન|દેવું',
-        'stock' => 'stock|share|market|trading|invest|crypto|शेयर|निवेश|શેર|રોકાણ',
         'sports' => 'sport|cricket|match|game|खेल|રમત',
         'health' => 'tabiyat|tabiyet|bimar|bimari|swasthya|health|disease|illness|sick|fitness|स्वास्थ्य|सेहत|बीमारी|સ્વાસ્થ્ય|તબિયત|બીમારી',
         'education' => 'bhanvu|bhanva|padhai|pariksha|study|exam|education|school|college|पढ़ाई|परीक्षा|शिक्षा|અભ્યાસ|પરીક્ષા|શિક્ષણ|ભણ',
