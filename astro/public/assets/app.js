@@ -364,28 +364,30 @@
     let kid = (() => { try { return +localStorage.getItem('chat_kid'); } catch (e) { return 0; } })();
     if (!profs.find(p => p.id === kid)) kid = profs[0].id;
     const key = () => 'chat_' + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
-    let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-60), ctx: st.ctx })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
-    h(`<section class="chat"><div class="chat-top"><span class="ms chat-ic">forum</span>
-        <select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select>
-        <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">add_comment</span></button></div>
+    let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-80), ctx: st.ctx, q: st.q })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
+    h(`<section class="chat"><header class="chat-top"><span class="chat-av"><span class="ms">auto_awesome</span></span>
+        <div class="chat-who"><b>${esc(t('chat.title'))}</b><small><i class="dot"></i>${esc(t('chat.online'))}</small></div>
+        <label class="chat-k"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
+        <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button></header>
       <div class="chat-log" id="chl" aria-live="polite"></div>
-      <div class="chat-foot"><div class="chat-sug" id="chs"></div>
-        <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
-        <p class="chat-note">${esc(t('chat.disclaimer'))}</p></div></section>`);
-    const $l = document.getElementById('chl'), $s = document.getElementById('chs'), f = document.getElementById('chf');
-    const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}">${m.me ? '' : '<span class="ms av">auto_awesome</span>'}<div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}</div></div>`;
-    const sugg = list => { $s.innerHTML = (list || []).map(x => `<button type="button" class="pp-chip">${esc(x)}</button>`).join(''); $s.querySelectorAll('button').forEach(b => b.onclick = () => ask(b.textContent)); };
-    const draw = () => { $l.innerHTML = st.msgs.map(bubble).join(''); $l.scrollTop = $l.scrollHeight; };
+      <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
+      <p class="chat-note">${esc(t('chat.disclaimer'))}</p></section>`);
+    const $l = document.getElementById('chl'), f = document.getElementById('chf');
+    const tm = ts => new Date(ts || Date.now()).toLocaleTimeString(lang === 'en' ? 'en-IN' : lang + '-IN', { hour: 'numeric', minute: '2-digit' });
+    const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}"><div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}<time>${esc(tm(m.ts))}</time></div></div>`;
+    const draw = () => {
+      $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>` : '');
+      $l.querySelectorAll('.chat-q button').forEach(b => b.onclick = () => ask(b.textContent)); $l.scrollTop = $l.scrollHeight; };
     const ask = async text => {
-      text = text.trim(); if (!text) return; st.msgs.push({ me: true, lines: [text] }); draw(); f.m.value = '';
-      $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><span class="ms av">auto_awesome</span><div><p>…</p></div></div>'); $l.scrollTop = $l.scrollHeight;
-      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx }), new Promise(r => setTimeout(r, 700))]);
-        st.msgs.push({ lines: d.reply }); st.ctx = d.context; sugg(d.suggestions); }
-      catch (e) { st.msgs.push({ lines: [e.message] }); }
+      text = text.trim(); if (!text) return; st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
+      $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
+      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx }), new Promise(r => setTimeout(r, 600))]);
+        st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || []; }
+      catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
       save(); draw();
     };
-    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: [t('chat.greet'), t('chat.help')] }); save(); } draw();
-      sugg(['career', 'love', 'finance', 'dasha', 'remedy'].map(x => t('chat.q.' + x))); };
+    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: [t('chat.greet'), t('chat.help')], ts: Date.now() });
+        st.q = ['career', 'marriage', 'finance', 'child', 'dasha'].map(x => t('chat.q.' + x)); save(); } draw(); };
     f.onsubmit = e => { e.preventDefault(); ask(f.m.value); };
     document.getElementById('chk').onchange = e => { kid = +e.target.value; start(); };
     document.getElementById('chn').onclick = () => { try { localStorage.removeItem(key()); } catch (e) {} start(); };
