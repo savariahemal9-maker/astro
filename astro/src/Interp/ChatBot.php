@@ -63,8 +63,14 @@ final class ChatBot extends RuleEngine {
     }
 
     /** @param array $ctx previous turn's ['topic' => ..., 'period' => ..., 'offset' => ...] */
-    public function reply(array $k, string $msg, array $ctx, \DateTimeImmutable $now, string $who = ''): array {
+    public function reply(array $k, string $msg, array $ctx, \DateTimeImmutable $now, string $who = '', ?array $intent = null): array {
         $m = mb_strtolower(trim($msg)); $this->who = $who;
+        if ($intent) {                                // already understood by the AI helper (AiChat)
+            [$ask, $topic, $period] = [$intent['ask'] === 'general' ? null : $intent['ask'], $intent['topic'], $intent['period']];
+            if (!$topic && in_array($ask, ['why', 'upay', 'when'], true)) $topic = $ctx['topic'] ?? null;
+            if ($ask === 'no') return ['reply' => [$this->t('chat.ok_no')], 'context' => $ctx, 'quick' => $this->quick(null)];
+            return $this->answer($k, $ask, $topic, $period ?? 'monthly', (int) $intent['offset'], $ctx, $now, $m);
+        }
         $ask = $this->cb_match(self::ASK, $m);
         $topic = $this->cb_match(self::TOPICS, $m); $period = $this->cb_match(self::PERIODS, $m);
         if ($ask === 'no') return ['reply' => [$this->t('chat.ok_no')], 'context' => $ctx, 'quick' => $this->quick(null)];
@@ -78,7 +84,17 @@ final class ChatBot extends RuleEngine {
         // follow-up like "and next month?" keeps the previous topic
         if (!$topic && ($period || $offset) && !empty($ctx['topic'])) $topic = $ctx['topic'];
         if ($topic && !$period && !empty($ctx['period']) && $topic === ($ctx['topic'] ?? null)) $period = $ctx['period'];
-        $period ??= 'monthly';
+        return $this->answer($k, $ask, $topic, $period ?? 'monthly', $offset, $ctx, $now, $m);
+    }
+
+    /** Topics the chat can answer: keyword topics, built-in chart topics and the admin's active categories. */
+    public function topics(): array {
+        $t = array_keys(self::TOPICS);
+        foreach (Db::all('SELECT slug FROM prediction_categories WHERE active=1') as $r) $t[] = $r['slug'];
+        return array_values(array_unique($t));
+    }
+
+    private function answer(array $k, ?string $ask, ?string $topic, string $period, int $offset, array $ctx, \DateTimeImmutable $now, string $m): array {
         $at = $this->cb_shift($now, $period, $offset);
         $lines = match (true) {
             $topic === 'greet' => [$this->t('chat.greet', ['name' => '']), $this->t('chat.help')],
@@ -97,7 +113,7 @@ final class ChatBot extends RuleEngine {
                 'quick' => $this->quick($isCat ? $topic : null, $ask), 'suggestions' => $this->cb_suggest($topic)];
     }
 
-    private function isCat(string $t): bool { return isset(self::BUILTIN[$t]) || in_array($t, ['career', 'love', 'finance', 'stock', 'sports', 'health', 'education', 'travel'], true); }
+    private function isCat(string $t): bool { return !in_array($t, ['greet', 'thanks', 'dasha', 'remedy', 'pooja', 'dosha', 'chart'], true); }
     /** Buttons that fit the answer just given. */
     private function quick(?string $topic, ?string $ask = null): array {
         if (!$topic) return array_map(fn($x) => $this->t("chat.q.$x"), ['career', 'marriage', 'finance', 'child', 'dasha']);

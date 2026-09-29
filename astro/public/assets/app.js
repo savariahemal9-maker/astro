@@ -379,9 +379,9 @@
       $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>` : '');
       $l.querySelectorAll('.chat-q button').forEach(b => b.onclick = () => ask(b.textContent)); $l.scrollTop = $l.scrollHeight; };
     const ask = async text => {
-      text = text.trim(); if (!text) return; st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
+      text = text.trim(); if (!text) return; const history = st.msgs.slice(-6).map(m => ({ me: !!m.me, text: m.lines.join(' ').slice(0, 400) })); st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
       $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
-      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx }), new Promise(r => setTimeout(r, 600))]);
+      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx, history }), new Promise(r => setTimeout(r, 600))]);
         st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || []; }
       catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
       save(); draw();
