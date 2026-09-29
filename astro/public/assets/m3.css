@@ -129,7 +129,7 @@ body.rail-collapsed main{margin-left:0!important}
 
 /* ---------- buttons ---------- */
 button,.btn{font-family:var(--m-font)!important;font-weight:500!important;font-size:.9rem;border-radius:20px!important;min-height:40px;padding:.55rem 1.4rem;letter-spacing:.01em;box-shadow:none;text-decoration:none}
-button:not(.ghost):not(.tonal):not(.text):not(.icon-btn):not(.pw-eye):not(.coll-h):not(.pp-chip):not(.pp-person):not(.pp-kbtn):not(.pp-edit):not([role=tab]):not([data-s]):not([data-v]):not([data-l]):not([data-p]):not([data-t2]):not(.cp-open):not(.cp-del):not(.rf-sg):not(.qr),.btn{
+button:not(.ghost):not(.tonal):not(.text):not(.icon-btn):not(.pw-eye):not(.coll-h):not(.pp-chip):not(.pp-person):not(.pp-kbtn):not(.pp-edit):not([role=tab]):not([data-s]):not([data-v]):not([data-l]):not([data-p]):not([data-t2]):not(.cp-open):not(.cp-del):not(.rf-sg):not(.qr):not(.sg),.btn{
   background:var(--m-primary)!important;color:#fff!important;border:0!important;filter:none;transform:none}
 button:not(.icon-btn):hover,.btn:hover{box-shadow:var(--m-e1)!important;filter:none;transform:none}
 .btn.accent,button.accent{background:var(--m-tertiary-c)!important;color:var(--m-on-tertiary-c)!important}
