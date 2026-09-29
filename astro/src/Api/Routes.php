@@ -256,31 +256,48 @@ final class Routes {
                 'month' => $rp->month($k, $local), 'important' => $rp->important($k, $local),
                 default => throw new ApiException('validation', 'view must be life, day, week, month or important', 422) };
         });
-        // free rule-based astrology chat, answered only from this kundali's data
-        $r->add('POST', '/profiles/{id}/chat', function (Request $q, array $u, array $a) {
-            self::limit('chat', 40); [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+        // Chat language: the chat's own picker (en / hi / gu / auto). auto = the script of the message, else the site language.
+        $chatLang = function (Request $q, string $siteLang, string $msg): array {
+            $c = (string) $q->input('chat_lang', 'auto'); $c = in_array($c, ['en', 'hi', 'gu', 'auto'], true) ? $c : 'auto';
+            $eff = $c !== 'auto' ? $c : (preg_match('/\p{Gujarati}/u', $msg) ? 'gu' : (preg_match('/\p{Devanagari}/u', $msg) ? 'hi' : (preg_match('/^[\x00-\x7F\s]+$/', $msg) ? 'en' : $siteLang)));
+            return [$c, $eff];
+        };
+        // free rule-based astrology chat, answered only from this kundali's data (saved as a thread)
+        $r->add('POST', '/profiles/{id}/chat', function (Request $q, array $u, array $a) use ($chatLang) {
+            self::limit('chat', 40); [$p, , $k, $site] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
             $msg = mb_substr(trim((string) $q->input('message', '')), 0, 500); if ($msg === '') throw new ApiException('validation', 'Type a question', 422);
+            [$cl, $l] = $chatLang($q, $site, $msg);
             $ctx = (array) $q->input('context', []); $ctx = ['topic' => $ctx['topic'] ?? null, 'period' => $ctx['period'] ?? null, 'offer' => $ctx['offer'] ?? null];
-            $bot = new \App\Interp\ChatBot($l, (float) $p['lat'], (float) $p['lon']);
+            $tid = ChatStore::open((int) $u['id'], (int) $q->input('thread', 0) ?: null, (int) $p['id'], 'rules', $cl, $msg);
+            $hist = ChatStore::history($tid, 6); ChatStore::add($tid, true, [$msg]);
+            $bot = new \App\Interp\ChatBot($l, (float) $p['lat'], (float) $p['lon']); $res = null;
             if (\App\Interp\AiChat::enabled()) {     // AI understands and words the answer; the facts still come from ChatBot
-                $ai = new \App\Interp\AiChat($l); $hist = array_slice(array_filter((array) $q->input('history', []), 'is_array'), -6);
+                $ai = new \App\Interp\AiChat($l);
                 if ($intent = $ai->understand($msg, $hist, $ctx, $bot->topics())) {
                     $res = $bot->reply($k, $msg, $ctx, $local, (string) $p['label'], $intent);
-                    if ($words = $ai->phrase($msg, $hist, $res['reply'])) return ['reply' => $words, 'engine' => 'ai'] + $res;
-                    return $res + ['engine' => 'rules', 'why' => \App\Interp\AiChat::$lastError];
+                    $res = ($words = $ai->phrase($msg, $hist, $res['reply'])) ? ['reply' => $words, 'engine' => 'ai'] + $res : $res + ['engine' => 'rules', 'why' => \App\Interp\AiChat::$lastError];
                 }
-                return $bot->reply($k, $msg, $ctx, $local, (string) $p['label']) + ['engine' => 'rules', 'why' => \App\Interp\AiChat::$lastError];
             }
-            return $bot->reply($k, $msg, $ctx, $local, (string) $p['label']) + ['engine' => 'rules', 'why' => 'no_key'];
+            $res ??= $bot->reply($k, $msg, $ctx, $local, (string) $p['label']) + ['engine' => 'rules', 'why' => \App\Interp\AiChat::enabled() ? \App\Interp\AiChat::$lastError : 'no_key'];
+            ChatStore::add($tid, false, $res['reply'], $res['context'] ?? null);
+            return $res + ['thread' => $tid];
         });
-        // separate AI astrologer chat powered by Claude (the rule-based / Gemini chat above is unchanged)
-        $r->add('POST', '/profiles/{id}/claude-chat', function (Request $q, array $u, array $a) {
-            self::limit('claude', 15); [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+        // separate AI astrologer chat powered by Claude (saved as a thread; history comes from the saved thread)
+        $r->add('POST', '/profiles/{id}/claude-chat', function (Request $q, array $u, array $a) use ($chatLang) {
+            self::limit('claude', 15); [$p, , $k, $site] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
             $msg = mb_substr(trim((string) $q->input('message', '')), 0, 800); if ($msg === '') throw new ApiException('validation', 'Type a question', 422);
             if (!\App\Interp\ClaudeChat::enabled()) throw new ApiException('ai_unavailable', 'The AI astrologer is not set up yet.', 503);
-            $hist = array_values(array_filter((array) $q->input('history', []), 'is_array'));
-            return (new \App\Interp\ClaudeChat($l, (float) $p['lat'], (float) $p['lon']))->reply($k, $p, $msg, $hist, $local);
+            [$cl] = $chatLang($q, $site, $msg);
+            $tid = ChatStore::open((int) $u['id'], (int) $q->input('thread', 0) ?: null, (int) $p['id'], 'claude', $cl, $msg);
+            $hist = ChatStore::history($tid, 10); ChatStore::add($tid, true, [$msg]);
+            $res = (new \App\Interp\ClaudeChat($site, (float) $p['lat'], (float) $p['lon'], $cl))->reply($k, $p, $msg, $hist, $local);
+            if ($res['engine'] === 'claude') ChatStore::add($tid, false, $res['reply']);
+            return $res + ['thread' => $tid];
         });
+        // saved conversations
+        $r->add('GET', '/chats', fn(Request $q, array $u) => ChatStore::list((int) $u['id'], $q->input('mode') === 'claude' ? 'claude' : 'rules'));
+        $r->add('GET', '/chats/{tid}', fn(Request $q, array $u, array $a) => ChatStore::get((int) $u['id'], (int) $a['tid']));
+        $r->add('DELETE', '/chats/{tid}', function (Request $q, array $u, array $a) { ChatStore::delete((int) $u['id'], (int) $a['tid']); return ['deleted' => true]; });
         $r->add('GET', '/profiles/{id}/poojas', function (Request $q, array $u, array $a) {
             [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
             return (new \App\Interp\RemedyPlanner($l, (float) $p['lat'], (float) $p['lon']))->poojas($k, $local);

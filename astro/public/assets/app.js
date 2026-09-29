@@ -166,7 +166,7 @@
               <div><span class="ms">nightlight</span><b>${tm(p.moonrise)}</b><small>${esc(t('ui.moonrise'))}</small></div><div><span class="ms">bedtime</span><b>${tm(p.moonset)}</b><small>${esc(t('ui.moonset'))}</small></div></div></section>
             <section class="card"><div class="card-h"><span class="ms">schedule</span>${esc(t('ui.day_c'))} · ${tm(p.sunrise)} – ${tm(p.sunset)}</div>
               <div class="dayline">${seg1('rahu_kaal', 'r')}${seg1('yamaganda', 'y')}${seg1('gulika', 'g')}</div>
-              <div class="klist"><span class="kd r"></span>${esc(t('ui.rahu_kaal'))} <b>${kaal('rahu_kaal')}</b><span class="kd y"></span>${esc(t('ui.yamaganda'))} <b>${kaal('yamaganda')}</b><span class="kd g"></span>${esc(t('ui.gulika'))} <b>${kaal('gulika')}</b></div></section>
+              <div class="klist">${[['rahu_kaal', 'r'], ['yamaganda', 'y'], ['gulika', 'g']].map(([k, c]) => `<span class="ki"><span class="kd ${c}"></span>${esc(t('ui.' + k))} <b>${kaal(k)}</b></span>`).join('')}</div></section>
             <div class="angas">${anga('brightness_4', t('ui.tithi'), p.tithi, x => esc(tn('paksha', x.paksha) + ' ' + tn('tithis', x.name)))}${anga('stars', t('ui.nakshatra'), p.nakshatra, x => esc(tn('nakshatras', x.name)))}
               ${anga('join', t('ui.yoga'), p.yoga, x => esc(tn('yogas', x.name)))}${anga('hourglass', t('ui.karana'), p.karana, x => esc(tn('karanas', x.name)))}
               <article class="anga"><span class="ms">public</span><div><small>${esc(t('ui.sun_sign'))} / ${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', p.sun_sign))} / ${esc(tn('signs', p.moon_sign))}</b></div></article></div>`; }
@@ -357,44 +357,87 @@
     mark(); chips();
   }
 
-  // ---------- Chat: rule-based answers from the selected kundali ----------
+  // ---------- Chat (basic chat + Claude "AI Astrologer"): full page, saved conversations, own language picker ----------
   async function viewChat(mode = 'rules') {
-    const AI = mode === 'claude';
+    const AI = mode === 'claude', LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} return null; };
     loading(); let profs; try { profs = await api('GET', '/profiles'); } catch (e) { h(errBox(e)); return; }
     if (!profs.length) { h(`<p class="pp-empty">${esc(t('ui.no_kundali'))}</p><a class="btn" href="#/add">${esc(t('ui.new_kundali'))}</a>`); return; }
-    let kid = (() => { try { return +localStorage.getItem('chat_kid'); } catch (e) { return 0; } })();
-    if (!profs.find(p => p.id === kid)) kid = profs[0].id;
-    const key = () => (AI ? 'cchat_' : 'chat_') + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
-    let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-80), ctx: st.ctx, q: st.q })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
-    h(`<section class="chat"><header class="chat-top"><span class="chat-av"><span class="ms">auto_awesome</span></span>
-        <div class="chat-who"><b>${esc(t(AI ? 'chat.claude_title' : 'chat.title'))}</b><small><i class="dot"></i>${esc(t(AI ? 'chat.claude_online' : 'chat.online'))}</small></div>
-        <a class="chat-sw" href="#/${AI ? 'chat' : 'ai-chat'}"><span class="ms">${AI ? 'forum' : 'psychology'}</span><span>${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}</span></a>
-        <label class="chat-k"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
-        <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button></header>
-      <div class="chat-log" id="chl" aria-live="polite"></div>
-      <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
-      <p class="chat-note">${esc(t(AI ? 'chat.claude_disclaimer' : 'chat.disclaimer'))}</p></section>`);
-    const $l = document.getElementById('chl'), f = document.getElementById('chf');
+    let kid = +(LS('chat_kid') || 0); if (!profs.find(p => p.id === kid)) kid = profs[0].id;
+    let clang = LS('chat_lang') || 'auto', thread = +(LS('cthread_' + mode) || 0) || null, st = { msgs: [], ctx: {}, q: [] }, busy = false;
+    const LANGS = [['auto', t('chat.lang_auto')], ['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']];
+    h(`<section class="cp${AI ? ' ai' : ''}">
+      <aside class="cp-side" id="cps"><div class="cp-sh"><b>${esc(t('chat.saved'))}</b><button type="button" class="icon-btn cp-x" id="cpx" aria-label="${esc(t('ui.close'))}"><span class="ms">close</span></button></div>
+        <button type="button" class="btn cp-new" id="cpn"><span class="ms">add</span>${esc(t('ui.new_chat'))}</button><div class="cp-list" id="cpl"></div></aside>
+      <div class="cp-main">
+        <header class="cp-top">
+          <button type="button" class="icon-btn cp-menu" id="cpm" aria-label="${esc(t('chat.saved'))}"><span class="ms">history</span></button>
+          <span class="chat-av"><span class="ms">${AI ? 'psychology' : 'auto_awesome'}</span></span>
+          <div class="chat-who"><b>${esc(t(AI ? 'chat.claude_title' : 'chat.title'))}</b><small><i class="dot"></i>${esc(t(AI ? 'chat.claude_online' : 'chat.online'))}</small></div>
+          <a class="chat-sw" href="#/${AI ? 'chat' : 'ai-chat'}" title="${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}"><span class="ms">${AI ? 'forum' : 'psychology'}</span><span>${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}</span></a>
+        </header>
+        <div class="cp-bar">
+          <label class="cp-pick"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
+          <label class="cp-pick"><span class="ms">translate</span><select id="chlg" aria-label="${esc(t('chat.lang_label'))}">${LANGS.map(([v, n]) => `<option value="${v}"${v === clang ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+          <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button>
+        </div>
+        <div class="chat-log" id="chl" aria-live="polite"></div>
+        <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="800" enterkeyhint="send" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
+        <p class="chat-note">${esc(t(AI ? 'chat.claude_disclaimer' : 'chat.disclaimer'))}</p>
+      </div><div class="cp-shade" id="cpd"></div></section>`);
+    const $l = document.getElementById('chl'), f = document.getElementById('chf'), side = document.getElementById('cps');
     const tm = ts => new Date(ts || Date.now()).toLocaleTimeString(lang === 'en' ? 'en-IN' : lang + '-IN', { hour: 'numeric', minute: '2-digit' });
-    const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}"><div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}<time>${esc(tm(m.ts))}</time></div></div>`;
+    const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}"><div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}<time class="nofmt">${esc(tm(m.ts))}</time></div></div>`;
     const draw = () => {
       $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>` : '');
       $l.querySelectorAll('.chat-q button').forEach(b => b.onclick = () => ask(b.textContent)); $l.scrollTop = $l.scrollHeight; };
-    const ask = async text => {
-      text = text.trim(); if (!text) return; const history = st.msgs.slice(AI ? -10 : -6).map(m => ({ me: !!m.me, text: m.lines.join(AI ? '\n\n' : ' ').slice(0, AI ? 1500 : 400) })); st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
-      $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
-      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/${AI ? 'claude-chat' : 'chat'}?lang=${lang}`, AI ? { message: text, history } : { message: text, context: st.ctx, history }), new Promise(r => setTimeout(r, 600))]);
-        st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || [];
-        if (d.engine) console.info('[chat] answered by', d.engine, d.why || ''); }
-      catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
-      save(); draw();
+    const greet = () => { thread = null; LS('cthread_' + mode, null); st = { msgs: [{ lines: AI ? [t('chat.claude_greet')] : [t('chat.greet'), t('chat.help')], ts: Date.now() }], ctx: {},
+      q: ['career', 'marriage', 'finance', 'child', 'dasha'].map(x => t('chat.q.' + x)) }; draw(); };
+    // reveal a new answer line by line so it feels live
+    const reveal = async lines => {
+      const m = { lines: [], ts: Date.now() }; st.msgs.push(m);
+      for (const ln of lines) { m.lines.push(''); const words = ln.split(/(\s+)/), step = Math.max(1, Math.ceil(words.length / 40));
+        for (let i = 0; i < words.length; i += step) { m.lines[m.lines.length - 1] += words.slice(i, i + step).join(''); const last = $l.querySelector('.msg.bot:last-of-type > div');
+          if (last) last.innerHTML = m.lines.map(x => `<p>${esc(x)}</p>`).join('') + `<time class="nofmt">${esc(tm(m.ts))}</time>`; $l.scrollTop = $l.scrollHeight; await new Promise(r => setTimeout(r, 18)); } }
     };
-    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: AI ? [t('chat.claude_greet')] : [t('chat.greet'), t('chat.help')], ts: Date.now() });
-        st.q = ['career', 'marriage', 'finance', 'child', 'dasha'].map(x => t('chat.q.' + x)); save(); } draw(); };
+    const ask = async text => {
+      text = text.trim(); if (!text || busy) return; busy = true; f.m.value = '';
+      st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw();
+      $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
+      try {
+        const d = await apiRaw('POST', `/profiles/${kid}/${AI ? 'claude-chat' : 'chat'}?lang=${lang}`, { message: text, chat_lang: clang, thread, context: st.ctx });
+        if (d.thread) { thread = d.thread; LS('cthread_' + mode, thread); }
+        st.ctx = d.context || {}; $l.querySelector('.typing')?.remove();
+        $l.insertAdjacentHTML('beforeend', '<div class="msg bot"><div></div></div>'); await reveal(d.reply);
+        st.q = d.quick || []; if (d.engine) console.info('[chat] answered by', d.engine, d.why || ''); listChats();
+      } catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
+      busy = false; draw(); f.m.focus({ preventScroll: true });
+    };
+    const openThread = async id => {
+      try { const d = await apiRaw('GET', '/chats/' + id); thread = d.id; LS('cthread_' + mode, thread);
+        if (d.profile_id !== kid && profs.find(p => p.id === d.profile_id)) { kid = d.profile_id; document.getElementById('chk').value = kid; LS('chat_kid', kid); }
+        st = { msgs: d.msgs, ctx: d.ctx || {}, q: [] }; draw(); } catch (e) { greet(); }
+      side.classList.remove('open'); markActive();
+    };
+    const markActive = () => document.querySelectorAll('.cp-item').forEach(x => x.classList.toggle('on', +x.dataset.id === thread));
+    async function listChats() {
+      const box = document.getElementById('cpl'); if (!box) return;
+      let rows = []; try { rows = await apiRaw('GET', '/chats?mode=' + (AI ? 'claude' : 'rules')); } catch (e) {}
+      box.innerHTML = rows.length ? rows.map(r => `<div class="cp-item" data-id="${r.id}"><button type="button" class="cp-open"><b>${esc(r.title)}</b><small>${esc(r.label)} · ${esc(r.updated_at.slice(0, 10))}</small></button>
+        <button type="button" class="icon-btn cp-del" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div>`).join('') : `<p class="muted cp-empty">${esc(t('chat.no_saved'))}</p>`;
+      box.querySelectorAll('.cp-item').forEach(it => { const id = +it.dataset.id;
+        it.querySelector('.cp-open').onclick = () => openThread(id);
+        it.querySelector('.cp-del').onclick = async () => { if (!confirm(t('chat.delete_q'))) return; try { await apiRaw('DELETE', '/chats/' + id); } catch (e) {} if (id === thread) greet(); listChats(); }; });
+      markActive();
+    }
     f.onsubmit = e => { e.preventDefault(); ask(f.m.value); };
-    document.getElementById('chk').onchange = e => { kid = +e.target.value; start(); };
-    document.getElementById('chn').onclick = () => { try { localStorage.removeItem(key()); } catch (e) {} start(); };
-    start(); f.m.focus();
+    document.getElementById('chk').onchange = e => { kid = +e.target.value; LS('chat_kid', kid); greet(); markActive(); };
+    document.getElementById('chlg').onchange = e => { clang = e.target.value; LS('chat_lang', clang); };
+    document.getElementById('chn').onclick = document.getElementById('cpn').onclick = () => { greet(); markActive(); side.classList.remove('open'); f.m.focus(); };
+    document.getElementById('cpm').onclick = () => side.classList.add('open');
+    document.getElementById('cpx').onclick = document.getElementById('cpd').onclick = () => side.classList.remove('open');
+    LS('chat_kid', kid);
+    if (thread) await openThread(thread); else greet();
+    listChats(); if (matchMedia('(min-width: 861px)').matches) f.m.focus({ preventScroll: true });
   }
 
   // ---------- Chart list + add ----------

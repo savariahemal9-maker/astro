@@ -23,7 +23,7 @@ final class ChatBot extends RuleEngine {
         'travel' => 'videsh|pravas|bahar jav|travel|abroad|foreign|visa|journey|यात्रा|विदेश|પ્રવાસ|વિદેશ|મુસાફરી',
         'child' => 'baby|child|children|kid|santan|santaan|bachcha|bacha|balak|dikro|dikri|pregnan|garbh|संतान|बच्चा|गर्भ|સંતાન|બાળક|દીકરો|દીકરી|ગર્ભ',
         'marriage' => 'marriage|marry|wedding|lagan|lagn|shadi|shaadi|vivah|sagai|engagement|शादी|विवाह|लग्न|सगाई|લગ્ન|સગાઈ|વિવાહ',
-        'property' => 'property|house|home|flat|land|plot|makan|ghar|jamin|zameen|vehicle|car|gadi|मकान|घर|ज़मीन|वाहन|મકાન|ઘર|જમીન|વાહન|ગાડી',
+        'property' => 'property|house|home|flat|land|plot|makan|ghar|jamin|zameen|vehicle|car\b|gadi|मकान|घर|ज़मीन|वाहन|મકાન|ઘર|જમીન|વાહન|ગાડી',
         'business' => 'business|startup|shop|dukan|dhandho|dhando|vepar|vyapar|partnership|व्यापार|दुकान|ધંધ|વેપાર|દુકાન',
         'legal' => 'court|case|legal|kes|kesh|dispute|police|कोर्ट|मुकदमा|કોર્ટ|કેસ',
         'family' => 'family|parent|mother|father|mummy|papa|mata|pita|parivar|ghar ma|परिवार|माता|पिता|પરિવાર|માતા|પિતા',
