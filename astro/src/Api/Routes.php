@@ -25,6 +25,17 @@ final class Routes {
             return AuthService::login($in['email'], $in['password'], (string) $q->input('client', 'web'));
         }, false);
 
+        $r->add('POST', '/auth/forgot', function (Request $q) {
+            self::limit('forgot', 5); $in = $q->require(['email']);
+            // never build the link from the request's Host header (reset-link poisoning)
+            if (($base = app_config()['app']['base_url'] ?? '') === '') throw new ApiException('not_configured', 'Password reset is not set up on this site yet.', 503);
+            AuthService::forgotPassword((string) $in['email'], $base); return ['sent' => true];
+        }, false);
+        $r->add('POST', '/auth/reset', function (Request $q) {
+            self::limit('reset', 10); $in = $q->require(['token', 'password']);
+            AuthService::resetPassword((string) $in['token'], (string) $in['password']); return ['reset' => true];
+        }, false);
+
         $r->add('GET', '/geo/search', function (Request $q) { self::limit('geo', 30); return GeoService::search((string) $q->input('q', '')); }, false);
         $r->add('GET', '/geo/timezone', function (Request $q) {
             $in = $q->require(['lat', 'lon']);
@@ -45,10 +56,10 @@ final class Routes {
         // ---- authenticated ----
         $r->add('POST', '/auth/logout', function (Request $q) { AuthService::logout($q->token); return ['signed_out' => true]; });
         $r->add('GET', '/me', fn(Request $q, array $u) => AuthService::publicUser($u));
-        $r->add('PATCH', '/me', function (Request $q, array $u) {
-            if ($l = $q->input('lang')) Db::exec('UPDATE users SET lang=? WHERE id=?', [in_array($l, ['en','hi','gu'], true) ? $l : 'en', $u['id']]);
-            if ($n = $q->input('name')) Db::exec('UPDATE users SET name=? WHERE id=?', [mb_substr(trim($n), 0, 120), $u['id']]);
-            return AuthService::publicUser(AuthService::find((int) $u['id']));
+        $r->add('PATCH', '/me', fn(Request $q, array $u) => AuthService::updateProfile($u, $q->body));
+        $r->add('POST', '/me/password', function (Request $q, array $u) {
+            self::limit('pwchange', 10); $in = $q->require(['current_password', 'new_password']);
+            AuthService::changePassword($u, (string) $in['current_password'], (string) $in['new_password'], (string) $q->token); return ['changed' => true];
         });
 
         $r->add('GET', '/profiles', fn(Request $q, array $u) => array_map([ProfileService::class, 'present'],

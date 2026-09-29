@@ -284,3 +284,6 @@ label.fl .fl-label{max-width:calc(100% - 3.2rem)}
 .pn ul{margin:0;padding-left:1.1rem} .pn li{margin:.3rem 0;font-size:.9rem}
 .dcard .sub{margin-top:.6rem} .dp{margin:.2rem 0 .6rem}
 .pts li small.lkx{color:var(--p-d);margin-top:.2rem;font-style:italic} .guide.rem{background:var(--p-c)} .guide.rem .ms{color:var(--p)} .it-t{display:block;margin-bottom:.3rem;color:var(--p-d)}
+label.fl.has-eye input{padding-right:3rem} label.fl.has-eye .fl-label{max-width:calc(100% - 6rem)}
+.pw-eye{position:absolute;right:.35rem;top:7px;width:40px;height:40px;padding:0;min-height:0;border:0;border-radius:50%;background:transparent;color:var(--mut);display:grid;place-items:center;box-shadow:none}
+.pw-eye:hover,.pw-eye:focus-visible{background:var(--p-c);color:var(--p)}
