@@ -81,7 +81,7 @@ final class ClaudeChat extends RuleEngine {
         try {
             $client = self::client(); $facts = [];
             for ($i = 0; $i < 4; $i++) {
-                $r = $client->messages->create(model: self::model(), maxTokens: 2048, system: $system, tools: $tools, messages: $messages);
+                $r = $client->messages->create(model: self::model(), maxTokens: 2048, temperature: 0.4, system: $system, tools: $tools, messages: $messages);
                 if ($r->stopReason !== 'tool_use') break;
                 $results = [];
                 foreach ($r->content as $b) if ($b->type === 'tool_use') {
@@ -96,6 +96,8 @@ final class ClaudeChat extends RuleEngine {
             }
             if ($r->stopReason === 'refusal') return ['reply' => [$this->ui('chat.unknown')], 'engine' => 'error', 'why' => 'refusal'];
             $text = ''; foreach ($r->content as $b) if ($b->type === 'text') $text .= $b->text;
+            // safety net: strip any markdown the model still used
+            $text = preg_replace(['/\*\*|__|`/u', '/^\s{0,3}#{1,6}\s*/mu', '/^\s*[-*]\s+/mu'], ['', '', '• '], $text);
             $paras = array_values(array_filter(array_map('trim', preg_split('/\n{2,}/u', trim($text))), 'strlen'));
             if (!$paras) return ['reply' => [$this->ui('chat.unknown')], 'engine' => 'error', 'why' => 'empty reply (' . $r->stopReason . ')'];
             return ['reply' => array_slice($paras, 0, 10), 'engine' => 'claude'];
@@ -112,9 +114,22 @@ final class ClaudeChat extends RuleEngine {
             . "- For predictions, timing, remedies, dasha, doshas or poojas, call kundali_reading first and base the answer on what it returns.\n"
             . "- If the facts don't settle the question (for example an exact number of children, or a guaranteed yes/no), say honestly that the chart doesn't show that, then share what it does show.\n"
             . "- Talk like a caring astrologer: answer the actual question first, briefly explain the planetary reason, and give at most 2-3 remedies when useful. Keep it to about 3-6 short sentences.\n"
-            . "- No markdown headings or tables. Separate paragraphs with a blank line.\n"
-            . "- Reply in the language and script the client writes in; romanized Gujarati or Hindi (e.g. 'kyare saro samay che') gets a reply in the same romanized style. If unclear, use " . self::LANGS[$this->ui] ?? 'English' . ".\n"
+            . "- Plain text only: no markdown at all (no **, no #, no tables). Separate paragraphs with a blank line; use '• ' for a short list.\n"
+            . $this->languageRule()
             . "- Health, legal or money decisions: add a gentle reminder to also consult a professional. Never predict death or frighten the client.";
+    }
+
+    /** The site language decides the reply language; facts are English, so give the model the site's own terms. */
+    private function languageRule(): string {
+        if ($this->ui === 'en') return "- Reply in simple English (Hindi/Gujarati terms like dasha, upay are fine).\n";
+        $L = self::LANGS[$this->ui]; $g = [];
+        foreach (['planets', 'signs'] as $grp) foreach (\App\I18n\Lang::all('en')['astro'][$grp] as $k => $v) $g[] = "$v = " . \App\I18n\Lang::t($this->ui, "astro.$grp.$k");
+        $terms = $this->ui === 'gu'
+            ? 'kundali = કુંડળી, ascendant/lagna = લગ્ન, house = ભાવ/ઘર, Moon sign = ચંદ્ર રાશિ, nakshatra = નક્ષત્ર, mahadasha = મહાદશા, antardasha = અંતરદશા, Mangal dosha = મંગળ દોષ, Kaal sarp = કાલસર્પ, Sade Sati = સાડાસાતી, remedy = ઉપાય, Lal Kitab = લાલ કિતાબ, Vedic = વૈદિક, benefic = શુભ, malefic = અશુભ, exalted = ઉચ્ચ, debilitated = નીચ, retrograde = વક્રી, career = કારકિર્દી, astrology = જ્યોતિષ'
+            : 'kundali = कुंडली, ascendant/lagna = लग्न, house = भाव/घर, Moon sign = चंद्र राशि, nakshatra = नक्षत्र, mahadasha = महादशा, antardasha = अंतरदशा, Mangal dosha = मांगलिक दोष, Kaal sarp = कालसर्प, Sade Sati = साढ़ेसाती, remedy = उपाय, Lal Kitab = लाल किताब, Vedic = वैदिक, benefic = शुभ, malefic = अशुभ, exalted = उच्च, debilitated = नीच, retrograde = वक्री, career = करियर, astrology = ज्योतिष';
+        return "- Always reply in natural, simple $L written in $L script, even if the client types in English letters (e.g. 'kyare saro samay che'). "
+            . "Do not mix in English words: translate every term, and write dates with month names in $L. Only people's and place names may stay as they are.\n"
+            . "- Use these $L terms: " . implode(', ', $g) . ", $terms.\n";
     }
 
     /** Compact English fact sheet of the chart, current dasha and Lal Kitab placements. */
