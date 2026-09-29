@@ -48,7 +48,7 @@
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
     const links = [['panchang', 'ui.panchang', 'calendar_month']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
+      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html; $bnav.innerHTML = html;
@@ -187,8 +187,8 @@
 
   // ---------- Auth ----------
   function viewAuth(mode) {
-    const reg = mode === 'register';
-    h(`<h1>${esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</h1>
+    const reg = mode === 'register', adm = mode === 'admin';
+    h(`<h1>${adm ? `<span class="ms">admin_panel_settings</span> ${esc(t('ui.admin_login'))}` : esc(t(reg ? 'ui.register' : 'ui.sign_in'))}</h1>
       <form class="stack" id="af">
         ${reg ? `<label>${esc(t('ui.name'))}<input name="name" required autocomplete="name"></label>` : ''}
         <label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
@@ -205,7 +205,8 @@
         if (reg) body.name = f.name.value;
         const d = await api('POST', reg ? '/auth/register' : '/auth/login', body);
         setToken(d.token); if (d.user.lang !== lang) await loadLang(d.user.lang);
-        location.hash = '#/dashboard';
+        try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e2) {}
+        if (adm) { if (location.hash === '#/admin') route(); else location.hash = '#/admin'; } else location.hash = '#/dashboard';
       } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; }
     };
   }
@@ -264,6 +265,70 @@
       catch (e2) { err.innerHTML = errBox(e2); }
       b.disabled = false;
     };
+  }
+
+  // ---------- Personalized category predictions ----------
+  const PERIODS = ['daily', 'weekly', 'monthly', 'yearly', 'lifetime'];
+  const fmtD = (d, o) => new Date(d + 'T12:00:00').toLocaleDateString(lang === 'en' ? 'en-IN' : lang + '-IN', o);
+  const rangeText = (r) => r.date ? fmtD(r.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : r.month ? fmtD(r.month + '-01', { month: 'long', year: 'numeric' }) : r.year ? String(r.year)
+    : r.start ? `${fmtD(r.start, { day: 'numeric', month: 'short' })} – ${fmtD(r.end, { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
+  async function viewPredict() {
+    loading(); let profs, cats;
+    try { [profs, cats] = await Promise.all([api('GET', '/profiles'), api('GET', '/categories')]); } catch (e) { h(errBox(e)); return; }
+    const st = (() => { try { return JSON.parse(localStorage.getItem('pp') || '{}'); } catch (e) { return {}; } })();
+    const save = () => { try { localStorage.setItem('pp', JSON.stringify(st)); } catch (e) {} };
+    if (!profs.find(p => p.id === st.kid)) st.kid = profs[0]?.id;
+    if (!PERIODS.includes(st.per)) st.per = 'daily';
+    st.date = st.date || today();
+    let mine = cats.filter(c => c.selected), editing = !mine.length;
+    const head = `<section class="hero-band"><div><p class="eyebrow">${esc(t('ui.app_name'))}</p><h1>${esc(t('ui.personal_predictions'))}</h1></div><span class="ms hero-ic">auto_awesome</span></section>`;
+    if (!profs.length) { h(head + `<section class="card"><p>${esc(t('ui.no_kundali'))}</p><a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section>`); return; }
+    h(head + `<section class="card pp-bar"><div class="row">
+        <label>${esc(t('ui.select_kundali'))}<select id="ppk">${profs.map(p => `<option value="${p.id}"${p.id === st.kid ? ' selected' : ''}>${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select></label>
+        <label>${esc(t('ui.date'))}<input type="date" id="ppd" name="date" value="${esc(st.date)}"></label></div>
+        <div class="card-h"><span class="ms">category</span>${esc(t('ui.my_categories'))}<button class="ghost" id="ppe" type="button"><span class="ms">tune</span>${esc(t('ui.manage_categories'))}</button></div>
+        <div id="ppc"></div></section><div id="ppt"></div>`);
+    const $c = document.getElementById('ppc'), $t = document.getElementById('ppt');
+    const chips = () => {
+      if (editing) {
+        $c.innerHTML = `<div class="chips">${cats.map(c => `<label class="chip-btn pick${c.selected ? ' on' : ''}"><input type="checkbox" value="${c.id}"${c.selected ? ' checked' : ''} hidden><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</label>`).join('')}</div>
+          <div class="row"><button id="pps">${esc(t('ui.save'))}</button>${mine.length ? `<button class="ghost" id="ppx" type="button">${esc(t('ui.cancel'))}</button>` : ''}</div>`;
+        $c.querySelectorAll('.pick input').forEach(i => i.onchange = () => i.parentElement.classList.toggle('on', i.checked));
+        document.getElementById('ppx')?.addEventListener('click', () => { editing = false; chips(); });
+        document.getElementById('pps').onclick = async () => {
+          const ids = [...$c.querySelectorAll('.pick input:checked')].map(i => +i.value);
+          try { const r = await api('PUT', '/me/categories', { ids }); cats.forEach(c => c.selected = r.ids.includes(c.id)); mine = cats.filter(c => c.selected);
+            toast(t('ui.saved')); editing = !mine.length; if (!mine.find(c => c.id === st.cat)) st.cat = mine[0]?.id; save(); chips(); } catch (e) { toast(e.message, 'error'); } };
+      } else {
+        if (!mine.find(c => c.id === st.cat)) st.cat = mine[0]?.id;
+        $c.innerHTML = `<div class="chips">${mine.map(c => `<button type="button" class="chip-btn${c.id === st.cat ? ' on' : ''}" data-c="${c.id}"><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</button>`).join('')}</div>`;
+        $c.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { st.cat = +b.dataset.c; save(); chips(); });
+      }
+      show();
+    };
+    document.getElementById('ppe').onclick = () => { editing = !editing; chips(); };
+    document.getElementById('ppk').onchange = e => { st.kid = +e.target.value; save(); show(); };
+    document.getElementById('ppd').onchange = e => { st.date = e.target.value || today(); save(); show(); };
+    const card = d => `<section class="card pp-res ${d.level}"><div class="pp-top"><div><h2><span class="ms">${esc(d.category.icon)}</span> ${esc(d.category.name)}</h2>
+        <p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p><span class="chip ${d.level === 'favourable' ? 'ok' : d.level === 'challenging' ? 'warn' : ''}">${esc(d.level_text)}</span></div>
+        <div class="pp-score">${dial(d.score, d.score_label)}</div></div>
+      <p class="lead">${esc(d.explanation)}</p>${interpTag()}
+      <div class="two"><div><h3><span class="ms">thumb_up</span> ${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
+        <div><h3><span class="ms">warning</span> ${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.challenging.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>
+      ${d.timeline && d.timeline.length ? `<h3><span class="ms">timeline</span> ${esc(t('ui.best_periods'))}</h3><table>${d.timeline.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.start)} → ${esc(x.end)}</td><td><span class="chip ${x.favourable ? 'ok' : 'warn'}">${esc(t(x.favourable ? 'ui.q_good' : 'ui.sec_caution'))}</span></td></tr>`).join('')}</table>` : ''}
+      <p class="muted pp-disc"><span class="ms">info</span> ${esc(d.disclaimer)}</p></section>`;
+    let seq = 0;
+    const show = () => {
+      if (!st.cat) { $t.innerHTML = `<p class="muted">${esc(t('ui.no_categories'))}</p>`; return; }
+      localTabs($t, PERIODS.map(p => [p, t('ui.p_' + p), { daily: 'today', weekly: 'date_range', monthly: 'calendar_month', yearly: 'event_repeat', lifetime: 'all_inclusive' }[p], () => {
+        const my = ++seq; st.per = p; save();
+        api('GET', `/profiles/${st.kid}/category-prediction?category=${st.cat}&period=${p}&date=${st.date}&lang=${lang}`)
+          .then(d => { if (my === seq) $t.querySelector('.lbody').innerHTML = card(d); }).catch(e => { if (my === seq) $t.querySelector('.lbody').innerHTML = errBox(e); });
+        return skel();
+      }]), PERIODS.indexOf(st.per));
+    };
+    chips();
   }
 
   // ---------- Chart list + add ----------
@@ -782,13 +847,40 @@
   }
 
   // ---------- Admin: remedy rules ----------
+  const adminTabs = cur => `<div class="ltabs admin-tabs">${[['categories', t('ui.categories'), 'category'], ['remedies', t('ui.remedy_rules'), 'spa']].map(([k, l, ic]) =>
+    `<a class="${cur === k ? 'on' : ''}" href="#/admin/${k}"><span class="ms">${ic}</span>${esc(l)}</a>`).join('')}</div>`;
+  async function viewAdminCats(edit = null) {
+    loading();
+    try {
+      const rows = await api('GET', '/admin/categories'), e = edit || {};
+      h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.categories'))}</h1></div><span class="ms hero-ic">category</span></section>${adminTabs('categories')}
+        <section class="card"><form id="cf2" class="stack">
+          <div class="row"><label>Name (English)<input name="name_en" required maxlength="80" value="${esc(e.name_en || '')}"></label><label>Slug<input name="slug" required maxlength="40" value="${esc(e.slug || '')}"></label></div>
+          <div class="row"><label>हिन्दी<input name="name_hi" maxlength="80" value="${esc(e.name_hi || '')}"></label><label>ગુજરાતી<input name="name_gu" maxlength="80" value="${esc(e.name_gu || '')}"></label></div>
+          <div class="row"><label>Planets (comma separated: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)<input name="planets" required value="${esc(e.planets || '')}"></label>
+            <label>Houses from lagna (e.g. 10,6,2)<input name="houses" required value="${esc(e.houses || '')}"></label></div>
+          <div class="row"><label>Icon (Material Symbols name)<input name="icon" value="${esc(e.icon || 'star')}"></label><label>Sort order<input name="sort" type="number" value="${esc(e.sort ?? 0)}"></label></div>
+          <label class="check"><input type="checkbox" name="caution"${+e.caution ? ' checked' : ''}> Show "not financial / betting advice" warning (stock market, sports…)</label>
+          <label class="check"><input type="checkbox" name="active"${e.id === undefined || +e.active ? ' checked' : ''}> Active (visible to users)</label>
+          <div class="row"><button>${e.id ? 'Update' : 'Add category'}</button>${e.id ? '<button type="button" class="ghost" id="cc">Cancel</button>' : ''}</div></form></section>
+        <section class="card"><div class="scroll"><table><tr><th></th><th>Name</th><th>Planets</th><th>Houses</th><th>Warning</th><th>Active</th><th></th></tr>
+          ${rows.map(r => `<tr><td><span class="ms">${esc(r.icon)}</span></td><td>${esc(r.name_en)}<br><small class="muted">${esc([r.name_hi, r.name_gu].filter(Boolean).join(' · '))}</small></td><td>${esc(r.planets)}</td><td>${esc(r.houses)}</td>
+            <td>${+r.caution ? '✓' : ''}</td><td>${+r.active ? '✓' : '—'}</td><td><button class="icon-btn" data-e="${r.id}" aria-label="Edit"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`);
+      const f = document.getElementById('cf2');
+      f.onsubmit = async ev => { ev.preventDefault(); const b = Object.fromEntries(new FormData(f)); b.caution = f.caution.checked; b.active = f.active.checked;
+        try { await api(e.id ? 'PUT' : 'POST', '/admin/categories' + (e.id ? '/' + e.id : ''), b); toast(t('ui.saved')); viewAdminCats(); } catch (er) { toast(er.message, 'error'); } };
+      document.getElementById('cc')?.addEventListener('click', () => viewAdminCats());
+      $app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => viewAdminCats(rows.find(r => r.id == b.dataset.e)));
+      $app.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { if (await confirmDialog('Delete this category? Users who saved it will lose it.')) { await api('DELETE', '/admin/categories/' + b.dataset.d); viewAdminCats(); } });
+    } catch (e) { h(errBox(e)); }
+  }
   async function viewAdmin(edit = null) {
     loading();
     try {
       const rows = await api('GET', '/admin/remedies'), e = edit || {};
       const PL = ['', 'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'], DS = ['', 'mangal', 'kaal_sarp', 'sade_sati', 'dhaiya', 'grahan', 'guru_chandal', 'kemadruma', 'pitra'];
       const sel = (n, opts, v) => `<select name="${n}">${opts.map(o => `<option value="${o}" ${String(v ?? '') === String(o) ? 'selected' : ''}>${o || '—'}</option>`).join('')}</select>`;
-      h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.remedy_rules'))}</h1></div></section>
+      h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.remedy_rules'))}</h1></div></section>${adminTabs('remedies')}
         <section class="card"><form id="rf" class="stack"><div class="row"><label>Planet${sel('planet', PL, e.planet)}</label><label>House${sel('house', ['', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], e.house)}</label></div>
           <div class="row"><label>Dosha${sel('dosha', DS, e.dosha)}</label><label>Condition${sel('cond', ['any', 'weak', 'strong', 'malefic', 'benefic'], e.cond || 'any')}</label></div>
           <div class="row"><label>Priority<input name="priority" type="number" value="${e.priority ?? 50}"></label><label>Status${sel('status', ['draft', 'approved'], e.status || 'draft')}</label></div>
@@ -838,7 +930,7 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile'].includes(page) && !token) { location.hash = '#/login'; return; }
+    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict'].includes(page) && !token) { location.hash = '#/login'; return; }
     if (page === 'login' || page === 'register') return viewAuth(page);
     if (page === 'forgot') return viewForgot();
     if (page === 'reset' && arg) return viewReset(arg);
@@ -846,7 +938,13 @@
     if (page === 'edit' && arg) return viewEdit(parseInt(arg, 10));
     if (page === 'charts') { location.hash = '#/dashboard'; return; }
     if (page === 'add') return viewAdd();
-    if (page === 'admin') return viewAdmin();
+    if (page === 'predict') return viewPredict();
+    if (page === 'admin') {
+      if (!token) return viewAuth('admin');
+      if (!isAdmin) { try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e) {} renderNav(); }
+      if (!isAdmin) { h(`<h1>${esc(t('ui.admin'))}</h1><section class="card"><p>${esc(t('ui.not_admin'))}</p><a class="btn" href="#/logout">${esc(t('ui.sign_out'))}</a></section>`); return; }
+      return arg === 'remedies' ? viewAdmin() : viewAdminCats();
+    }
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
     if (page === 'chart' && arg) return viewChart(parseInt(arg, 10));
     if (page === 'print' && arg) return viewPrint(parseInt(arg, 10));
