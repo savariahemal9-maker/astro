@@ -175,36 +175,62 @@
   // ---------- Panchang ----------
   async function viewPanchang(tab = 'panchang', date = today()) {
     let place = JSON.parse(localStorage.getItem('place') || 'null') || { name: 'Ahmedabad, Gujarat, India', lat: 23.0225, lon: 72.5714, tzid: 'Asia/Kolkata' };
-    h(`${ph('calendar_month', t('ui.panchang'), place.name)}
-        <form class="pc-bar" id="pf"><label>${esc(t('ui.date'))}<input type="date" name="date" value="${date}" required></label>
-        <label class="grow">${esc(t('ui.location'))}<input name="place_q" value="${esc(place.name)}" autocomplete="off"></label><div class="suggest"></div></form>
-      <div class="tabs" role="tablist">${[['panchang', 'calendar_month'], ['choghadiya', 'schedule'], ['panchang_chart', 'grid_view']].map(([x, ic]) =>
-        `<button data-t2="${x}" class="${x === tab ? 'on' : ''}"><span class="ms">${ic}</span>${esc(t('ui.' + x))}</button>`).join('')}</div><div id="pout"></div>`);
+    const TABS = [['panchang', 'wb_sunny'], ['choghadiya', 'schedule'], ['panchang_chart', 'grid_view']];
+    h(`${ph('calendar_month', t('ui.panchang'), place.name, '', t('pc.eyebrow'))}
+      <section class="pn-bar"><form id="pf" class="pn-when"><button type="button" class="icon-btn pn-step" data-step="-1" aria-label="${esc(t('pc.prev'))}"><span class="ms">chevron_left</span></button>
+          <label class="pn-date"><span class="ms">event</span><input type="date" name="date" value="${date}" required aria-label="${esc(t('ui.date'))}"></label>
+          <button type="button" class="icon-btn pn-step" data-step="1" aria-label="${esc(t('pc.next'))}"><span class="ms">chevron_right</span></button>
+          <button type="button" class="btn tonal pn-today" id="ptoday">${esc(t('pc.today'))}</button>
+          <label class="pn-place"><span class="ms">location_on</span><input name="place_q" value="${esc(place.name)}" autocomplete="off" aria-label="${esc(t('ui.location'))}"></label><div class="suggest"></div></form>
+        <div class="pn-tabs" role="tablist">${TABS.map(([x, ic]) => `<button type="button" role="tab" data-t2="${x}" class="${x === tab ? 'on' : ''}"><span class="ms">${ic}</span>${esc(t('ui.' + x))}</button>`).join('')}</div></section>
+      <div id="pout"></div>`);
     const f = document.getElementById('pf');
-    tabIndicator($app.querySelector('.tabs'));
     placePicker(f, p => { if (p.tzid) { place = p; localStorage.setItem('place', JSON.stringify(p)); show(); } });
-    $app.querySelectorAll('[data-t2]').forEach(b => b.onclick = () => { $app.querySelectorAll('[data-t2]').forEach(x => x.classList.toggle('on', x === b)); tabIndicator(b.parentElement); tab = b.dataset.t2; show(); });
+    $app.querySelectorAll('[data-t2]').forEach(b => b.onclick = () => { $app.querySelectorAll('[data-t2]').forEach(x => x.classList.toggle('on', x === b)); tab = b.dataset.t2; show(); });
+    $app.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { const d = new Date(f.date.value + 'T12:00:00'); d.setDate(d.getDate() + +b.dataset.step); f.date.value = d.toLocaleDateString('en-CA'); show(); });
+    document.getElementById('ptoday').onclick = () => { f.date.value = today(); show(); };
     f.date.onchange = () => show(); f.onsubmit = e => { e.preventDefault(); show(); };
     async function show() {
       const out = document.getElementById('pout'); out.innerHTML = skel();
       try {
         const p = await api('GET', `/panchang?date=${f.date.value}&lat=${place.lat}&lon=${place.lon}&tzid=${encodeURIComponent(place.tzid)}`);
-        const seg = (list, fn) => list.map(x => `<div class="pv"><b>${fn(x)}</b><small>${esc(t('ui.until'))} ${fmtLoc(x.ends)}</small></div>`).join('');
         const tm = s => s ? esc(s.slice(11)) : '—', kaal = k => `${tm(p[k].start)} – ${tm(p[k].end)}`;
-        const mins = x => x ? (+x.slice(11, 13)) * 60 + (+x.slice(14, 16)) : 0;
-        if (tab === 'panchang') { const sr = mins(p.sunrise), ss = mins(p.sunset), span = Math.max(1, ss - sr), pos = x => Math.max(0, Math.min(100, (mins(x) - sr) / span * 100));
-          const seg1 = (k, cls) => `<i class="${cls}" style="left:${pos(p[k].start)}%;width:${pos(p[k].end) - pos(p[k].start)}%" title="${esc(t('ui.' + k))}"></i>`;
-          const anga = (ic, lbl, list, fn) => `<article class="anga"><span class="ms">${ic}</span><div><small>${esc(lbl)}</small>${list.map(x => `<b>${fn(x)}</b><em>${esc(t('ui.until'))} ${fmtLoc(x.ends)}</em>`).join('')}</div></article>`;
-          out.innerHTML = `<section class="pday"><div class="pd-main"><small>${esc(tn('weekdays', p.vara.name))}</small><h2>${esc(tn('paksha', p.tithi[0].paksha) + ' ' + tn('tithis', p.tithi[0].name))}</h2>
-              <p>${esc(tn('nakshatras', p.nakshatra[0].name))} · ${esc(tn('yogas', p.yoga[0].name))}</p></div>
-            <div class="pd-sun"><div><span class="ms">wb_twilight</span><b>${tm(p.sunrise)}</b><small>${esc(t('ui.sunrise'))}</small></div><div><span class="ms">wb_sunny</span><b>${tm(p.sunset)}</b><small>${esc(t('ui.sunset'))}</small></div>
-              <div><span class="ms">nightlight</span><b>${tm(p.moonrise)}</b><small>${esc(t('ui.moonrise'))}</small></div><div><span class="ms">bedtime</span><b>${tm(p.moonset)}</b><small>${esc(t('ui.moonset'))}</small></div></div></section>
-            <section class="card"><div class="card-h"><span class="ms">schedule</span>${esc(t('ui.day_c'))} · ${tm(p.sunrise)} – ${tm(p.sunset)}</div>
-              <div class="dayline">${seg1('rahu_kaal', 'r')}${seg1('yamaganda', 'y')}${seg1('gulika', 'g')}</div>
-              <div class="klist">${[['rahu_kaal', 'r'], ['yamaganda', 'y'], ['gulika', 'g']].map(([k, c]) => `<span class="ki"><span class="kd ${c}"></span>${esc(t('ui.' + k))} <b>${kaal(k)}</b></span>`).join('')}</div></section>
-            <div class="angas">${anga('brightness_4', t('ui.tithi'), p.tithi, x => esc(tn('paksha', x.paksha) + ' ' + tn('tithis', x.name)))}${anga('stars', t('ui.nakshatra'), p.nakshatra, x => esc(tn('nakshatras', x.name)))}
-              ${anga('join', t('ui.yoga'), p.yoga, x => esc(tn('yogas', x.name)))}${anga('hourglass', t('ui.karana'), p.karana, x => esc(tn('karanas', x.name)))}
-              <article class="anga"><span class="ms">public</span><div><small>${esc(t('ui.sun_sign'))} / ${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', p.sun_sign))} / ${esc(tn('signs', p.moon_sign))}</b></div></article></div>`; }
+        const mins = x => x ? (+x.slice(11, 13)) * 60 + (+x.slice(14, 16)) : 0, hm = m => { m = ((Math.round(m) % 1440) + 1440) % 1440; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+        if (tab === 'panchang') {
+          const sr = mins(p.sunrise), ss = mins(p.sunset), day = Math.max(1, ss - sr), night = mins(p.next_sunrise) + 1440 - ss, mu = day / 15;
+          const abh = [sr + 7 * mu, sr + 8 * mu], brahma = [sr - 2 * night / 15, sr - night / 15];
+          const isToday = f.date.value === today(), now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+          const k = Math.max(0, Math.min(1, (nowM - sr) / day)), ang = Math.PI * (1 - k), sx = 150 + 120 * Math.cos(ang), sy = 140 - 120 * Math.sin(ang);
+          const arc = `<svg class="pn-arc" viewBox="0 0 300 160" aria-hidden="true"><path d="M30 140 A120 120 0 0 1 270 140" class="a0"/>${isToday && nowM > sr && nowM < ss ? `<path d="M30 140 A120 120 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)}" class="a1"/><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="11" class="sun"/>` : ''}
+            <line x1="14" y1="140" x2="286" y2="140" class="hz"/><text x="30" y="158" text-anchor="middle">${tm(p.sunrise)}</text><text x="270" y="158" text-anchor="middle">${tm(p.sunset)}</text></svg>`;
+          const t0 = p.tithi[0], limb = (n, ic, lbl, x, name, extra = '') => `<li><span class="pn-n">${n}</span><span class="ms">${ic}</span><div><small>${esc(lbl)}</small><b>${name}</b>${extra}</div>
+              ${x && x.ends ? `<em>${esc(t('ui.until'))} ${fmtLoc(x.ends)}</em>` : '<em></em>'}</li>`;
+          const nextOf = (list, fn) => list[1] ? `<i>${esc(t('pc.then'))} ${fn(list[1])}</i>` : '';
+          const tName = x => esc(tn('paksha', x.paksha) + ' ' + tn('tithis', x.name));
+          const bar = (a, b, cls) => `<span class="pn-bar2"><i class="${cls}" style="left:${Math.max(0, (a - sr) / day * 100)}%;width:${Math.max(1, (b - a) / day * 100)}%"></i></span>`;
+          const chogNow = (p.choghadiya?.day || []).concat(p.choghadiya?.night || []).find(c => isToday && c.start.slice(11) <= hm(nowM) && hm(nowM) < c.end.slice(11));
+          out.innerHTML = `<div class="pn-grid"><div class="pn-main">
+            <section class="pn-hero"><div class="pn-h-l"><span class="pn-vara">${esc(tn('weekdays', p.vara.name))} · ${esc(tn('planets', p.vara.lord))}</span>
+                <h2>${tName(t0)}</h2><p>${esc(t('ui.until'))} ${fmtLoc(t0.ends)}${p.tithi[1] ? ` · ${esc(t('pc.then'))} ${tName(p.tithi[1])}` : ''}</p>
+                <div class="pn-chips"><span><span class="ms">stars</span>${esc(tn('nakshatras', p.nakshatra[0].name))}</span><span><span class="ms">join</span>${esc(tn('yogas', p.yoga[0].name))}</span><span><span class="ms">dark_mode</span>${esc(tn('signs', p.moon_sign))}</span></div></div>
+              <div class="pn-h-r">${arc}<div class="pn-sun"><div><span class="ms">wb_twilight</span><b>${tm(p.sunrise)}</b><small>${esc(t('ui.sunrise'))}</small></div><div><span class="ms">wb_sunny</span><b>${tm(p.sunset)}</b><small>${esc(t('ui.sunset'))}</small></div>
+                <div><span class="ms">nightlight</span><b>${tm(p.moonrise)}</b><small>${esc(t('ui.moonrise'))}</small></div><div><span class="ms">bedtime</span><b>${tm(p.moonset)}</b><small>${esc(t('ui.moonset'))}</small></div></div></div></section>
+            <section class="card pn-limbs"><div class="card-h"><span class="ms">auto_awesome_mosaic</span>${esc(t('pc.five_limbs'))}</div><ol>
+              ${limb('१', 'brightness_4', t('ui.tithi'), t0, tName(t0), nextOf(p.tithi, tName))}
+              ${limb('२', 'today', t('pc.vara'), null, esc(tn('weekdays', p.vara.name)), `<i>${esc(t('pc.lord'))}: ${esc(tn('planets', p.vara.lord))}</i>`)}
+              ${limb('३', 'stars', t('ui.nakshatra'), p.nakshatra[0], esc(tn('nakshatras', p.nakshatra[0].name)), nextOf(p.nakshatra, x => esc(tn('nakshatras', x.name))))}
+              ${limb('४', 'join', t('ui.yoga'), p.yoga[0], esc(tn('yogas', p.yoga[0].name)), nextOf(p.yoga, x => esc(tn('yogas', x.name))))}
+              ${limb('५', 'hourglass', t('ui.karana'), p.karana[0], esc(tn('karanas', p.karana[0].name)), nextOf(p.karana, x => esc(tn('karanas', x.name))))}</ol></section></div>
+          <aside class="pn-side">
+            <section class="card pn-good"><div class="card-h"><span class="ms">check_circle</span>${esc(t('pc.shubh'))}</div>
+              <div class="pn-t"><b>${esc(t('pc.abhijit'))}</b><span>${hm(abh[0])} – ${hm(abh[1])}</span>${bar(abh[0], abh[1], 'g')}</div>
+              <div class="pn-t"><b>${esc(t('pc.brahma'))}</b><span>${hm(brahma[0])} – ${hm(brahma[1])}</span></div>
+              ${chogNow ? `<div class="pn-t now"><b>${esc(t('pc.chog_now'))}: ${esc(t('astro.chog.' + chogNow.name))}</b><span>${tm(chogNow.start)} – ${tm(chogNow.end)} · ${esc(t('ui.q_' + chogNow.quality))}</span></div>` : ''}</section>
+            <section class="card pn-bad"><div class="card-h"><span class="ms">block</span>${esc(t('pc.ashubh'))}</div>
+              ${[['rahu_kaal', 'r'], ['yamaganda', 'y'], ['gulika', 'g2']].map(([key, c]) => `<div class="pn-t"><b>${esc(t('ui.' + key))}</b><span>${kaal(key)}</span>${bar(mins(p[key].start), mins(p[key].end), c)}</div>`).join('')}</section>
+            <section class="card pn-signs"><div class="pn-sg"><span class="g">${GLYPH[SIGNS.indexOf(p.sun_sign)] || '☉'}</span><div><small>${esc(t('ui.sun_sign'))}</small><b>${esc(tn('signs', p.sun_sign))}</b></div></div>
+              <div class="pn-sg"><span class="g">${GLYPH[SIGNS.indexOf(p.moon_sign)] || '☽'}</span><div><small>${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', p.moon_sign))}</b></div></div></section>
+          </aside></div>`; }
         else if (tab === 'choghadiya') { const now = new Date(), nowS = `${f.date.value} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
           const isNow = c => c.start <= nowS && nowS < c.end;
           const col = (lbl, ic, list) => `<section class="card chogc"><div class="card-h"><span class="ms">${ic}</span>${esc(lbl)}<span class="muted">${tm(list[0].start)} – ${tm(list[7].end)}</span></div>
@@ -409,13 +435,8 @@
       <aside class="cp-side" id="cps"><div class="cp-sh"><b>${esc(t('chat.saved'))}</b><button type="button" class="icon-btn cp-x" id="cpx" aria-label="${esc(t('ui.close'))}"><span class="ms">close</span></button></div>
         <button type="button" class="btn cp-new" id="cpn"><span class="ms">add</span>${esc(t('ui.new_chat'))}</button><div class="cp-list" id="cpl"></div></aside>
       <div class="cp-main">
-        <header class="cp-top">
-          <button type="button" class="icon-btn cp-menu" id="cpm" aria-label="${esc(t('chat.saved'))}"><span class="ms">history</span></button>
-          <span class="chat-av"><span class="ms">${AI ? 'psychology' : 'auto_awesome'}</span></span>
-          <div class="chat-who"><b>${esc(t(AI ? 'chat.claude_title' : 'chat.title'))}</b><small><i class="dot"></i>${esc(t(AI ? 'chat.claude_online' : 'chat.online'))}</small></div>
-          <a class="chat-sw" href="#/${AI ? 'chat' : 'ai-chat'}" title="${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}"><span class="ms">${AI ? 'forum' : 'psychology'}</span><span>${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}</span></a>
-        </header>
         <div class="cp-bar">
+          <button type="button" class="icon-btn cp-menu" id="cpm" aria-label="${esc(t('chat.saved'))}"><span class="ms">history</span></button>
           <label class="cp-pick"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
           <label class="cp-pick"><span class="ms">translate</span><select id="chlg" aria-label="${esc(t('chat.lang_label'))}">${LANGS.map(([v, n]) => `<option value="${v}"${v === clang ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
           <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button>
@@ -1211,38 +1232,49 @@
     const P = ['daily', 'weekly', 'monthly'], names = t('rf.tabs').split('|');
     const IC = { career: 'work', money: 'payments', love: 'favorite', health: 'self_improvement', moon: 'dark_mode', caution: 'warning' };
     let sign = (() => { try { return +(localStorage.getItem('rf_sign') || 0); } catch (e) { return 0; } })() % 12;
-    h(`<section class="rf">
-      ${ph('stars', names[P.indexOf(period)] + ' ' + t('rf.title'), t('rf.sub'), `<div class="rf-seg" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}" aria-selected="${x === period}">${esc(names[i])}</button>`).join('')}</div>`)}
-      <p class="rf-pick">${esc(t('rf.pick'))} <span class="rf-range" id="rfr"></span></p>
-      <div class="rf-signs" role="tablist" id="rfs"></div><div id="rfo"></div></section>`);
+    h(`${ph('stars', names[P.indexOf(period)] + ' ' + t('rf.title'), t('rf.sub'), `<div class="rf-seg" role="tablist">${P.map((x, i) => `<button role="tab" data-rp="${x}" class="${x === period ? 'on' : ''}" aria-selected="${x === period}">${esc(names[i])}</button>`).join('')}</div>`)}
+      <div class="rz"><aside class="rz-wheel"><div id="rzw"></div><p class="rz-hint"><span class="ms">touch_app</span>${esc(t('rf.pick'))}</p></aside><div id="rfo" class="rz-read"></div></div>`);
     $app.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { location.hash = '#/rashifal/' + b.dataset.rp; });
-    const out = document.getElementById('rfo'), bar = document.getElementById('rfs'); out.innerHTML = skel();
+    const out = document.getElementById('rfo'), wh = document.getElementById('rzw'); out.innerHTML = skel();
     let d; try { d = await api('GET', `/rashifal?period=${period}&lang=${lang}`); } catch (e) { out.innerHTML = errBox(e); return; }
-    document.getElementById('rfr').textContent = d.from === d.to ? d.from : d.from + ' – ' + d.to;
-    bar.innerHTML = d.rashis.map(r => `<button role="tab" data-sg="${r.sign}" class="rf-sg"><span class="rf-gl">${r.icon}</span><span class="rf-nm">${esc(r.name)}</span><i class="rf-dot t-${r.overall}"></i></button>`).join('');
+    const range = d.from === d.to ? d.from : d.from + ' – ' + d.to;
+    // zodiac wheel: 12 clickable sectors, Aries at the top
+    const C = 200, R1 = 192, R0 = 84, pt = (r, deg) => [(C + r * Math.cos(deg * Math.PI / 180)).toFixed(2), (C + r * Math.sin(deg * Math.PI / 180)).toFixed(2)];
+    const sector = i => { const a0 = -105 + i * 30, a1 = a0 + 30, [x1, y1] = pt(R1, a0), [x2, y2] = pt(R1, a1), [x3, y3] = pt(R0, a1), [x4, y4] = pt(R0, a0);
+      return `M${x1} ${y1} A${R1} ${R1} 0 0 1 ${x2} ${y2} L${x3} ${y3} A${R0} ${R0} 0 0 0 ${x4} ${y4}Z`; };
+    wh.innerHTML = `<svg class="rz-svg" viewBox="0 0 400 400" role="tablist" aria-label="${esc(t('rf.pick'))}">
+      <circle cx="200" cy="200" r="198" class="rz-rim"/>
+      ${d.rashis.map((r, i) => { const [gx, gy] = pt(150, -90 + i * 30), [nx, ny] = pt(110, -90 + i * 30), [dx, dy] = pt(181, -90 + i * 30);
+        return `<g class="rz-s t-${r.overall}" data-sg="${i}" role="tab" tabindex="0" aria-label="${esc(r.name)}"><path d="${sector(i)}"/>
+          <text x="${gx}" y="${gy}" class="rz-g">${GLYPH[i]}</text><text x="${nx}" y="${ny}" class="rz-n">${esc(r.name.length > 7 ? r.name.slice(0, 6) + '.' : r.name)}</text><circle cx="${dx}" cy="${dy}" r="4" class="rz-d"/></g>`; }).join('')}
+      <circle cx="200" cy="200" r="${R0 - 6}" class="rz-core"/><g id="rzc"></g></svg>`;
     const strip = x => x.replace(/^[^:：]{1,24}[:：]\s*/, '');
     const badge = tone => `<span class="rf-badge t-${tone}">${esc(t('rf.tone.' + tone))}</span>`;
+    const meter = tone => `<span class="rz-m t-${tone}" aria-hidden="true">${[0, 1, 2].map(k => `<i class="${k < ({ good: 3, mixed: 2, bad: 1 }[tone]) ? 'on' : ''}"></i>`).join('')}</span>`;
     const show = () => {
       const r = d.rashis[sign], L = a => r.lines.find(l => l.area === a);
-      bar.querySelectorAll('.rf-sg').forEach(b => { const on = +b.dataset.sg === sign; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); if (on) b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); });
+      wh.querySelectorAll('.rz-s').forEach(g => { const on = +g.dataset.sg === sign; g.classList.toggle('on', on); g.setAttribute('aria-selected', on); });
+      document.getElementById('rzc').innerHTML = `<text x="200" y="192" class="rz-cg">${GLYPH[sign]}</text><text x="200" y="228" class="rz-cn">${esc(r.name)}</text><text x="200" y="250" class="rz-cs">${'★'.repeat(r.score)}${'☆'.repeat(5 - r.score)}</text>`;
       const notes = r.lines.filter(l => l.area === 'moon' || l.area === 'caution');
-      out.innerHTML = `<article class="rf-card t-${r.overall}">
-        <div class="rf-top"><span class="rf-big">${r.icon}</span><div class="rf-tt"><h2>${esc(r.name)}</h2>
-          <div class="rf-meta"><span class="rf-stars" aria-label="${r.score}/5">${'★'.repeat(r.score)}<s>${'★'.repeat(5 - r.score)}</s></span>${badge(r.overall)}</div></div></div>
-        <p class="rf-lead">${esc(L('overall').text)}</p>
+      out.innerHTML = `<article class="rz-card t-${r.overall}">
+        <header class="rz-h"><div><h2>${esc(r.name)} <span>${esc(names[P.indexOf(period)])}</span></h2><p><span class="ms">event</span>${esc(range)}</p></div>
+          <div class="rz-hr"><span class="rf-stars" aria-label="${r.score}/5">${'★'.repeat(r.score)}<s>${'★'.repeat(5 - r.score)}</s></span>${badge(r.overall)}</div></header>
+        <blockquote class="rz-q">${esc(L('overall').text)}</blockquote>
         ${notes.map(n => `<div class="rf-note t-${n.tone}"><span class="ms">${IC[n.area]}</span><p>${esc(n.text)}</p></div>`).join('')}
-        <div class="rf-areas">${['career', 'money', 'love', 'health'].map(a => { const l = L(a); return `<section class="rf-area t-${l.tone}">
-          <div class="rf-ah"><span class="rf-ai"><span class="ms">${IC[a]}</span></span><b>${esc(t('rf.lbl.' + a))}</b>${badge(l.tone)}</div><p>${esc(strip(l.text))}</p></section>`; }).join('')}</div>
-        ${r.lucky && r.remedy ? `<div class="rf-bottom"><section class="rf-lucky"><h3>${esc(t('rf.lbl.lucky'))}</h3><div class="rf-lk">
-            <div><span class="rf-sw" style="background:${r.lucky.hex}"></span><small>${esc(t('rf.l_color'))}</small><b>${esc(r.lucky.color)}</b></div>
-            <div><span class="rf-num">${r.lucky.num}</span><small>${esc(t('rf.l_num'))}</small><b>${r.lucky.num}</b></div>
-            <div><span class="rf-num"><span class="ms">event</span></span><small>${esc(t('rf.l_day'))}</small><b>${esc(r.lucky.day)}</b></div></div></section>
-          <section class="rf-remedy"><h3><span class="ms">spa</span>${esc(t('rf.lbl.remedy'))}</h3><p class="rf-mantra">${esc(r.remedy.mantra)}</p><small>${esc(t('rf.chant').replace('{planet}', r.remedy.planet))}</small></section></div>` : ''}
+        <div class="rz-areas">${['career', 'money', 'love', 'health'].map(a => { const l = L(a); return `<section class="rz-a t-${l.tone}">
+          <span class="rz-ai"><span class="ms">${IC[a]}</span></span><div><div class="rz-at"><b>${esc(t('rf.lbl.' + a))}</b>${meter(l.tone)}<small>${esc(t('rf.tone.' + l.tone))}</small></div><p>${esc(strip(l.text))}</p></div></section>`; }).join('')}</div>
+        ${r.lucky && r.remedy ? `<div class="rz-foot"><section class="rz-lucky"><h3><span class="ms">auto_awesome</span>${esc(t('rf.lbl.lucky'))}</h3><div class="rz-lk">
+            <div><span class="rz-med" style="background:${r.lucky.hex}"></span><small>${esc(t('rf.l_color'))}</small><b>${esc(r.lucky.color)}</b></div>
+            <div><span class="rz-med n">${r.lucky.num}</span><small>${esc(t('rf.l_num'))}</small><b>${r.lucky.num}</b></div>
+            <div><span class="rz-med n"><span class="ms">event</span></span><small>${esc(t('rf.l_day'))}</small><b>${esc(r.lucky.day)}</b></div></div></section>
+          <section class="rz-rem"><h3><span class="ms">spa</span>${esc(t('rf.lbl.remedy'))}</h3><p class="rz-mantra">${esc(r.remedy.mantra)}</p><small>${esc(t('rf.chant').replace('{planet}', r.remedy.planet))}</small></section></div>` : ''}
       </article>`;
     };
-    bar.querySelectorAll('.rf-sg').forEach(b => b.onclick = () => { sign = +b.dataset.sg; try { localStorage.setItem('rf_sign', sign); } catch (e) {} show(); });
+    wh.querySelectorAll('.rz-s').forEach(g => g.onclick = g.onkeydown = e => { if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault?.();
+      sign = +g.dataset.sg; try { localStorage.setItem('rf_sign', sign); } catch (er) {} show(); if (matchMedia('(max-width: 960px)').matches) out.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
     show();
   }
+
 
   // ---------- Home: animated zodiac wheel, features, rashis ----------
   const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
