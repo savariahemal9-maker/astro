@@ -71,12 +71,15 @@ final class RemedyPlanner extends RuleEngine {
             if ($i < 2) $g['daily'][] = $this->rem($this->mantraLine($pl, $this->t('rp.every_day')), $pl, $why, $prio, 'daily');
             $g['weekly'][] = $this->rem($this->t('rp.on_day', ['day' => $this->dayName(Advanced::DAY_OF[$pl]), 'text' => $this->c("remedies.$pl.0")]), $pl, $why, $prio - 5, 'weekly');
             $h = $this->sc[$pl]['house'];
-            for ($r = 0; $r < 4; $r++) { $key = "lk.$pl.$h.rem.$r"; if (($x = $this->c($key)) !== '') { $f = $this->freqOf($key); $g[$f][] = $this->rem($x, $pl, $why, $prio - 10 - $r, $f); } }
+            for ($r = 0, $n = 0; $r < 4 && $n < 2; $r++) { $key = "lk.$pl.$h.rem.$r"; if (($x = $this->c($key)) !== '') { $f = $this->freqOf($key); $g[$f][] = $this->rem($x, $pl, $why, $prio - 10 - $r, $f); $n++; } }
         }
         if (isset($this->need['Moon'])) $g['monthly'][] = $this->rem($this->t('rp.purnima'), 'Moon', $this->why('Moon', $jd), (int) $this->need['Moon'], 'monthly');
         foreach (['Saturn', 'Rahu', 'Ketu'] as $pl) if (isset($this->need[$pl])) { $g['monthly'][] = $this->rem($this->t('rp.amavasya'), $pl, $this->why($pl, $jd), (int) $this->need[$pl], 'monthly'); break; }
         if ($top) $g['yearly'][] = $this->rem($this->t('rp.birthday', ['planet' => $this->pn($top[0]), 'text' => $this->c("remedies.{$top[0]}.1")]), $top[0], $this->why($top[0], $jd), (int) $this->need[$top[0]] - 15, 'yearly');
-        foreach ($g as &$list) { usort($list, fn($x, $y) => $y['priority'] <=> $x['priority']); $list = $this->uniq($list); }
+        $seen = [];
+        foreach ($g as &$list) { usort($list, fn($x, $y) => $y['priority'] <=> $x['priority']);
+            $list = array_slice(array_values(array_filter($this->uniq($list), function ($i) use (&$seen) { if (isset($seen[$i['text']])) return false; return $seen[$i['text']] = true; })), 0, 4); }
+        unset($list);
         return ['groups' => $g, 'planets' => array_map(fn($pl) => ['planet' => $pl, 'name' => $this->pn($pl), 'score' => $this->sc[$pl]['score']], $top)];
     }
 

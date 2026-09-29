@@ -342,7 +342,8 @@
       <p class="pp-exp">${esc(d.explanation)}</p>
       ${d.caution ? `<div class="pp-caution"><span class="ms">report</span><span>${esc(d.caution)}</span></div>` : ''}
       ${d.personal && d.personal.length ? `<section class="pp-says"><h3><span class="ms">menu_book</span>${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span><span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
-      <div class="pp-grid">${list('do', 'check_circle', t('ui.what_to_do'), d.do)}${list('dont', 'do_not_disturb_on', t('ui.what_to_avoid'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
+      <div class="pp-grid">${list('do', 'check_circle', t('ui.what_to_do'), d.do)}${list('dont', 'do_not_disturb_on', t('ui.what_to_avoid'), d.dont)}${list('upay', 'spa', t('ui.simple_upay'), (d.upay || []).slice(0, 2))}</div>
+      <p class="pp-more"><a href="#/chart/${st.kid}" data-open-tab="remedies"><span class="ms">spa</span>${esc(t('ui.all_remedies'))}</a></p>
       ${d.timeline && d.timeline.length ? `<section class="pp-life"><h3><span class="ms">timeline</span>${esc(t('ui.life_phases'))}</h3><ol>${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span>${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ol></section>` : ''}
       ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
         <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
@@ -525,11 +526,13 @@
       document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === bt)); tabIndicator(bt.parentElement); openGroup(bt.dataset.tab);
     });
     tabIndicator($app.querySelector('.tabs')); addEventListener('resize', () => tabIndicator($app.querySelector('.tabs')));
-    openGroup('overview');
+    let ot = null; try { ot = sessionStorage.getItem('openTab'); sessionStorage.removeItem('openTab'); } catch (e) {}
+    const ob = ot && document.querySelector(`.tabs [data-tab="${ot}"]`); if (ob) ob.click(); else openGroup('overview');
   }
+  document.addEventListener('click', e => { const a = e.target.closest('[data-open-tab]'); if (a) try { sessionStorage.setItem('openTab', a.dataset.openTab); } catch (er) {} });
   const GROUPS = { overview: { icon: 'space_dashboard', subs: ['overview'] }, daily_kundali: { icon: 'today', subs: ['daily_kundali'] }, kundali: { icon: 'grid_view', subs: ['charts', 'planets', 'dasha'] },
-    predictions: { icon: 'auto_awesome', subs: ['whole_life', 'mdphal', 'current_mahadasha', 'monthly'] }, varshphal: { icon: 'event_repeat', subs: ['varshphal'] },
-    doshas: { icon: 'report', subs: ['doshas'] }, yogas: { icon: 'auto_fix_high', subs: ['yogas'] }, remedies: { icon: 'spa', subs: ['remedy_plan', 'priority_remedies', 'planet_results', 'periodic'] }, pooja: { icon: 'temple_hindu', subs: ['pooja'] },
+    predictions: { icon: 'auto_awesome', subs: ['whole_life', 'mdphal', 'current_mahadasha', 'monthly', 'planet_results'] }, varshphal: { icon: 'event_repeat', subs: ['varshphal'] },
+    doshas: { icon: 'report', subs: ['doshas'] }, yogas: { icon: 'auto_fix_high', subs: ['yogas'] }, remedies: { icon: 'spa', subs: ['remedy_plan'] }, pooja: { icon: 'temple_hindu', subs: ['pooja'] },
     gemstones: { icon: 'diamond', subs: ['gemstones'] }, transits: { icon: 'public', subs: ['transits'] } };
   function tabCharts(k, prof) {
     const el = document.getElementById('tab'), names = Object.keys(k.vargas);
@@ -630,7 +633,7 @@
   async function tabPlanetResults(id) {
     const el = document.getElementById('tab'); el.innerHTML = skel();
     try { const d = await api('GET', `/profiles/${id}/planet-results?lang=${lang}`);
-      el.innerHTML = `<section>${interpTag()}${collItems(d.items)}</section>`; }
+      el.innerHTML = `<section>${interpTag()}${collItems(d.items.map(({ remedies, ...x }) => x))}</section>`; }
     catch (e) { el.innerHTML = errBox(e); }
   }
   async function tabVarsh(id, k, year = new Date().getFullYear()) {
@@ -780,7 +783,7 @@
         <h3>${esc(t('ui.factors'))}</h3>${factList(i.derivation.from_calculated)}`, n === 0, i.issue)).join('');
     } catch (e) { el.innerHTML = errBox(e); } }
   // ---------- Personal remedy plan (new; the existing remedy tabs are unchanged) ----------
-  const RPV = [['life', 'rp_life', 'all_inclusive'], ['day', 'rp_day', 'today'], ['week', 'rp_week', 'date_range'], ['month', 'rp_month', 'calendar_month'], ['important', 'rp_important', 'priority_high']];
+  const RPV = [['life', 'rp_life', 'all_inclusive'], ['day', 'rp_period', 'event'], ['important', 'rp_important', 'priority_high']], RPP = [['day', 'rp_day'], ['week', 'rp_week'], ['month', 'rp_month']];
   const rpItem = (i, n) => `<li class="rp-it"><div class="rp-top">${n ? `<span class="rp-n">${n}</span>` : ''}${i.planet_name ? `<span class="rp-pl">${esc(i.planet_name)}</span>` : ''}
       ${(i.dates || (i.date ? [i.date] : [])).map(d => `<span class="rp-dt">${esc(fmtD(d, { weekday: 'short', day: 'numeric', month: 'short' }))}</span>`).join('')}</div>
     <p>${esc(i.text)}</p>${i.reason ? `<small><span class="ms">person_search</span>${esc(t('ui.why_this'))}: ${esc(i.reason)}</small>` : ''}</li>`;
@@ -795,8 +798,8 @@
       if (view === 'life') body = `${d.planets.length ? `<p class="rp-weak"><b>${esc(t('ui.weak_planets'))}:</b> ${d.planets.map(p => `<span class="rp-pl">${esc(p.name)} ${p.score}/100</span>`).join(' ')}</p>` : ''}
         <div class="rp-groups">${['daily', 'weekly', 'monthly', 'yearly'].map(f => d.groups[f].length ? `<details class="rp-g rp-${f} cx"${f === 'daily' ? ' open' : ''}><summary><span class="ms">${{ daily: 'today', weekly: 'date_range', monthly: 'dark_mode', yearly: 'cake' }[f]}</span>${esc(t('ui.f_' + f))}<span class="cx-n">${d.groups[f].length}</span></summary><ul>${d.groups[f].map(i => rpItem(i)).join('')}</ul></details>` : '').join('')}</div>`;
       else body = `<ul class="rp-list${view === 'important' ? ' rp-imp' : ''}">${d.items.map((i, n) => rpItem(i, view === 'important' ? n + 1 : 0)).join('')}</ul>`;
-      el.innerHTML = `<div class="rp-bar"><div class="pp-seg">${RPV.map(([v, l, ic]) => `<button type="button" data-v="${v}" class="${v === view ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t('ui.' + l))}</span></button>`).join('')}</div>
-        ${['day', 'week', 'month'].includes(view) ? `<label class="pp-date"><span class="ms">event</span><input type="date" id="rpd" value="${esc(date)}" aria-label="${esc(t('ui.date'))}"></label>` : ''}</div>
+      el.innerHTML = `<div class="rp-bar"><div class="pp-seg">${RPV.map(([v, l, ic]) => `<button type="button" data-v="${v}" class="${v === view || (v === 'day' && ['week', 'month'].includes(view)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t('ui.' + l))}</span></button>`).join('')}</div>
+        ${['day', 'week', 'month'].includes(view) ? `<div class="seg rp-sub">${RPP.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === view ? 'on' : ''}">${esc(t('ui.' + l))}</button>`).join('')}</div><label class="pp-date"><span class="ms">event</span><input type="date" id="rpd" value="${esc(date)}" aria-label="${esc(t('ui.date'))}"></label>` : ''}</div>
         ${head ? `<p class="rp-head"><span class="ms">event</span>${esc(head)}</p>` : ''}${interpTag()}${body}`;
       el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => tabRemedyPlan(id, b.dataset.v, date));
       el.querySelector('#rpd')?.addEventListener('change', e => tabRemedyPlan(id, view, e.target.value || today()));

@@ -453,3 +453,11 @@ details.cx>summary{padding-left:0} .cx-t b{font-size:1rem;color:var(--ink)} .cx-
 .adm-auth{max-width:440px;margin:6vh auto;background:var(--s);border:1px solid var(--line);border-radius:24px;padding:1.6rem;box-shadow:var(--sh2)}
 .adm-auth .adm-brand{color:var(--gold);margin:0 0 .4rem} .adm-auth h1{margin:.2rem 0 .6rem} .adm-auth form{margin-top:1rem}
 body.admin-mode .topbar #railToggle{display:none}
+/* sign-in forms: compact and centred (site and admin) */
+main>form.stack,main>h1:first-child{max-width:440px;margin-left:auto;margin-right:auto}
+body.admin-mode main>.adm-auth{max-width:440px;margin:6vh auto}
+/* browser-autofilled fields: keep the label above the value */
+label.fl input:-webkit-autofill~.fl-label{top:6px;transform:scale(.76);color:var(--p)}
+/* collapsed groups keep their own height instead of stretching to the open one */
+.rp-groups{align-items:start}
+.rp-sub{margin:0} .pp-more{margin:.2rem 0 .8rem} .pp-more a{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
