@@ -48,7 +48,7 @@
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
     const links = [['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
+      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['ai-chat', 'ui.nav_claude', 'psychology'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html;
@@ -358,20 +358,22 @@
   }
 
   // ---------- Chat: rule-based answers from the selected kundali ----------
-  async function viewChat() {
+  async function viewChat(mode = 'rules') {
+    const AI = mode === 'claude';
     loading(); let profs; try { profs = await api('GET', '/profiles'); } catch (e) { h(errBox(e)); return; }
     if (!profs.length) { h(`<p class="pp-empty">${esc(t('ui.no_kundali'))}</p><a class="btn" href="#/add">${esc(t('ui.new_kundali'))}</a>`); return; }
     let kid = (() => { try { return +localStorage.getItem('chat_kid'); } catch (e) { return 0; } })();
     if (!profs.find(p => p.id === kid)) kid = profs[0].id;
-    const key = () => 'chat_' + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
+    const key = () => (AI ? 'cchat_' : 'chat_') + kid, load = () => { try { return JSON.parse(localStorage.getItem(key()) || 'null') || { msgs: [], ctx: {} }; } catch (e) { return { msgs: [], ctx: {} }; } };
     let st = load(); const save = () => { try { localStorage.setItem(key(), JSON.stringify({ msgs: st.msgs.slice(-80), ctx: st.ctx, q: st.q })); localStorage.setItem('chat_kid', kid); } catch (e) {} };
     h(`<section class="chat"><header class="chat-top"><span class="chat-av"><span class="ms">auto_awesome</span></span>
-        <div class="chat-who"><b>${esc(t('chat.title'))}</b><small><i class="dot"></i>${esc(t('chat.online'))}</small></div>
+        <div class="chat-who"><b>${esc(t(AI ? 'chat.claude_title' : 'chat.title'))}</b><small><i class="dot"></i>${esc(t(AI ? 'chat.claude_online' : 'chat.online'))}</small></div>
+        <a class="chat-sw" href="#/${AI ? 'chat' : 'ai-chat'}"><span class="ms">${AI ? 'forum' : 'psychology'}</span><span>${esc(t(AI ? 'chat.basic_chat' : 'chat.try_claude'))}</span></a>
         <label class="chat-k"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
         <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button></header>
       <div class="chat-log" id="chl" aria-live="polite"></div>
       <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="500" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
-      <p class="chat-note">${esc(t('chat.disclaimer'))}</p></section>`);
+      <p class="chat-note">${esc(t(AI ? 'chat.claude_disclaimer' : 'chat.disclaimer'))}</p></section>`);
     const $l = document.getElementById('chl'), f = document.getElementById('chf');
     const tm = ts => new Date(ts || Date.now()).toLocaleTimeString(lang === 'en' ? 'en-IN' : lang + '-IN', { hour: 'numeric', minute: '2-digit' });
     const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}"><div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}<time>${esc(tm(m.ts))}</time></div></div>`;
@@ -379,15 +381,15 @@
       $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>` : '');
       $l.querySelectorAll('.chat-q button').forEach(b => b.onclick = () => ask(b.textContent)); $l.scrollTop = $l.scrollHeight; };
     const ask = async text => {
-      text = text.trim(); if (!text) return; const history = st.msgs.slice(-6).map(m => ({ me: !!m.me, text: m.lines.join(' ').slice(0, 400) })); st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
+      text = text.trim(); if (!text) return; const history = st.msgs.slice(AI ? -10 : -6).map(m => ({ me: !!m.me, text: m.lines.join(AI ? '\n\n' : ' ').slice(0, AI ? 1500 : 400) })); st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
       $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
-      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx, history }), new Promise(r => setTimeout(r, 600))]);
+      try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/${AI ? 'claude-chat' : 'chat'}?lang=${lang}`, AI ? { message: text, history } : { message: text, context: st.ctx, history }), new Promise(r => setTimeout(r, 600))]);
         st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || [];
         if (d.engine) console.info('[chat] answered by', d.engine, d.why || ''); }
       catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
       save(); draw();
     };
-    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: [t('chat.greet'), t('chat.help')], ts: Date.now() });
+    const start = () => { st = load(); if (!st.msgs.length) { st.msgs.push({ lines: AI ? [t('chat.claude_greet')] : [t('chat.greet'), t('chat.help')], ts: Date.now() });
         st.q = ['career', 'marriage', 'finance', 'child', 'dasha'].map(x => t('chat.q.' + x)); save(); } draw(); };
     f.onsubmit = e => { e.preventDefault(); ask(f.m.value); };
     document.getElementById('chk').onchange = e => { kid = +e.target.value; start(); };
@@ -956,10 +958,14 @@
       h(admWrap('overview', `<h1>${esc(t('ui.admin_overview'))}</h1><div class="adm-stats">${[['group', 'ui.admin_users', d.users], ['person_add', '7d', d.new_users_7d], ['workspace_premium', 'Premium', d.premium],
         ['block', 'Disabled', d.disabled], ['auto_stories', 'ui.admin_kundalis', d.kundalis], ['category', 'ui.categories', d.categories]].map(([ic, l, v]) => `<div class="adm-stat"><span class="ms">${ic}</span><b>${v}</b><small>${esc(l.startsWith('ui.') ? t(l) : l)}</small></div>`).join('')}</div>
         <section class="card" id="aist"><div class="card-h"><span class="ms">smart_toy</span>AI chat (Gemini)</div><p class="muted">Checking…</p></section>
+        <section class="card" id="clst"><div class="card-h"><span class="ms">psychology</span>AI Astrologer (Claude)</div><p class="muted">Checking…</p></section>
         <section class="card"><div class="card-h"><span class="ms">schedule</span>Latest users</div><div class="scroll"><table>${d.recent.map(u => `<tr><td><a href="#/users/${u.id}">${esc(u.name)}</a></td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table></div></section>`));
       api('GET', '/admin/ai-status').then(s => { const el = document.getElementById('aist'); if (el) el.lastElementChild.outerHTML = s.ok
         ? `<p><span class="chip ok">Working</span> Model ${esc(s.model)} answered the test request.</p>`
         : `<p><span class="chip warn">Not working</span> ${s.key_set ? `Key set (${s.key_length} characters), model ${esc(s.model)}.` : ''}</p><p><b>Reason:</b> ${esc(s.error || 'unknown')}</p>`; }).catch(() => {});
+      api('GET', '/admin/claude-status').then(s => { const el = document.getElementById('clst'); if (el) el.lastElementChild.outerHTML = s.ok
+        ? `<p><span class="chip ok">Working</span> Model ${esc(s.model)} answered the test request.</p>`
+        : `<p><span class="chip warn">Not working</span> Model ${esc(s.model)}.</p><p><b>Reason:</b> ${esc(s.error || 'unknown')}</p>`; }).catch(() => {});
     } catch (e) { h(admWrap('overview', errBox(e))); } }
   async function viewAdminUsers(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
@@ -1149,7 +1155,7 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat'].includes(page) && !token) { location.hash = '#/login'; return; }
+    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat', 'ai-chat'].includes(page) && !token) { location.hash = '#/login'; return; }
     if (page === 'login' || page === 'register') return viewAuth(page);
     if (page === 'forgot') return viewForgot();
     if (page === 'reset' && arg) return viewReset(arg);
@@ -1159,6 +1165,7 @@
     if (page === 'add') return viewAdd();
     if (page === 'predict') return viewPredict();
     if (page === 'chat') return viewChat();
+    if (page === 'ai-chat') return viewChat('claude');
     if (page === 'rashifal') return viewRashifal(['daily', 'weekly', 'monthly'].includes(arg) ? arg : 'daily');
     if (page === 'admin') { location.hash = '#/panchang'; return; }
 

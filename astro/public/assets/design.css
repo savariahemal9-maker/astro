@@ -207,3 +207,7 @@ body:has(.chat) main{padding-bottom:0}
 @media (max-width:640px){.rf-hero{padding:1.1rem;border-radius:18px}.rf-seg{width:100%}.rf-seg button{flex:1;padding:.55rem .5rem}
   .rf-card{padding:1.1rem;border-radius:18px}.rf-areas,.rf-bottom{grid-template-columns:1fr}.rf-big{width:60px;height:60px;font-size:1.9rem;border-radius:18px}.rf-tt h2{font-size:1.35rem}}
 .rf-area p::first-letter{text-transform:uppercase}
+/* chat: switch between basic chat and the Claude AI astrologer */
+.chat-sw{flex:none;display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .8rem;border-radius:999px;background:rgba(255,255,255,.18);color:inherit;text-decoration:none;font-weight:600;font-size:.82rem;border:1px solid rgba(255,255,255,.35)}
+.chat-sw:hover{background:rgba(255,255,255,.28)} .chat-sw .ms{font-size:18px}
+@media (max-width:860px){.chat-sw span:last-child{display:none}.chat-sw{padding:.4rem}}
