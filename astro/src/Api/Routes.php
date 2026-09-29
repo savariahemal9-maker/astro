@@ -122,6 +122,46 @@ final class Routes {
         $r->add('POST', '/admin/remedies', function (Request $q, array $u) use ($adm, $save) { $adm($u); return $save($q, null); });
         $r->add('PUT', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm, $save) { $adm($u); return $save($q, $a['id']); });
         $r->add('DELETE', '/admin/remedies/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM remedy_rules WHERE id=?', [$a['id']]); return ['deleted' => true]; });
+        // ---- personalized category predictions ----
+        $r->add('GET', '/categories', function (Request $q, array $u) {
+            $l = $q->lang($u); $mine = array_column(Db::all('SELECT category_id FROM user_categories WHERE user_id=?', [$u['id']]), 'category_id');
+            return array_map(fn($c) => ['id' => (int) $c['id'], 'slug' => $c['slug'], 'name' => $c["name_$l"] ?: $c['name_en'], 'icon' => $c['icon'],
+                'caution' => (bool) $c['caution'], 'selected' => in_array($c['id'], $mine)], Db::all('SELECT * FROM prediction_categories WHERE active=1 ORDER BY sort, id'));
+        });
+        $r->add('PUT', '/me/categories', function (Request $q, array $u) {
+            $ids = array_values(array_unique(array_map('intval', (array) $q->input('ids', []))));
+            Db::exec('DELETE FROM user_categories WHERE user_id=?', [$u['id']]);
+            foreach ($ids as $cid) if (Db::one('SELECT id FROM prediction_categories WHERE id=? AND active=1', [$cid])) Db::exec('INSERT INTO user_categories (user_id, category_id) VALUES (?,?)', [$u['id'], $cid]);
+            return ['ids' => array_map('intval', array_column(Db::all('SELECT category_id FROM user_categories WHERE user_id=?', [$u['id']]), 'category_id'))];
+        });
+        $r->add('GET', '/profiles/{id}/category-prediction', function (Request $q, array $u, array $a) {
+            [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
+            $period = (string) $q->input('period', 'daily');
+            if (!in_array($period, \App\Interp\CategoryPredictor::PERIODS, true)) throw new ApiException('validation', 'Unknown period', 422, ['field' => 'period']);
+            $cat = Db::one('SELECT * FROM prediction_categories WHERE id=? AND active=1', [(int) $q->input('category', 0)]);
+            if (!$cat) throw new ApiException('not_found', 'Category not found', 404);
+            return (new \App\Interp\CategoryPredictor($l))->predict($k, $cat, $period, $local, (float) $p['lat'], (float) $p['lon']);
+        });
+        $r->add('GET', '/admin/categories', function (Request $q, array $u) use ($adm) { $adm($u); return Db::all('SELECT * FROM prediction_categories ORDER BY sort, id'); });
+        $catSave = function (Request $q, ?int $id) {
+            $in = $q->require(['slug', 'name_en', 'planets', 'houses']);
+            $pl = array_values(array_intersect(array_map('trim', explode(',', (string) $in['planets'])), ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']));
+            $hs = array_values(array_filter(array_map('intval', explode(',', (string) $in['houses'])), fn($h) => $h >= 1 && $h <= 12));
+            if (!$pl) throw new ApiException('validation', 'Add at least one planet (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)', 422, ['field' => 'planets']);
+            if (!$hs) throw new ApiException('validation', 'Add at least one house (1–12)', 422, ['field' => 'houses']);
+            $slug = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower((string) $in['slug'])), '_');
+            if ($slug === '') throw new ApiException('validation', 'Enter a slug', 422, ['field' => 'slug']);
+            if (Db::one('SELECT id FROM prediction_categories WHERE slug=? AND id<>?', [$slug, $id ?? 0])) throw new ApiException('validation', 'Slug already used', 422, ['field' => 'slug']);
+            $v = [$slug, mb_substr(trim((string) $in['name_en']), 0, 80), mb_substr(trim((string) $q->input('name_hi', '')), 0, 80) ?: null, mb_substr(trim((string) $q->input('name_gu', '')), 0, 80) ?: null,
+                  preg_replace('/[^a-z0-9_]/', '', strtolower((string) $q->input('icon', 'star'))) ?: 'star', implode(',', $pl), implode(',', $hs),
+                  (int) (bool) $q->input('caution', false), (int) (bool) $q->input('active', true), (int) $q->input('sort', 0)];
+            $cols = 'slug=?, name_en=?, name_hi=?, name_gu=?, icon=?, planets=?, houses=?, caution=?, active=?, sort=?';
+            if ($id) { Db::exec("UPDATE prediction_categories SET $cols WHERE id=?", [...$v, $id]); return Db::one('SELECT * FROM prediction_categories WHERE id=?', [$id]); }
+            return Db::one('SELECT * FROM prediction_categories WHERE id=?', [Db::insert("INSERT INTO prediction_categories SET $cols", $v)]);
+        };
+        $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($u); return $catSave($q, null); });
+        $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($u); return $catSave($q, (int) $a['id']); });
+        $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($u); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; });
         $r->add('GET', '/me/admin', function (Request $q, array $u) { return ['admin' => in_array(strtolower($u['email']), array_map('strtolower', app_config()['app']['admins'] ?? []), true)]; });
         $r->add('GET', '/profiles/{id}/planet-results', function (Request $q, array $u, array $a) {
             [, $kid, $k, $lang] = self::ctx($q, $u, $a);
