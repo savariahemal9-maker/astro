@@ -143,21 +143,23 @@ final class Routes {
             return (new \App\Interp\CategoryPredictor($l))->predict($k, $cat, $period, $local, (float) $p['lat'], (float) $p['lon']);
         });
         $r->add('GET', '/admin/categories', function (Request $q, array $u) use ($adm) { $adm($u); return Db::all('SELECT * FROM prediction_categories ORDER BY sort, id'); });
+        // Admin enters only names and simple advice; the astrology (planets, houses), icon and warning are chosen from the English name.
         $catSave = function (Request $q, ?int $id) {
-            $in = $q->require(['slug', 'name_en', 'planets', 'houses']);
-            $pl = array_values(array_intersect(array_map('trim', explode(',', (string) $in['planets'])), ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']));
-            $hs = array_values(array_filter(array_map('intval', explode(',', (string) $in['houses'])), fn($h) => $h >= 1 && $h <= 12));
-            if (!$pl) throw new ApiException('validation', 'Add at least one planet (Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)', 422, ['field' => 'planets']);
-            if (!$hs) throw new ApiException('validation', 'Add at least one house (1–12)', 422, ['field' => 'houses']);
-            $slug = trim(preg_replace('/[^a-z0-9]+/', '_', strtolower((string) $in['slug'])), '_');
-            if ($slug === '') throw new ApiException('validation', 'Enter a slug', 422, ['field' => 'slug']);
-            if (Db::one('SELECT id FROM prediction_categories WHERE slug=? AND id<>?', [$slug, $id ?? 0])) throw new ApiException('validation', 'Slug already used', 422, ['field' => 'slug']);
-            $v = [$slug, mb_substr(trim((string) $in['name_en']), 0, 80), mb_substr(trim((string) $q->input('name_hi', '')), 0, 80) ?: null, mb_substr(trim((string) $q->input('name_gu', '')), 0, 80) ?: null,
-                  preg_replace('/[^a-z0-9_]/', '', strtolower((string) $q->input('icon', 'star'))) ?: 'star', implode(',', $pl), implode(',', $hs),
-                  (int) (bool) $q->input('caution', false), (int) (bool) $q->input('active', true), (int) $q->input('sort', 0)];
-            $cols = 'slug=?, name_en=?, name_hi=?, name_gu=?, icon=?, planets=?, houses=?, caution=?, active=?, sort=?';
-            if ($id) { Db::exec("UPDATE prediction_categories SET $cols WHERE id=?", [...$v, $id]); return Db::one('SELECT * FROM prediction_categories WHERE id=?', [$id]); }
-            return Db::one('SELECT * FROM prediction_categories WHERE id=?', [Db::insert("INSERT INTO prediction_categories SET $cols", $v)]);
+            $in = $q->require(['name_en']); $nameEn = mb_substr(trim((string) $in['name_en']), 0, 80);
+            $old = $id ? Db::one('SELECT * FROM prediction_categories WHERE id=?', [$id]) : null;
+            if ($id && !$old) throw new ApiException('not_found', 'Category not found', 404);
+            $slug = $old['slug'] ?? trim(preg_replace('/[^a-z0-9]+/', '_', strtolower($nameEn)), '_');
+            if ($slug === '') $slug = 'cat';
+            for ($base = $slug, $i = 2; Db::one('SELECT id FROM prediction_categories WHERE slug=? AND id<>?', [$slug, $id ?? 0]); $i++) $slug = "{$base}_$i";
+            $auto = $old ? [$old['planets'], $old['houses'], $old['icon'], (int) $old['caution']] : self::categoryAstro($nameEn);
+            $txt = fn(string $k, int $max) => ($v = mb_substr(trim((string) $q->input($k, '')), 0, $max)) === '' ? null : $v;
+            $v = ['slug' => $slug, 'name_en' => $nameEn, 'name_hi' => $txt('name_hi', 80), 'name_gu' => $txt('name_gu', 80),
+                  'planets' => $auto[0], 'houses' => $auto[1], 'icon' => $auto[2], 'caution' => $auto[3], 'active' => (int) (bool) $q->input('active', true)];
+            foreach (['dos', 'donts', 'upay'] as $k) foreach (['en', 'hi', 'gu'] as $l) $v["{$k}_$l"] = $txt("{$k}_$l", 4000);
+            $cols = implode('=?, ', array_keys($v)) . '=?';
+            if ($id) { Db::exec("UPDATE prediction_categories SET $cols WHERE id=?", [...array_values($v), $id]); return Db::one('SELECT * FROM prediction_categories WHERE id=?', [$id]); }
+            $v['sort'] = (int) (Db::one('SELECT COALESCE(MAX(sort),0)+1 AS n FROM prediction_categories')['n'] ?? 1);
+            return Db::one('SELECT * FROM prediction_categories WHERE id=?', [Db::insert('INSERT INTO prediction_categories SET ' . implode('=?, ', array_keys($v)) . '=?', array_values($v))]);
         };
         $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($u); return $catSave($q, null); });
         $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($u); return $catSave($q, (int) $a['id']); });
@@ -271,6 +273,31 @@ final class Routes {
         Db::exec('INSERT INTO interpretations (kundali_id, kind, period_key, lang, ruleset_version, payload_json) VALUES (?,?,?,?,?,?)',
             [$kid, $kind, $pk, $lang, RuleEngine::VERSION, json_encode($data, JSON_UNESCAPED_UNICODE)]);
         return $data;
+    }
+
+    /** Planets, houses, icon and warning flag for a new category, picked from keywords in its English name. */
+    private static function categoryAstro(string $name): array {
+        $n = strtolower($name);
+        foreach ([
+            ['stock|share|trading|invest|crypto|market', 'Jupiter,Mercury,Rahu', '5,8,11', 'trending_up', 1],
+            ['sport|cricket|football|match|game', 'Mars,Sun', '3,5,6', 'sports_cricket', 1],
+            ['lottery|bet|gambl|satta', 'Rahu,Jupiter', '5,8,11', 'casino', 1],
+            ['love|romance|relationship|partner|dating', 'Venus,Moon', '5,7', 'favorite', 0],
+            ['marriage|wedding|spouse|husband|wife', 'Venus,Jupiter', '7,2', 'diversity_1', 0],
+            ['career|job|work|office|promotion', 'Sun,Saturn,Mercury', '10,6,2', 'work', 0],
+            ['business|trade|shop|startup', 'Mercury,Jupiter', '7,10,11', 'storefront', 0],
+            ['money|finance|wealth|income|saving', 'Jupiter,Venus', '2,11', 'savings', 0],
+            ['property|home|house|land|vehicle|car', 'Mars,Saturn', '4,11', 'home', 0],
+            ['child|kid|baby|pregnan', 'Jupiter', '5', 'child_care', 0],
+            ['health|fitness|disease|medical', 'Sun,Moon,Mars', '1,6,8', 'health_and_safety', 0],
+            ['education|study|exam|school|college', 'Mercury,Jupiter', '4,5,9', 'school', 0],
+            ['travel|abroad|foreign|visa|journey', 'Rahu,Moon', '3,9,12', 'flight', 0],
+            ['family|parent|mother|father', 'Moon,Sun', '2,4,9', 'family_restroom', 0],
+            ['friend|social', 'Mercury,Venus', '3,11', 'group', 0],
+            ['legal|court|case|dispute', 'Saturn,Mars', '6,7', 'gavel', 0],
+            ['spiritual|religio|puja|meditation', 'Jupiter,Ketu', '9,12', 'self_improvement', 0],
+        ] as [$re, $pl, $hs, $ic, $warn]) if (preg_match("/($re)/", $n)) return [$pl, $hs, $ic, $warn];
+        return ['Jupiter,Moon', '1,9,11', 'star', 0];
     }
 
     private static function limit(string $bucket, int $perMinute): void {

@@ -275,7 +275,7 @@
     : r.start ? `${fmtD(r.start, { day: 'numeric', month: 'short' })} – ${fmtD(r.end, { day: 'numeric', month: 'short', year: 'numeric' })}` : '';
   async function viewPredict() {
     loading(); let profs, cats;
-    try { [profs, cats] = await Promise.all([api('GET', '/profiles'), api('GET', '/categories')]); } catch (e) { h(errBox(e)); return; }
+    try { [profs, cats] = await Promise.all([api('GET', '/profiles'), api('GET', '/categories?lang=' + lang)]); } catch (e) { h(errBox(e)); return; }
     const st = (() => { try { return JSON.parse(localStorage.getItem('pp') || '{}'); } catch (e) { return {}; } })();
     const save = () => { try { localStorage.setItem('pp', JSON.stringify(st)); } catch (e) {} };
     if (!profs.find(p => p.id === st.kid)) st.kid = profs[0]?.id;
@@ -310,13 +310,18 @@
     document.getElementById('ppe').onclick = () => { editing = !editing; chips(); };
     document.getElementById('ppk').onchange = e => { st.kid = +e.target.value; save(); show(); };
     document.getElementById('ppd').onchange = e => { st.date = e.target.value || today(); save(); show(); };
-    const card = d => `<section class="card pp-res ${d.level}"><div class="pp-top"><div><h2><span class="ms">${esc(d.category.icon)}</span> ${esc(d.category.name)}</h2>
-        <p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p><span class="chip ${d.level === 'favourable' ? 'ok' : d.level === 'challenging' ? 'warn' : ''}">${esc(d.level_text)}</span></div>
+    const yr = d => d.slice(0, 4);
+    const box = (cls, icon, title, list) => list && list.length ? `<div class="pp-box ${cls}"><h3><span class="ms">${icon}</span> ${esc(title)}</h3><ul>${list.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+    const card = d => `<section class="card pp-res ${d.level}"><div class="pp-top"><div><p class="pp-cat"><span class="ms">${esc(d.category.icon)}</span> ${esc(d.category.name)}</p>
+        <h2 class="pp-head">${esc(d.headline)}</h2><p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p>
+        <span class="chip ${d.level === 'favourable' ? 'ok' : d.level === 'challenging' ? 'warn' : ''}">${esc(d.level_text)}</span></div>
         <div class="pp-score">${dial(d.score, d.score_label)}</div></div>
-      <p class="lead">${esc(d.explanation)}</p>${interpTag()}
-      <div class="two"><div><h3><span class="ms">thumb_up</span> ${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
-        <div><h3><span class="ms">warning</span> ${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.challenging.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>
-      ${d.timeline && d.timeline.length ? `<h3><span class="ms">timeline</span> ${esc(t('ui.best_periods'))}</h3><table>${d.timeline.map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.start)} → ${esc(x.end)}</td><td><span class="chip ${x.favourable ? 'ok' : 'warn'}">${esc(t(x.favourable ? 'ui.q_good' : 'ui.sec_caution'))}</span></td></tr>`).join('')}</table>` : ''}
+      <p class="lead">${esc(d.explanation)}</p>
+      ${d.caution ? `<div class="warn"><span class="ms">report</span> ${esc(d.caution)}</div>` : ''}
+      <div class="pp-boxes">${box('do', 'check_circle', t('ui.what_to_do'), d.do)}${box('dont', 'block', t('ui.what_to_avoid'), d.dont)}${box('upay', 'spa', t('ui.simple_upay'), d.upay)}</div>
+      ${d.timeline && d.timeline.length ? `<h3><span class="ms">timeline</span> ${esc(t('ui.life_phases'))}</h3><ul class="pp-phases">${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span class="chip ${x.favourable ? 'ok' : 'warn'}">${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ul>` : ''}
+      ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
+        <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li>${esc(x)}</li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
       <p class="muted pp-disc"><span class="ms">info</span> ${esc(d.disclaimer)}</p></section>`;
     let seq = 0;
     const show = () => {
@@ -853,21 +858,27 @@
     loading();
     try {
       const rows = await api('GET', '/admin/categories'), e = edit || {};
+      const LG = [['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']];
       h(`<section class="hero-band"><div><p class="eyebrow">Admin</p><h1>${esc(t('ui.categories'))}</h1></div><span class="ms hero-ic">category</span></section>${adminTabs('categories')}
-        <section class="card"><form id="cf2" class="stack">
-          <div class="row"><label>Name (English)<input name="name_en" required maxlength="80" value="${esc(e.name_en || '')}"></label><label>Slug<input name="slug" required maxlength="40" value="${esc(e.slug || '')}"></label></div>
-          <div class="row"><label>हिन्दी<input name="name_hi" maxlength="80" value="${esc(e.name_hi || '')}"></label><label>ગુજરાતી<input name="name_gu" maxlength="80" value="${esc(e.name_gu || '')}"></label></div>
-          <div class="row"><label>Planets (comma separated: Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu)<input name="planets" required value="${esc(e.planets || '')}"></label>
-            <label>Houses from lagna (e.g. 10,6,2)<input name="houses" required value="${esc(e.houses || '')}"></label></div>
-          <div class="row"><label>Icon (Material Symbols name)<input name="icon" value="${esc(e.icon || 'star')}"></label><label>Sort order<input name="sort" type="number" value="${esc(e.sort ?? 0)}"></label></div>
-          <label class="check"><input type="checkbox" name="caution"${+e.caution ? ' checked' : ''}> Show "not financial / betting advice" warning (stock market, sports…)</label>
-          <label class="check"><input type="checkbox" name="active"${e.id === undefined || +e.active ? ' checked' : ''}> Active (visible to users)</label>
-          <div class="row"><button>${e.id ? 'Update' : 'Add category'}</button>${e.id ? '<button type="button" class="ghost" id="cc">Cancel</button>' : ''}</div></form></section>
-        <section class="card"><div class="scroll"><table><tr><th></th><th>Name</th><th>Planets</th><th>Houses</th><th>Warning</th><th>Active</th><th></th></tr>
-          ${rows.map(r => `<tr><td><span class="ms">${esc(r.icon)}</span></td><td>${esc(r.name_en)}<br><small class="muted">${esc([r.name_hi, r.name_gu].filter(Boolean).join(' · '))}</small></td><td>${esc(r.planets)}</td><td>${esc(r.houses)}</td>
-            <td>${+r.caution ? '✓' : ''}</td><td>${+r.active ? '✓' : '—'}</td><td><button class="icon-btn" data-e="${r.id}" aria-label="Edit"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`);
+        <section class="card"><div class="card-h"><span class="ms">${e.id ? 'edit' : 'add_circle'}</span>${e.id ? 'Edit category' : 'Add a category'}</div>
+          <p class="muted">Type the category name and simple advice in each language. Write one point per line. The astrology behind it is chosen automatically from the English name.</p>
+          <form id="cf2" class="stack"><div class="seg" id="lgs">${LG.map(([l, n], i) => `<button type="button" data-lg="${l}" class="${i ? '' : 'on'}">${n}</button>`).join('')}</div>
+          ${LG.map(([l, n], i) => `<div class="stack" data-pane="${l}"${i ? ' hidden' : ''}>
+            <label>Category name (${n})<input name="name_${l}" maxlength="80"${l === 'en' ? ' required' : ''} value="${esc(e['name_' + l] || '')}" placeholder="${{ en: 'e.g. Property', hi: 'जैसे: संपत्ति', gu: 'દા.ત. મિલકત' }[l]}"></label>
+            <label>What to do — one per line<textarea name="dos_${l}" rows="3">${esc(e['dos_' + l] || '')}</textarea></label>
+            <label>What to avoid — one per line<textarea name="donts_${l}" rows="3">${esc(e['donts_' + l] || '')}</textarea></label>
+            <label>Upay (simple remedies) — one per line<textarea name="upay_${l}" rows="3">${esc(e['upay_' + l] || '')}</textarea></label></div>`).join('')}
+          <label class="check"><input type="checkbox" name="active"${e.id === undefined || +e.active ? ' checked' : ''}> Show to users</label>
+          <div class="row"><button>${e.id ? 'Save changes' : 'Add category'}</button>${e.id ? '<button type="button" class="ghost" id="cc">Cancel</button>' : ''}</div></form></section>
+        <section class="card"><div class="scroll"><table><tr><th></th><th>Category</th><th>Languages</th><th>Tips</th><th>Shown</th><th></th></tr>
+          ${rows.map(r => `<tr><td><span class="ms">${esc(r.icon)}</span></td><td><b>${esc(r.name_en)}</b><br><small class="muted">${esc([r.name_hi, r.name_gu].filter(Boolean).join(' · '))}</small></td>
+            <td>${LG.map(([l]) => r['name_' + l] ? l.toUpperCase() : '').filter(Boolean).join(' ')}</td><td>${['dos_en', 'donts_en', 'upay_en'].filter(k => r[k]).length}/3</td><td>${+r.active ? '✓' : '—'}</td>
+            <td><button class="icon-btn" data-e="${r.id}" aria-label="Edit"><span class="ms">edit</span></button><button class="icon-btn" data-d="${r.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div></section>`);
+      $app.querySelectorAll('[data-lg]').forEach(b => b.onclick = () => { $app.querySelectorAll('[data-lg]').forEach(x => x.classList.toggle('on', x === b));
+        $app.querySelectorAll('[data-pane]').forEach(p => p.hidden = p.dataset.pane !== b.dataset.lg); });
       const f = document.getElementById('cf2');
-      f.onsubmit = async ev => { ev.preventDefault(); const b = Object.fromEntries(new FormData(f)); b.caution = f.caution.checked; b.active = f.active.checked;
+      f.onsubmit = async ev => { ev.preventDefault(); const b = Object.fromEntries(new FormData(f)); b.active = f.active.checked;
+        if (!b.name_en.trim()) { $app.querySelector('[data-lg="en"]').click(); f.name_en.focus(); return; }
         try { await api(e.id ? 'PUT' : 'POST', '/admin/categories' + (e.id ? '/' + e.id : ''), b); toast(t('ui.saved')); viewAdminCats(); } catch (er) { toast(er.message, 'error'); } };
       document.getElementById('cc')?.addEventListener('click', () => viewAdminCats());
       $app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => viewAdminCats(rows.find(r => r.id == b.dataset.e)));
