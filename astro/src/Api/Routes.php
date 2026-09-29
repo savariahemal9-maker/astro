@@ -247,7 +247,7 @@ final class Routes {
             self::limit('chat', 40); [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
             $msg = mb_substr(trim((string) $q->input('message', '')), 0, 500); if ($msg === '') throw new ApiException('validation', 'Type a question', 422);
             $ctx = (array) $q->input('context', []);
-            return (new \App\Interp\ChatBot($l, (float) $p['lat'], (float) $p['lon']))->reply($k, $msg, ['topic' => $ctx['topic'] ?? null, 'period' => $ctx['period'] ?? null], $local, (string) $p['label']);
+            return (new \App\Interp\ChatBot($l, (float) $p['lat'], (float) $p['lon']))->reply($k, $msg, ['topic' => $ctx['topic'] ?? null, 'period' => $ctx['period'] ?? null, 'offer' => $ctx['offer'] ?? null], $local, (string) $p['label']);
         });
         $r->add('GET', '/profiles/{id}/poojas', function (Request $q, array $u, array $a) {
             [$p, , $k, $l] = self::ctx($q, $u, $a); [, $local] = self::at($q, $p);
