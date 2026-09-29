@@ -46,8 +46,8 @@
   });
 
   function renderNav() {
-    const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
-    const links = [['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars']].concat(token
+    const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'home');
+    const links = [['home', 'home.nav', 'home'], ['panchang', 'ui.panchang', 'calendar_month'], ['rashifal', 'rf.title', 'stars']].concat(token
       ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['chat', 'ui.chat', 'forum'], ['ai-chat', 'ui.nav_claude', 'psychology'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
@@ -388,7 +388,7 @@
     const tm = ts => new Date(ts || Date.now()).toLocaleTimeString(lang === 'en' ? 'en-IN' : lang + '-IN', { hour: 'numeric', minute: '2-digit' });
     const bubble = m => `<div class="msg ${m.me ? 'me' : 'bot'}"><div>${m.lines.map(x => `<p>${esc(x)}</p>`).join('')}<time class="nofmt">${esc(tm(m.ts))}</time></div></div>`;
     const draw = () => {
-      $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button">${esc(x)}</button>`).join('')}</div>` : '');
+      $l.innerHTML = st.msgs.map(bubble).join('') + (st.q && st.q.length ? `<div class="chat-q">${st.q.map(x => `<button type="button" class="qr">${esc(x)}</button>`).join('')}</div>` : '');
       $l.querySelectorAll('.chat-q button').forEach(b => b.onclick = () => ask(b.textContent)); $l.scrollTop = $l.scrollHeight; };
     const greet = () => { thread = null; LS('cthread_' + mode, null); st = { msgs: [{ lines: AI ? [t('chat.claude_greet')] : [t('chat.greet'), t('chat.help')], ts: Date.now() }], ctx: {},
       q: ['career', 'marriage', 'finance', 'child', 'dasha'].map(x => t('chat.q.' + x)) }; draw(); };
@@ -1192,6 +1192,48 @@
     show();
   }
 
+  // ---------- Home: animated zodiac wheel, features, rashis ----------
+  const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  const GLYPH = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'].map(g => g + '︎');
+  function zodiacWheel() {
+    const c = 200, P = (r, deg) => [(c + r * Math.cos(deg * Math.PI / 180)).toFixed(1), (c + r * Math.sin(deg * Math.PI / 180)).toFixed(1)];
+    let seg = '', gl = '', dots = '';
+    for (let i = 0; i < 12; i++) {
+      const [x1, y1] = P(122, i * 30 - 90), [x2, y2] = P(180, i * 30 - 90), [gx, gy] = P(151, i * 30 - 75);
+      seg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+      gl += `<text x="${gx}" y="${gy}">${GLYPH[i]}</text>`;
+      const [dx, dy] = P(104, i * 30 - 75); dots += `<circle cx="${dx}" cy="${dy}" r="${i % 3 ? 1.6 : 2.6}"/>`;
+    }
+    return `<div class="cz-wheel" aria-hidden="true"><svg viewBox="0 0 400 400">
+      <defs><radialGradient id="czSun" cx="40%" cy="38%" r="65%"><stop offset="0" stop-color="#fff8dc"/><stop offset=".55" stop-color="#f5d27a"/><stop offset="1" stop-color="#b5801f"/></radialGradient>
+        <radialGradient id="czHalo"><stop offset="0" stop-color="#f5d27a" stop-opacity=".45"/><stop offset="1" stop-color="#f5d27a" stop-opacity="0"/></radialGradient></defs>
+      <circle cx="200" cy="200" r="198" fill="url(#czHalo)"/>
+      <g class="ring" fill="none" stroke="#f5d27a" stroke-opacity=".75"><circle cx="200" cy="200" r="180" stroke-width="1.6"/><circle cx="200" cy="200" r="122" stroke-width="1"/><g stroke-width=".9">${seg}</g>
+        <g fill="#f5d27a" stroke="none" font-size="25" text-anchor="middle" dominant-baseline="central" font-family="'Segoe UI Symbol','Noto Sans Symbols 2','DejaVu Sans',serif">${gl}</g></g>
+      <g class="ring2"><circle cx="200" cy="200" r="104" fill="none" stroke="#b9a6ff" stroke-opacity=".6" stroke-dasharray="2 6"/><g fill="#fff">${dots}</g></g>
+      <g class="core"><circle cx="200" cy="200" r="60" fill="url(#czSun)"/><path d="M200 152l9 30 31-1-25 18 10 30-25-18-25 18 10-30-25-18 31 1z" fill="#fff" fill-opacity=".55"/></g>
+    </svg><div class="cz-orbit"><i></i></div><div class="cz-orbit o2"><i></i></div></div>`;
+  }
+  function viewHome() {
+    const T = k => esc(t('home.' + k)), feat = [['add', 'f_kundali', 'auto_stories'], ['rashifal', 'f_rashifal', 'stars'], ['panchang', 'f_panchang', 'calendar_month'],
+      ['predict', 'f_predict', 'auto_awesome'], ['ai-chat', 'f_ai', 'psychology'], ['dashboard', 'f_remedy', 'spa']];
+    const need = r => !token && ['add', 'predict', 'ai-chat', 'dashboard'].includes(r) ? 'register' : r;
+    h(`<div class="cz-home">
+      <section class="cz-hero"><div><p class="eyebrow">${T('eyebrow')}</p><h1>${T('h1a')} <em>${T('h1b')}</em></h1><p>${T('sub')}</p>
+        <div class="cz-cta"><a class="btn accent" href="#/${token ? 'add' : 'register'}"><span class="ms">auto_stories</span>${T('cta1')}</a><a class="btn ghost" href="#/rashifal"><span class="ms">stars</span>${T('cta2')}</a></div>
+        <div class="cz-trust"><span><span class="ms">verified</span>${T('t1')}</span><span><span class="ms">spa</span>${T('t2')}</span><span><span class="ms">translate</span>${T('t3')}</span></div></div>
+        ${zodiacWheel()}</section>
+      <section><div class="cz-sec-h"><p class="eyebrow">${T('explore_e')}</p><h2>${T('explore_h')}</h2><p>${T('explore_p')}</p></div>
+        <div class="cz-feats" style="margin-top:1.2rem">${feat.map(([r, k, ic], i) => `<a class="cz-feat" style="--i:${i}" href="#/${need(r)}"><span class="ic"><span class="ms">${ic}</span></span><b>${T(k)}</b><p>${T(k + '_p')}</p><span class="go">${T('open')}<span class="ms">arrow_forward</span></span></a>`).join('')}</div></section>
+      <section><div class="cz-sec-h"><p class="eyebrow">${T('signs_e')}</p><h2>${T('signs_h')}</h2><p>${T('signs_p')}</p></div>
+        <div class="cz-signs" style="margin-top:1.2rem">${SIGNS.map((s, i) => `<a class="cz-sign" style="--i:${i}" href="#/rashifal" data-sign="${i}"><span class="g">${GLYPH[i]}</span><small>${esc(t('astro.signs.' + s))}</small></a>`).join('')}</div></section>
+      <section><div class="cz-sec-h"><p class="eyebrow">${T('how_e')}</p><h2>${T('how_h')}</h2></div>
+        <div class="cz-steps" style="margin-top:1.2rem">${[['edit_calendar', 's1'], ['travel_explore', 's2'], ['task_alt', 's3']].map(([ic, k]) => `<div class="cz-step"><span class="ms">${ic}</span><b>${T(k)}</b><p>${T(k + 'p')}</p></div>`).join('')}</div></section>
+      <section class="cz-band"><div><h3>${T('band_h')}</h3><p>${T('band_p')}</p></div><a class="btn accent" href="#/${token ? 'ai-chat' : 'register'}"><span class="ms">psychology</span>${T('band_b')}</a></section>
+      <p class="cz-foot">${T('foot')}</p></div>`);
+    $app.querySelectorAll('[data-sign]').forEach(a => a.onclick = () => { try { localStorage.setItem('rf_sign', a.dataset.sign); } catch (e) {} });
+  }
+
   // ---------- Router ----------
   async function route() {
     if (window.ADMIN_APP) return adminRoute();
@@ -1212,6 +1254,7 @@
     if (page === 'rashifal') return viewRashifal(['daily', 'weekly', 'monthly'].includes(arg) ? arg : 'daily');
     if (page === 'admin') { location.hash = '#/panchang'; return; }
 
+    if (page === 'home' || (!page && !token)) return viewHome();
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
     if (page === 'chart' && arg) return viewChart(parseInt(arg, 10));
     if (page === 'print' && arg) return viewPrint(parseInt(arg, 10));
