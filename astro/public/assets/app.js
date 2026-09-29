@@ -382,7 +382,8 @@
       text = text.trim(); if (!text) return; const history = st.msgs.slice(-6).map(m => ({ me: !!m.me, text: m.lines.join(' ').slice(0, 400) })); st.msgs.push({ me: true, lines: [text], ts: Date.now() }); st.q = []; draw(); f.m.value = '';
       $l.insertAdjacentHTML('beforeend', '<div class="msg bot typing"><div><span></span><span></span><span></span></div></div>'); $l.scrollTop = $l.scrollHeight;
       try { const [d] = await Promise.all([api('POST', `/profiles/${kid}/chat?lang=${lang}`, { message: text, context: st.ctx, history }), new Promise(r => setTimeout(r, 600))]);
-        st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || []; }
+        st.msgs.push({ lines: d.reply, ts: Date.now() }); st.ctx = d.context; st.q = d.quick || [];
+        if (d.engine) console.info('[chat] answered by', d.engine, d.why || ''); }
       catch (e) { st.msgs.push({ lines: [e.message], ts: Date.now() }); }
       save(); draw();
     };
@@ -954,7 +955,11 @@
     loading(); try { const d = await api('GET', '/admin/stats');
       h(admWrap('overview', `<h1>${esc(t('ui.admin_overview'))}</h1><div class="adm-stats">${[['group', 'ui.admin_users', d.users], ['person_add', '7d', d.new_users_7d], ['workspace_premium', 'Premium', d.premium],
         ['block', 'Disabled', d.disabled], ['auto_stories', 'ui.admin_kundalis', d.kundalis], ['category', 'ui.categories', d.categories]].map(([ic, l, v]) => `<div class="adm-stat"><span class="ms">${ic}</span><b>${v}</b><small>${esc(l.startsWith('ui.') ? t(l) : l)}</small></div>`).join('')}</div>
+        <section class="card" id="aist"><div class="card-h"><span class="ms">smart_toy</span>AI chat (Gemini)</div><p class="muted">Checking…</p></section>
         <section class="card"><div class="card-h"><span class="ms">schedule</span>Latest users</div><div class="scroll"><table>${d.recent.map(u => `<tr><td><a href="#/users/${u.id}">${esc(u.name)}</a></td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table></div></section>`));
+      api('GET', '/admin/ai-status').then(s => { const el = document.getElementById('aist'); if (el) el.lastElementChild.outerHTML = s.ok
+        ? `<p><span class="chip ok">Working</span> Model ${esc(s.model)} answered the test request.</p>`
+        : `<p><span class="chip warn">Not working</span> ${s.key_set ? `Key set (${s.key_length} characters), model ${esc(s.model)}.` : ''}</p><p><b>Reason:</b> ${esc(s.error || 'unknown')}</p>`; }).catch(() => {});
     } catch (e) { h(admWrap('overview', errBox(e))); } }
   async function viewAdminUsers(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
