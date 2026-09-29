@@ -6,7 +6,7 @@
   let inflight = 0;
   const $lang = document.getElementById('lang');
   let isAdmin = false;
-  let dict = {}, lang = localStorage.getItem('lang') || 'en', token = localStorage.getItem('token');
+  let dict = {}, lang = localStorage.getItem('lang') || 'en', token = localStorage.getItem(window.ADMIN_APP ? 'admin_token' : 'token');
 
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const t = (key, fallback) => key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), dict) ?? fallback ?? key.split('.').pop();
@@ -27,12 +27,12 @@
     clearTimeout(tmo);
     const json = await res.json().catch(() => ({ ok: false, error: { code: 'network', message: 'No response from server' } }));
     if (!json.ok) {
-      if (json.error.code === 'unauthorized') { setToken(null); location.hash = '#/login'; }
+      if (json.error.code === 'unauthorized') { setToken(null); location.hash = window.ADMIN_APP ? '#/' : '#/login'; }
       const e = new Error(json.error.message); e.code = json.error.code; e.details = json.error.details; throw e;
     }
     return json.data;
   }
-  const setToken = v => { token = v; v ? localStorage.setItem('token', v) : localStorage.removeItem('token'); renderNav(); };
+  const setToken = v => { token = v; const tk = window.ADMIN_APP ? 'admin_token' : 'token'; v ? localStorage.setItem(tk, v) : localStorage.removeItem(tk); renderNav(); };
 
   async function loadLang(l) {
     lang = l; localStorage.setItem('lang', l); $lang.value = l; document.documentElement.lang = l;
@@ -41,14 +41,14 @@
   }
   $lang.addEventListener('change', async () => {
     await loadLang($lang.value);
-    if (token) api('PATCH', '/me', { lang }).catch(() => {});
+    if (token && !window.ADMIN_APP) api('PATCH', '/me', { lang }).catch(() => {});
     route();
   });
 
   function renderNav() {
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'panchang');
     const links = [['panchang', 'ui.panchang', 'calendar_month']].concat(token
-      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['add', 'ui.add_chart', 'person_add']].concat(isAdmin ? [['admin', 'ui.admin', 'admin_panel_settings']] : []).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
+      ? [['dashboard', 'ui.dashboard', 'space_dashboard'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['add', 'ui.add_chart', 'person_add']].concat([]).concat([['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']])
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']]);
     const html = links.map(([k, l, ic]) => `<a href="#/${k}" class="${cur === k || (k === 'dashboard' && ['chart', 'print', 'charts'].includes(cur)) ? 'on' : ''}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('');
     $rail.innerHTML = html;
@@ -208,8 +208,7 @@
         if (reg) body.name = f.name.value;
         const d = await api('POST', reg ? '/auth/register' : '/auth/login', body);
         setToken(d.token); if (d.user.lang !== lang) await loadLang(d.user.lang);
-        try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e2) {}
-        if (adm) { if (location.hash === '#/admin') route(); else location.hash = '#/admin'; } else location.hash = '#/dashboard';
+        location.hash = '#/dashboard';
       } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; }
     };
   }
@@ -251,7 +250,7 @@
       <section class="card"><div class="card-h"><span class="ms">lock_reset</span>${esc(t('ui.change_password'))}</div>
         <form class="stack" id="cpf"><label>${esc(t('ui.current_password'))}<input type="password" name="current_password" required autocomplete="current-password"></label>${pwPair()}
           <div id="cperr"></div><div><button>${esc(t('ui.change_password'))}</button></div></form></section></div>
-      <section class="card row acct-links">${isAdmin ? `<a class="btn tonal" href="#/admin"><span class="ms">admin_panel_settings</span>${esc(t('ui.admin'))}</a>` : ''}<a class="btn ghost" href="#/logout"><span class="ms">logout</span>${esc(t('ui.sign_out'))}</a></section>`);
+      <section class="card row acct-links"><a class="btn ghost" href="#/logout"><span class="ms">logout</span>${esc(t('ui.sign_out'))}</a></section>`);
     const pf = document.getElementById('pf'), cpf = document.getElementById('cpf');
     pf.email.oninput = () => { const ch = pf.email.value.trim().toLowerCase() !== me.email; document.getElementById('pwc').hidden = !ch; pf.password.required = ch; };
     pf.onsubmit = async e => {
@@ -905,29 +904,29 @@
 
   // ---------- Admin: remedy rules ----------
   const ADM = [['overview', 'ui.admin_overview', 'monitoring'], ['users', 'ui.admin_users', 'group'], ['kundalis', 'ui.admin_kundalis', 'auto_stories'],
-    ['categories', 'ui.categories', 'category'], ['remedies', 'ui.remedy_rules', 'spa'], ['plans', 'ui.admin_plans', 'workspace_premium']];
+    ['categories', 'ui.categories', 'category'], ['remedies', 'ui.remedy_rules', 'spa'], ['plans', 'ui.admin_plans', 'workspace_premium'], ['admins', 'ui.admin_admins', 'shield_person']];
   const adminTabs = () => '';
   const admWrap = (cur, html) => `<div class="adm"><aside class="adm-nav"><p class="adm-brand"><span class="ms">admin_panel_settings</span>${esc(t('ui.admin'))}</p>
-    ${ADM.map(([k, l, ic]) => `<a class="${cur === k ? 'on' : ''}" href="#/admin/${k}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('')}
-    <a class="adm-back" href="#/dashboard"><span class="ms">arrow_back</span><span>${esc(t('ui.back_to_site'))}</span></a></aside><div class="adm-main">${html}</div></div>`;
+    ${ADM.map(([k, l, ic]) => `<a class="${cur === k ? 'on' : ''}" href="#/${k}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('')}
+    <a class="adm-back" href="#/logout"><span class="ms">logout</span><span>${esc(t('ui.sign_out'))}</span></a></aside><div class="adm-main">${html}</div></div>`;
   const pager = (d, go) => `<div class="row adm-pager">${d.page > 1 ? `<button class="ghost" data-pg="${d.page - 1}">‹</button>` : ''}<span class="muted">${d.page}</span>${d.has_more ? `<button class="ghost" data-pg="${d.page + 1}">›</button>` : ''}</div>`;
   async function viewAdminOverview() {
     loading(); try { const d = await api('GET', '/admin/stats');
       h(admWrap('overview', `<h1>${esc(t('ui.admin_overview'))}</h1><div class="adm-stats">${[['group', 'ui.admin_users', d.users], ['person_add', '7d', d.new_users_7d], ['workspace_premium', 'Premium', d.premium],
         ['block', 'Disabled', d.disabled], ['auto_stories', 'ui.admin_kundalis', d.kundalis], ['category', 'ui.categories', d.categories]].map(([ic, l, v]) => `<div class="adm-stat"><span class="ms">${ic}</span><b>${v}</b><small>${esc(l.startsWith('ui.') ? t(l) : l)}</small></div>`).join('')}</div>
-        <section class="card"><div class="card-h"><span class="ms">schedule</span>Latest users</div><div class="scroll"><table>${d.recent.map(u => `<tr><td><a href="#/admin/users/${u.id}">${esc(u.name)}</a></td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table></div></section>`));
+        <section class="card"><div class="card-h"><span class="ms">schedule</span>Latest users</div><div class="scroll"><table>${d.recent.map(u => `<tr><td><a href="#/users/${u.id}">${esc(u.name)}</a></td><td>${esc(u.email)}</td><td>${esc(u.created_at)}</td></tr>`).join('')}</table></div></section>`));
     } catch (e) { h(admWrap('overview', errBox(e))); } }
   async function viewAdminUsers(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
       h(admWrap('users', `<h1>${esc(t('ui.admin_users'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / email"><button><span class="ms">search</span></button></form>
         <section class="card"><div class="scroll"><table><tr><th>Name</th><th>Email</th><th>Plan</th><th>Kundalis</th><th>Joined</th><th>Status</th></tr>
-        ${d.items.map(u => `<tr><td><a href="#/admin/users/${u.id}"><b>${esc(u.name)}</b></a></td><td>${esc(u.email)}</td><td><span class="chip ${u.plan === 'premium' ? 'ok' : ''}">${esc(u.plan)}</span></td><td>${u.kundalis}</td><td>${esc(u.created_at.slice(0, 10))}</td><td>${+u.disabled ? '<span class="chip warn">Disabled</span>' : 'Active'}</td></tr>`).join('')}</table></div>${pager(d)}</section>`));
+        ${d.items.map(u => `<tr><td><a href="#/users/${u.id}"><b>${esc(u.name)}</b></a></td><td>${esc(u.email)}</td><td><span class="chip ${u.plan === 'premium' ? 'ok' : ''}">${esc(u.plan)}</span></td><td>${u.kundalis}</td><td>${esc(u.created_at.slice(0, 10))}</td><td>${+u.disabled ? '<span class="chip warn">Disabled</span>' : 'Active'}</td></tr>`).join('')}</table></div>${pager(d)}</section>`));
       document.getElementById('aq').onsubmit = e => { e.preventDefault(); viewAdminUsers(e.target.q.value); };
       $app.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => viewAdminUsers(q, +b.dataset.pg));
     } catch (e) { h(admWrap('users', errBox(e))); } }
   async function viewAdminUser(id) {
     loading(); try { const u = await api('GET', '/admin/users/' + id);
-      h(admWrap('users', `<p><a href="#/admin/users">‹ ${esc(t('ui.admin_users'))}</a></p><h1>${esc(u.name)}</h1><p class="muted">${esc(u.email)} · ${esc(u.created_at)}</p>
+      h(admWrap('users', `<p><a href="#/users">‹ ${esc(t('ui.admin_users'))}</a></p><h1>${esc(u.name)}</h1><p class="muted">${esc(u.email)} · ${esc(u.created_at)}</p>
         <section class="card"><div class="card-h"><span class="ms">workspace_premium</span>Plan & access</div><form class="stack" id="uf"><div class="row">
           <label>Plan<select name="plan"><option value="free"${u.plan === 'free' ? ' selected' : ''}>Free</option><option value="premium"${u.plan === 'premium' ? ' selected' : ''}>Premium</option></select></label>
           <label>Premium until<input type="date" name="plan_expires" value="${esc(u.plan_expires || '')}"></label></div>
@@ -937,20 +936,46 @@
           ${u.profiles.map(p => `<tr><td><b>${esc(p.label)}</b></td><td>${esc(p.birth_date)} ${esc(p.birth_time.slice(0, 5))}</td><td>${esc(p.place_name)}</td></tr>`).join('') || `<tr><td class="muted">${esc(t('ui.none'))}</td></tr>`}</table></div></section>`));
       const f = document.getElementById('uf');
       f.onsubmit = async e => { e.preventDefault(); try { await api('PATCH', '/admin/users/' + id, { plan: f.plan.value, plan_expires: f.plan_expires.value, disabled: f.disabled.checked }); toast(t('ui.saved')); } catch (er) { toast(er.message, 'error'); } };
-      document.getElementById('ud').onclick = async () => { if (await confirmDialog(`Delete ${u.email} and all their kundalis?`)) { try { await api('DELETE', '/admin/users/' + id); toast(t('ui.deleted'), 'delete'); location.hash = '#/admin/users'; } catch (er) { toast(er.message, 'error'); } } };
+      document.getElementById('ud').onclick = async () => { if (await confirmDialog(`Delete ${u.email} and all their kundalis?`)) { try { await api('DELETE', '/admin/users/' + id); toast(t('ui.deleted'), 'delete'); location.hash = '#/users'; } catch (er) { toast(er.message, 'error'); } } };
     } catch (e) { h(admWrap('users', errBox(e))); } }
   async function viewAdminKundalis(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/kundalis?q=${encodeURIComponent(q)}&page=${page}`);
       h(admWrap('kundalis', `<h1>${esc(t('ui.admin_kundalis'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / place / email"><button><span class="ms">search</span></button></form>
         <section class="card"><div class="scroll"><table><tr><th>Kundali</th><th>Birth</th><th>Place</th><th>Owner</th><th></th></tr>
-        ${d.items.map(k => `<tr><td><b>${esc(k.label)}</b></td><td>${esc(k.birth_date)} ${esc(k.birth_time.slice(0, 5))}</td><td>${esc(k.place_name.split(',')[0])}</td><td><a href="#/admin/users/${k.user_id}">${esc(k.user_name)}</a><br><small class="muted">${esc(k.email)}</small></td>
+        ${d.items.map(k => `<tr><td><b>${esc(k.label)}</b></td><td>${esc(k.birth_date)} ${esc(k.birth_time.slice(0, 5))}</td><td>${esc(k.place_name.split(',')[0])}</td><td><a href="#/users/${k.user_id}">${esc(k.user_name)}</a><br><small class="muted">${esc(k.email)}</small></td>
           <td><button class="icon-btn" data-d="${k.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('')}</table></div>${pager(d)}</section>`));
       document.getElementById('aq').onsubmit = e => { e.preventDefault(); viewAdminKundalis(e.target.q.value); };
       $app.querySelectorAll('[data-pg]').forEach(b => b.onclick = () => viewAdminKundalis(q, +b.dataset.pg));
       $app.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => { if (await confirmDialog('Delete this kundali?')) { await api('DELETE', '/admin/kundalis/' + b.dataset.d); viewAdminKundalis(q, page); } });
     } catch (e) { h(admWrap('kundalis', errBox(e))); } }
+  function viewAdminAuth(mode = 'login') {
+    const reg = mode === 'register';
+    h(`<section class="adm-auth"><p class="adm-brand"><span class="ms">admin_panel_settings</span>${esc(t('ui.app_name'))} · ${esc(t('ui.admin'))}</p>
+      <h1>${esc(reg ? t('ui.admin_register') : t('ui.admin_login'))}</h1>${reg ? `<p class="muted">${esc(t('ui.admin_reg_hint'))}</p>` : ''}
+      <form class="stack" id="aaf">${reg ? `<label>${esc(t('ui.name'))}<input name="name" required autocomplete="name"></label>` : ''}
+        <label>${esc(t('ui.email'))}<input type="email" name="email" required autocomplete="email"></label>
+        <label>${esc(t('ui.password'))}<input type="password" name="password" minlength="${reg ? 10 : 1}" required autocomplete="${reg ? 'new-password' : 'current-password'}"></label>
+        <div id="aerr"></div><button>${esc(reg ? t('ui.register') : t('ui.sign_in'))}</button>
+        <a href="#/${reg ? '' : 'register'}">${esc(reg ? t('ui.have_account') : t('ui.admin_new'))}</a></form></section>`);
+    const f = document.getElementById('aaf');
+    f.onsubmit = async e => { e.preventDefault(); const b = f.querySelector('button'); b.disabled = true;
+      try { const body = { email: f.email.value, password: f.password.value }; if (reg) body.name = f.name.value;
+        const d = await api('POST', reg ? '/admin-auth/register' : '/admin-auth/login', body);
+        if (d.pending) { f.outerHTML = `<section class="card"><span class="ms">hourglass_top</span> ${esc(t('ui.admin_pending'))}</section><p><a href="#/">${esc(t('ui.back_to_login'))}</a></p>`; return; }
+        setToken(d.token); location.hash = '#/overview'; route();
+      } catch (err) { document.getElementById('aerr').innerHTML = errBox(err); b.disabled = false; } };
+  }
+  async function viewAdminAdmins() {
+    loading(); try { const [rows, me] = await Promise.all([api('GET', '/admin/admins'), api('GET', '/admin-auth/me')]);
+      h(admWrap('admins', `<h1>${esc(t('ui.admin_admins'))}</h1><p class="muted">${esc(t('ui.admin_admins_hint'))}</p><section class="card"><div class="scroll"><table><tr><th>Name</th><th>Email</th><th>Status</th><th></th></tr>
+        ${rows.map(a => `<tr><td><b>${esc(a.name)}</b></td><td>${esc(a.email)}</td><td><span class="chip ${a.status === 'active' ? 'ok' : 'warn'}">${esc(a.status)}</span></td><td>${a.id === me.id ? '<span class="muted">you</span>' :
+          `${a.status !== 'active' ? `<button class="tonal" data-st="${a.id}" data-v="active"><span class="ms">check</span>Approve</button>` : `<button class="ghost" data-st="${a.id}" data-v="disabled">Disable</button>`}
+           <button class="icon-btn" data-del="${a.id}" aria-label="Delete"><span class="ms">delete</span></button>`}</td></tr>`).join('')}</table></div></section>`));
+      $app.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => { try { await api('PATCH', '/admin/admins/' + b.dataset.st, { status: b.dataset.v }); viewAdminAdmins(); } catch (e) { toast(e.message, 'error'); } });
+      $app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { if (await confirmDialog('Delete this admin?')) { try { await api('DELETE', '/admin/admins/' + b.dataset.del); viewAdminAdmins(); } catch (e) { toast(e.message, 'error'); } } });
+    } catch (e) { h(admWrap('admins', errBox(e))); } }
   function viewAdminPlans() {
-    h(admWrap('plans', `<h1>${esc(t('ui.admin_plans'))}</h1><section class="card"><p>Every user now has a <b>Free</b> or <b>Premium</b> plan with an optional end date. You can change it from <a href="#/admin/users">${esc(t('ui.admin_users'))}</a>.</p>
+    h(admWrap('plans', `<h1>${esc(t('ui.admin_plans'))}</h1><section class="card"><p>Every user now has a <b>Free</b> or <b>Premium</b> plan with an optional end date. You can change it from <a href="#/users">${esc(t('ui.admin_users'))}</a>.</p>
       <p class="muted">Online payments (Razorpay / Stripe) and choosing which features are premium will be added here next.</p></section>`)); }
   async function viewAdminCats(edit = null) {
     loading();
@@ -1036,7 +1061,8 @@
 
   // ---------- Router ----------
   async function route() {
-    renderNav(); document.body.classList.toggle('admin-mode', location.hash.startsWith('#/admin') && !!token);
+    if (window.ADMIN_APP) return adminRoute();
+    renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
     if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict'].includes(page) && !token) { location.hash = '#/login'; return; }
@@ -1048,18 +1074,20 @@
     if (page === 'charts') { location.hash = '#/dashboard'; return; }
     if (page === 'add') return viewAdd();
     if (page === 'predict') return viewPredict();
-    if (page === 'admin') {
-      if (!token) return viewAuth('admin');
-      if (!isAdmin) { try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e) {} renderNav(); }
-      if (!isAdmin) { h(`<h1>${esc(t('ui.admin'))}</h1><section class="card"><p>${esc(t('ui.not_admin'))}</p><a class="btn" href="#/logout">${esc(t('ui.sign_out'))}</a></section>`); return; }
-      const sub = location.hash.split('/')[3];
-      return ({ overview: viewAdminOverview, users: () => sub ? viewAdminUser(+sub) : viewAdminUsers(), kundalis: () => viewAdminKundalis(), categories: () => viewAdminCats(),
-        remedies: () => viewAdmin(), plans: viewAdminPlans }[arg] || viewAdminOverview)();
-    }
+    if (page === 'admin') { location.hash = '#/panchang'; return; }
+
     if (page === 'dashboard' || (!page && token)) return viewDashboard();
     if (page === 'chart' && arg) return viewChart(parseInt(arg, 10));
     if (page === 'print' && arg) return viewPrint(parseInt(arg, 10));
     return viewPanchang();
+  }
+  async function adminRoute() {
+    document.body.classList.add('admin-mode'); $rail.innerHTML = $bnav.innerHTML = '';
+    const [, page, sub] = location.hash.split('/');
+    if (page === 'logout') { try { await api('POST', '/admin-auth/logout'); } catch (e) {} setToken(null); location.hash = '#/'; return viewAdminAuth(); }
+    if (!token) return viewAdminAuth(page === 'register' ? 'register' : 'login');
+    return ({ overview: viewAdminOverview, users: () => sub ? viewAdminUser(+sub) : viewAdminUsers(), kundalis: () => viewAdminKundalis(), categories: () => viewAdminCats(),
+      remedies: () => viewAdmin(), plans: viewAdminPlans, admins: viewAdminAdmins }[page] || viewAdminOverview)();
   }
   const DATE_RE = /\b(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2})(?::\d{2})?Z)?\b/g;
   const TIME_RE = /(?<![+\u2212\-\d:])\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b(?!\s?[AP]M)/g, AMPM = { en: ['AM', 'PM'], hi: ['AM', 'PM'], gu: ['AM', 'PM'] };
@@ -1074,5 +1102,5 @@
   let obsBusy = false;
   new MutationObserver(() => { if (obsBusy) return; obsBusy = true; requestAnimationFrame(() => { obsBusy = false; fmtDates($app); stagger($app); enhanceFields($app); countUp($app); $app.querySelectorAll('.dial[data-v]:not(.go), .ring[data-v]:not(.go), .bar[data-v]:not(.go)').forEach(el => requestAnimationFrame(() => el.classList.add('go'))); }); }).observe($app, { childList: true, subtree: true });
   window.addEventListener('hashchange', route);
-  loadLang(lang).then(async () => { if (token) try { isAdmin = (await api('GET', '/me/admin')).admin; } catch (e) {} }).then(route).catch(e => h(errBox(e)));
+  loadLang(lang).then(route).catch(e => h(errBox(e)));
 })();

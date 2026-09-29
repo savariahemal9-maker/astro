@@ -1,7 +1,7 @@
 <?php
 // Website shell. All data comes from the same /api/v1 used by the mobile app.
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/');
-$root = preg_replace('#/public$#', '', $base);
+$root = preg_replace('#/(public|admin)$#', '', $base);
 $v = fn($f) => @filemtime(__DIR__ . '/assets/' . $f) ?: time(); // cache-busting
 ?><!doctype html>
 <html lang="en">
@@ -31,7 +31,7 @@ $v = fn($f) => @filemtime(__DIR__ . '/assets/' . $f) ?: time(); // cache-busting
 <nav id="bnav" class="bnav" aria-label="Main"></nav>
 <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 <div id="dialog" class="dialog" hidden><div class="dialog-card" role="dialog" aria-modal="true"><p id="dialogMsg"></p><div class="row end"><button class="ghost" data-d="0"></button><button data-d="1"></button></div></div></div>
-<script>window.API_BASE = <?= json_encode($root . '/api/v1') ?>;</script>
+<script>window.API_BASE = <?= json_encode($root . '/api/v1') ?>; window.ADMIN_APP = <?= defined('ADMIN_APP') ? 'true' : 'false' ?>;</script>
 <script src="<?= htmlspecialchars($root) ?>/public/assets/app.js?v=<?= $v('app.js') ?>"></script>
 </body>
 </html>

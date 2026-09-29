@@ -450,3 +450,6 @@ details.cx[open]>summary{margin-bottom:.4rem}
 .pj-card>summary{padding:.2rem 0}
 details.cx>summary::before{content:none!important;display:none!important}
 details.cx>summary{padding-left:0} .cx-t b{font-size:1rem;color:var(--ink)} .cx-t small{font-size:.85rem}
+.adm-auth{max-width:440px;margin:6vh auto;background:var(--s);border:1px solid var(--line);border-radius:24px;padding:1.6rem;box-shadow:var(--sh2)}
+.adm-auth .adm-brand{color:var(--gold);margin:0 0 .4rem} .adm-auth h1{margin:.2rem 0 .6rem} .adm-auth form{margin-top:1rem}
+body.admin-mode .topbar #railToggle{display:none}
