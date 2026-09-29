@@ -58,7 +58,7 @@ final class Routes {
             if (!in_array($period, ['daily', 'weekly', 'monthly'], true)) throw new ApiException('validation', 'period must be daily, weekly or monthly', 422);
             $tz = new \DateTimeZone('Asia/Kolkata'); $d = (string) $q->input('date', '');
             $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? (\DateTimeImmutable::createFromFormat('!Y-m-d', $d, $tz) ?: new \DateTimeImmutable('today', $tz)) : new \DateTimeImmutable('today', $tz);
-            $key = hash('sha256', json_encode(['rf1', $period, $date->format('Y-m-d'), $q->lang()]));
+            $key = hash('sha256', json_encode(['rf2', $period, $date->format('Y-m-d'), $q->lang()]));
             if ($c = Db::one('SELECT payload FROM panchang_cache WHERE cache_key = ?', [$key])) return json_decode($c['payload'], true);
             $out = (new \App\Interp\Rashifal($q->lang()))->all($period, $date);
             Db::exec('REPLACE INTO panchang_cache (cache_key, payload) VALUES (?,?)', [$key, json_encode($out)]);

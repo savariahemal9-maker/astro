@@ -111,7 +111,9 @@ final class AiChat {
     public const DEFAULT_MODEL = 'gemini-3.8-flash';
 
     /** Configured model, unless Google retired it and named a replacement earlier (remembered in the cache table). */
+    private static ?string $override = null;                  // backup model for a single retry
     private static function model(): string {
+        if (self::$override !== null) return self::$override;
         $cfg = (string) ((app_config()['ai'] ?? [])['model'] ?? self::DEFAULT_MODEL);
         try { $o = Db::one('SELECT payload FROM panchang_cache WHERE cache_key = ?', ['ai_model:' . $cfg]); } catch (\Throwable $e) { $o = null; }
         return $o ? (string) json_decode($o['payload'], true) : $cfg;
@@ -134,6 +136,17 @@ final class AiChat {
                 $cfg = (string) ($c['model'] ?? self::DEFAULT_MODEL);
                 Db::exec('REPLACE INTO panchang_cache (cache_key, payload) VALUES (?,?)', ['ai_model:' . $cfg, json_encode($next)]);
                 error_log("[ai] model $model retired, switching to $next");
+                return $this->call($sys, $user, $temp, true);
+            }
+            // busy / rate-limited: wait a moment and try once more, then a backup model if one is configured
+            if (in_array($code, [429, 500, 503], true) && !$retried) {
+                usleep(1200000);
+                $backup = (string) ($c['backup_model'] ?? '');
+                if ($backup !== '' && $backup !== $model) {
+                    $saved = self::$override; self::$override = $backup;
+                    $j = $this->call($sys, $user, $temp, true); self::$override = $saved;
+                    if ($j !== null) return $j;
+                }
                 return $this->call($sys, $user, $temp, true);
             }
             self::$lastError = "http_$code ($model): " . mb_substr($why, 0, 200); error_log('[ai] ' . self::$lastError); return null;

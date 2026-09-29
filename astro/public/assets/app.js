@@ -1132,11 +1132,11 @@
         ${notes.map(n => `<div class="rf-note t-${n.tone}"><span class="ms">${IC[n.area]}</span><p>${esc(n.text)}</p></div>`).join('')}
         <div class="rf-areas">${['career', 'money', 'love', 'health'].map(a => { const l = L(a); return `<section class="rf-area t-${l.tone}">
           <div class="rf-ah"><span class="rf-ai"><span class="ms">${IC[a]}</span></span><b>${esc(t('rf.lbl.' + a))}</b>${badge(l.tone)}</div><p>${esc(strip(l.text))}</p></section>`; }).join('')}</div>
-        <div class="rf-bottom"><section class="rf-lucky"><h3>${esc(t('rf.lbl.lucky'))}</h3><div class="rf-lk">
+        ${r.lucky && r.remedy ? `<div class="rf-bottom"><section class="rf-lucky"><h3>${esc(t('rf.lbl.lucky'))}</h3><div class="rf-lk">
             <div><span class="rf-sw" style="background:${r.lucky.hex}"></span><small>${esc(t('rf.l_color'))}</small><b>${esc(r.lucky.color)}</b></div>
             <div><span class="rf-num">${r.lucky.num}</span><small>${esc(t('rf.l_num'))}</small><b>${r.lucky.num}</b></div>
             <div><span class="rf-num"><span class="ms">event</span></span><small>${esc(t('rf.l_day'))}</small><b>${esc(r.lucky.day)}</b></div></div></section>
-          <section class="rf-remedy"><h3><span class="ms">spa</span>${esc(t('rf.lbl.remedy'))}</h3><p class="rf-mantra">${esc(r.remedy.mantra)}</p><small>${esc(t('rf.chant').replace('{planet}', r.remedy.planet))}</small></section></div>
+          <section class="rf-remedy"><h3><span class="ms">spa</span>${esc(t('rf.lbl.remedy'))}</h3><p class="rf-mantra">${esc(r.remedy.mantra)}</p><small>${esc(t('rf.chant').replace('{planet}', r.remedy.planet))}</small></section></div>` : ''}
       </article>`;
     };
     bar.querySelectorAll('.rf-sg').forEach(b => b.onclick = () => { sign = +b.dataset.sg; try { localStorage.setItem('rf_sign', sign); } catch (e) {} show(); });
