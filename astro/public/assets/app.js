@@ -1226,25 +1226,17 @@
     btn.onclick = async () => {
       btn.disabled = true;
       try {
-        await loadJs('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        await loadJs('https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js');
         await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true }), pages = [...host.children];
-        // capture one page at a time inside a small frame: html2canvas copies the whole document it captures from
-        const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;left:-12000px;top:0;width:900px;height:1200px;border:0';
-        document.body.appendChild(fr); const fd = fr.contentDocument;
-        fd.open(); fd.write(`<!doctype html><html lang="${lang}"><head><meta charset="utf-8">${[...document.querySelectorAll('link[rel=stylesheet]')].map(l => l.outerHTML).join('')}</head>
-          <body style="margin:0;background:#fff"><div class="bk bk-pages" id="one" style="display:block;padding:0"></div></body></html>`); fd.close();
-        await Promise.all([...fd.querySelectorAll('link[rel=stylesheet]')].map(l => l.sheet ? 0 : new Promise(r => { l.onload = l.onerror = r; })));
-        if (fd.fonts) { await Promise.all(['400', '600', '700'].flatMap(w => [`${w} 16px Poppins`, `${w} 16px "Hind Vadodara"`]).map(f => fd.fonts.load(f).catch(() => {}))); await fd.fonts.ready; }
-        const one = fd.getElementById('one');
+        // the browser draws each page itself (SVG foreignObject); fonts are embedded once and reused
+        const fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(host).catch(() => '');
         for (let i = 0; i < pages.length; i++) {
           st.textContent = `PDF ${i + 1} / ${pages.length}`;
-          one.innerHTML = ''; one.appendChild(fd.importNode(pages[i], true));
-          const cv = await window.html2canvas(one.firstElementChild, { scale: 1.6, backgroundColor: '#ffffff', useCORS: true, logging: false });
+          const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 1.6, quality: 0.88, backgroundColor: '#ffffff', fontEmbedCSS, cacheBust: false });
           if (i) pdf.addPage();
-          pdf.addImage(cv.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+          pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
-        fr.remove();
         pdf.save(`${(P.label.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Kundali')} - KarmYog Kundali Report.pdf`);
         st.textContent = `${pageNo} pages`;
       } catch (e) { toast(e.message || 'PDF error'); st.textContent = ''; }
