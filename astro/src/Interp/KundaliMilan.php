@@ -3,302 +3,286 @@ namespace App\Interp;
 
 use App\Calc\Zodiac;
 use App\Core\Db;
+use App\I18n\Lang;
 
 /**
- * Ashtakoot Kundali Milan (8-factor match-making).
- * Operates purely on Moon sign (Rashi) and Moon nakshatra indices.
+ * Ashtakoot Kundali Milan (8 koota, 36 gunas) from the Moon of boy and girl.
+ * Only the raw Moon data and Mangal status are stored; every read recomputes the
+ * result in the requested language, so language switches and rule fixes apply to old reports too.
  */
 final class KundaliMilan {
-    // ─── Ashtakoot tables ─────────────────────────────────────────────────
-    // Varna (caste): signs 0-11 → 0=Brahmin,1=Kshatriya,2=Vaishya,3=Shudra
-    private const VARNA = [2,3,2,0,0,1,1,2,1,3,0,3];
-    // Vashya groups: 0=Chatushpad,1=Manav,2=Vanchar,3=Jalchar,4=Keeta/Keet
-    private const VASHYA_GRP = [0,0,1,3,0,1,1,0,1,0,1,4];
-    private const VASHYA_SCORE = [
-        [2,0,1,0,0], [0,2,0,1,0], [1,0,2,0,0], [0,1,0,2,0], [0,0,0,0,2]
+    // Varna by sign: 0 Brahmin, 1 Kshatriya, 2 Vaishya, 3 Shudra (water, fire, earth, air)
+    private const VARNA = [1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0];
+    // Vashya groups: 0 Chatushpad, 1 Manav, 2 Jalchar, 3 Vanchar, 4 Keet
+    private const VASHYA_PTS = [
+        [2, 1, 1, 0.5, 1], [1, 2, 0.5, 0, 1], [1, 0.5, 2, 1, 1], [0.5, 0, 1, 2, 0], [1, 1, 1, 0, 2],
     ];
-    // Yoni (animal): nakshatra 0-26 → animal index
-    private const YONI = [0,1,14,7,5,6,4,4,13,3,12,2,8,7,9,10,11,13,14,3,5,6,12,1,0,9,10];
-    private const YONI_COMPAT = [
-        [4,0,2,1,2,0,3,1,3,1,0,2,2,3,0],
-        [0,4,2,2,0,2,0,1,2,2,1,0,2,1,2],
-        [2,2,4,2,0,2,1,2,2,0,2,1,1,2,2],
-        [1,2,2,4,2,1,2,2,1,2,1,2,2,2,1],
-        [2,0,0,2,4,2,0,2,0,2,2,2,0,2,2],
-        [0,2,2,1,2,4,2,0,2,0,2,1,2,2,0],
-        [3,0,1,2,0,2,4,2,1,2,2,2,0,2,2],
-        [1,1,2,2,2,0,2,4,2,1,0,2,2,1,2],
-        [3,2,2,1,0,2,1,2,4,2,2,0,2,2,2],
-        [1,2,0,2,2,0,2,1,2,4,2,2,1,2,2],
-        [0,1,2,1,2,2,2,0,2,2,4,2,2,2,2],
-        [2,0,1,2,2,1,2,2,0,2,2,4,2,2,2],
-        [2,2,1,2,0,2,0,2,2,1,2,2,4,2,2],
-        [3,1,2,2,2,2,2,1,2,2,2,2,2,4,0],
-        [0,2,2,1,2,0,2,2,2,2,2,2,2,0,4],
+    // Yoni by nakshatra: 0 Horse 1 Elephant 2 Sheep 3 Serpent 4 Dog 5 Cat 6 Rat 7 Cow 8 Buffalo 9 Tiger 10 Deer 11 Monkey 12 Mongoose 13 Lion
+    private const YONI = [0, 1, 2, 3, 3, 4, 5, 2, 5, 6, 6, 7, 8, 9, 8, 9, 10, 10, 4, 11, 12, 11, 13, 0, 13, 7, 1];
+    private const YONI_PTS = [
+        [4, 2, 2, 3, 2, 2, 2, 1, 0, 1, 3, 3, 2, 1],
+        [2, 4, 3, 3, 2, 2, 2, 2, 3, 1, 2, 3, 2, 0],
+        [2, 3, 4, 2, 1, 2, 1, 3, 3, 1, 2, 0, 3, 1],
+        [3, 3, 2, 4, 2, 1, 1, 1, 1, 2, 2, 2, 0, 2],
+        [2, 2, 1, 2, 4, 2, 1, 2, 2, 1, 0, 2, 1, 1],
+        [2, 2, 2, 1, 2, 4, 0, 2, 2, 1, 3, 3, 2, 1],
+        [2, 2, 1, 1, 1, 0, 4, 2, 2, 2, 2, 2, 1, 2],
+        [1, 2, 3, 1, 2, 2, 2, 4, 3, 0, 3, 2, 2, 1],
+        [0, 3, 3, 1, 2, 2, 2, 3, 4, 1, 2, 2, 2, 1],
+        [1, 1, 1, 2, 1, 1, 2, 0, 1, 4, 1, 1, 2, 1],
+        [3, 2, 2, 2, 0, 3, 2, 3, 2, 1, 4, 2, 2, 1],
+        [3, 3, 0, 2, 2, 3, 2, 2, 2, 1, 2, 4, 3, 2],
+        [2, 2, 3, 0, 1, 2, 1, 2, 2, 2, 2, 3, 4, 2],
+        [1, 0, 1, 2, 1, 1, 2, 1, 1, 1, 1, 2, 2, 4],
     ];
-    // Gana: nakshatra 0-26 → 0=Deva,1=Manav,2=Rakshasa
-    private const GANA = [0,1,0,0,1,2,0,0,2,2,2,0,2,1,0,0,1,1,2,1,2,0,0,1,2,1,2];
-    // Planet friends for Graha Maitri (sign lord comparison)
-    private const FRIENDS = [
-        'Sun'     => ['Moon','Mars','Jupiter'],
-        'Moon'    => ['Sun','Mercury'],
-        'Mars'    => ['Sun','Moon','Jupiter'],
-        'Mercury' => ['Sun','Venus','Rahu'],
-        'Jupiter' => ['Sun','Moon','Mars'],
-        'Venus'   => ['Mercury','Saturn','Rahu'],
-        'Saturn'  => ['Mercury','Venus','Rahu'],
-        'Rahu'    => ['Mercury','Venus','Saturn'],
-        'Ketu'    => ['Mercury','Venus','Saturn'],
+    // Gana by nakshatra: 0 Deva, 1 Manushya, 2 Rakshasa; points [boy][girl]
+    private const GANA = [0, 1, 2, 1, 0, 1, 0, 0, 2, 2, 1, 1, 0, 2, 0, 2, 0, 2, 2, 1, 1, 0, 2, 2, 1, 1, 0];
+    private const GANA_PTS = [[6, 6, 1], [5, 6, 0], [1, 0, 6]];
+    // Nadi by nakshatra: 0 Aadi, 1 Madhya, 2 Antya
+    private const NADI = [0, 1, 2, 2, 1, 0, 0, 1, 2, 2, 1, 0, 0, 1, 2, 2, 1, 0, 0, 1, 2, 2, 1, 0, 0, 1, 2];
+    private const LORD = ['Mars', 'Venus', 'Mercury', 'Moon', 'Sun', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Saturn', 'Jupiter'];
+    // Natural friendships (Parashari); anything not listed is neutral
+    private const FRIEND = ['Sun' => ['Moon', 'Mars', 'Jupiter'], 'Moon' => ['Sun', 'Mercury'], 'Mars' => ['Sun', 'Moon', 'Jupiter'],
+        'Mercury' => ['Sun', 'Venus'], 'Jupiter' => ['Sun', 'Moon', 'Mars'], 'Venus' => ['Mercury', 'Saturn'], 'Saturn' => ['Mercury', 'Venus']];
+    private const ENEMY = ['Sun' => ['Venus', 'Saturn'], 'Moon' => [], 'Mars' => ['Mercury'], 'Mercury' => ['Moon'],
+        'Jupiter' => ['Mercury', 'Venus'], 'Venus' => ['Sun', 'Moon'], 'Saturn' => ['Sun', 'Moon', 'Mars']];
+    private const MAX = ['varna' => 1, 'vashya' => 2, 'tara' => 3, 'yoni' => 4, 'graha' => 5, 'gana' => 6, 'bhakoot' => 7, 'nadi' => 8];
+
+    /** [en, hi, gu] */
+    private const L = [
+        'varna' => [['Brahmin', 'Kshatriya', 'Vaishya', 'Shudra'], ['ब्राह्मण', 'क्षत्रिय', 'वैश्य', 'शूद्र'], ['બ્રાહ્મણ', 'ક્ષત્રિય', 'વૈશ્ય', 'શૂદ્ર']],
+        'vashya' => [['Chatushpad', 'Manav', 'Jalchar', 'Vanchar', 'Keet'], ['चतुष्पद', 'मानव', 'जलचर', 'वनचर', 'कीट'], ['ચતુષ્પદ', 'માનવ', 'જળચર', 'વનચર', 'કીટ']],
+        'tara' => [['Janma', 'Sampat', 'Vipat', 'Kshema', 'Pratyari', 'Sadhaka', 'Vadha', 'Mitra', 'Ati-Mitra'],
+            ['जन्म', 'सम्पत', 'विपत', 'क्षेम', 'प्रत्यरि', 'साधक', 'वध', 'मित्र', 'अति-मित्र'], ['જન્મ', 'સંપત', 'વિપત', 'ક્ષેમ', 'પ્રત્યરિ', 'સાધક', 'વધ', 'મિત્ર', 'અતિ-મિત્ર']],
+        'yoni' => [['Horse', 'Elephant', 'Sheep', 'Serpent', 'Dog', 'Cat', 'Rat', 'Cow', 'Buffalo', 'Tiger', 'Deer', 'Monkey', 'Mongoose', 'Lion'],
+            ['अश्व', 'गज', 'मेष', 'सर्प', 'श्वान', 'मार्जार', 'मूषक', 'गौ', 'महिष', 'व्याघ्र', 'मृग', 'वानर', 'नकुल', 'सिंह'],
+            ['અશ્વ', 'ગજ', 'મેષ', 'સર્પ', 'શ્વાન', 'માર્જાર', 'મૂષક', 'ગૌ', 'મહિષ', 'વ્યાઘ્ર', 'મૃગ', 'વાનર', 'નકુલ', 'સિંહ']],
+        'gana' => [['Deva', 'Manushya', 'Rakshasa'], ['देव', 'मनुष्य', 'राक्षस'], ['દેવ', 'મનુષ્ય', 'રાક્ષસ']],
+        'nadi' => [['Aadi', 'Madhya', 'Antya'], ['आदि', 'मध्य', 'अन्त्य'], ['આદિ', 'મધ્ય', 'અંત્ય']],
+        'name' => [['varna' => 'Varna', 'vashya' => 'Vashya', 'tara' => 'Tara', 'yoni' => 'Yoni', 'graha' => 'Graha Maitri', 'gana' => 'Gana', 'bhakoot' => 'Bhakoot', 'nadi' => 'Nadi'],
+            ['varna' => 'वर्ण', 'vashya' => 'वश्य', 'tara' => 'तारा', 'yoni' => 'योनि', 'graha' => 'ग्रह मैत्री', 'gana' => 'गण', 'bhakoot' => 'भकूट', 'nadi' => 'नाड़ी'],
+            ['varna' => 'વર્ણ', 'vashya' => 'વશ્ય', 'tara' => 'તારા', 'yoni' => 'યોનિ', 'graha' => 'ગ્રહ મૈત્રી', 'gana' => 'ગણ', 'bhakoot' => 'ભકૂટ', 'nadi' => 'નાડી']],
+        'area' => [['varna' => 'Work and ego', 'vashya' => 'Mutual attraction', 'tara' => 'Destiny and well-being', 'yoni' => 'Physical intimacy', 'graha' => 'Mental match and friendship', 'gana' => 'Temperament', 'bhakoot' => 'Love, family and prosperity', 'nadi' => 'Health and children'],
+            ['varna' => 'कार्य और अहं', 'vashya' => 'आपसी आकर्षण', 'tara' => 'भाग्य और कुशलता', 'yoni' => 'शारीरिक अनुकूलता', 'graha' => 'मानसिक मेल और मित्रता', 'gana' => 'स्वभाव', 'bhakoot' => 'प्रेम, परिवार और समृद्धि', 'nadi' => 'स्वास्थ्य और संतान'],
+            ['varna' => 'કાર્ય અને અહં', 'vashya' => 'પરસ્પર આકર્ષણ', 'tara' => 'ભાગ્ય અને કુશળતા', 'yoni' => 'શારીરિક અનુકૂળતા', 'graha' => 'માનસિક મેળ અને મિત્રતા', 'gana' => 'સ્વભાવ', 'bhakoot' => 'પ્રેમ, પરિવાર અને સમૃદ્ધિ', 'nadi' => 'સ્વાસ્થ્ય અને સંતાન']],
+        // about each koota, then result text for full / partial / zero points
+        'about' => [
+            ['varna' => 'Varna compares the spiritual temperament and working nature of the two Moon signs. The boy\'s varna should be the same as or higher than the girl\'s.',
+             'vashya' => 'Vashya shows how naturally the two people are drawn to and influence each other.',
+             'tara' => 'Tara counts the nakshatras between the two birth stars in both directions and shows destiny, health and well-being after marriage.',
+             'yoni' => 'Yoni compares the animal nature of the two birth stars and shows physical and intimate harmony.',
+             'graha' => 'Graha Maitri compares the lords of the two Moon signs. It is the main test of mental compatibility, understanding and friendship.',
+             'gana' => 'Gana compares temperament: Deva (gentle), Manushya (balanced) and Rakshasa (strong-willed).',
+             'bhakoot' => 'Bhakoot compares the positions of the two Moon signs from each other and governs love, family welfare and finances.',
+             'nadi' => 'Nadi carries the highest weight. It relates to health, physiology and children; the same Nadi for both is Nadi Dosha.'],
+            ['varna' => 'वर्ण दोनों चंद्र राशियों के आध्यात्मिक स्वभाव और कार्य-प्रकृति की तुलना करता है। वर का वर्ण कन्या के समान या उससे उच्च होना चाहिए।',
+             'vashya' => 'वश्य बताता है कि दोनों एक-दूसरे की ओर कितनी सहजता से आकर्षित होते हैं और एक-दूसरे को प्रभावित करते हैं।',
+             'tara' => 'तारा दोनों जन्म नक्षत्रों के बीच दोनों दिशाओं में गिनती करता है और विवाह के बाद भाग्य, स्वास्थ्य और कुशलता बताता है।',
+             'yoni' => 'योनि दोनों जन्म नक्षत्रों के पशु-स्वभाव की तुलना करती है और शारीरिक व दांपत्य सामंजस्य बताती है।',
+             'graha' => 'ग्रह मैत्री दोनों चंद्र राशियों के स्वामियों की तुलना करती है। यह मानसिक अनुकूलता, समझ और मित्रता की मुख्य कसौटी है।',
+             'gana' => 'गण स्वभाव की तुलना करता है: देव (सौम्य), मनुष्य (संतुलित) और राक्षस (दृढ़ इच्छाशक्ति)।',
+             'bhakoot' => 'भकूट दोनों चंद्र राशियों की एक-दूसरे से स्थिति देखता है और प्रेम, पारिवारिक सुख व धन से जुड़ा है।',
+             'nadi' => 'नाड़ी को सबसे अधिक अंक मिलते हैं। यह स्वास्थ्य, शरीर-प्रकृति और संतान से जुड़ी है; दोनों की एक ही नाड़ी होना नाड़ी दोष है।'],
+            ['varna' => 'વર્ણ બંને ચંદ્ર રાશિના આધ્યાત્મિક સ્વભાવ અને કાર્ય-પ્રકૃતિની તુલના કરે છે. વરનો વર્ણ કન્યાના વર્ણ જેટલો અથવા તેનાથી ઊંચો હોવો જોઈએ.',
+             'vashya' => 'વશ્ય બતાવે છે કે બંને એકબીજા તરફ કેટલી સહજતાથી આકર્ષાય છે અને એકબીજાને પ્રભાવિત કરે છે.',
+             'tara' => 'તારા બંને જન્મ નક્ષત્ર વચ્ચે બંને દિશામાં ગણતરી કરે છે અને લગ્ન પછી ભાગ્ય, સ્વાસ્થ્ય અને કુશળતા બતાવે છે.',
+             'yoni' => 'યોનિ બંને જન્મ નક્ષત્રના પશુ-સ્વભાવની તુલના કરે છે અને શારીરિક તથા દાંપત્ય સુમેળ બતાવે છે.',
+             'graha' => 'ગ્રહ મૈત્રી બંને ચંદ્ર રાશિના સ્વામીઓની તુલના કરે છે. આ માનસિક અનુકૂળતા, સમજ અને મિત્રતાની મુખ્ય કસોટી છે.',
+             'gana' => 'ગણ સ્વભાવની તુલના કરે છે: દેવ (સૌમ્ય), મનુષ્ય (સંતુલિત) અને રાક્ષસ (દૃઢ ઇચ્છાશક્તિ).',
+             'bhakoot' => 'ભકૂટ બંને ચંદ્ર રાશિની એકબીજાથી સ્થિતિ જુએ છે અને પ્રેમ, પારિવારિક સુખ તથા ધન સાથે જોડાયેલ છે.',
+             'nadi' => 'નાડીને સૌથી વધુ ગુણ મળે છે. તે સ્વાસ્થ્ય, શરીર-પ્રકૃતિ અને સંતાન સાથે જોડાયેલ છે; બંનેની એક જ નાડી હોવી એ નાડી દોષ છે.'],
+        ],
+        'res' => [
+            ['full' => 'Full points: this area is well matched.', 'part' => 'Partial points: workable, with some differences to understand.', 'zero' => 'No points: this area needs care, understanding and remedies.'],
+            ['full' => 'पूर्ण अंक: यह क्षेत्र अच्छी तरह मेल खाता है।', 'part' => 'आंशिक अंक: चल सकता है, कुछ भिन्नताओं को समझना होगा।', 'zero' => 'शून्य अंक: इस क्षेत्र में सावधानी, समझ और उपाय की आवश्यकता है।'],
+            ['full' => 'પૂર્ણ ગુણ: આ ક્ષેત્ર સારી રીતે મેળ ખાય છે.', 'part' => 'આંશિક ગુણ: ચાલી શકે, થોડા ભેદ સમજવા પડશે.', 'zero' => 'શૂન્ય ગુણ: આ ક્ષેત્રમાં કાળજી, સમજ અને ઉપાયની જરૂર છે.'],
+        ],
+        'verdict' => [
+            ['ex' => 'Excellent match', 'vg' => 'Very good match', 'ok' => 'Acceptable match', 'low' => 'Not recommended'],
+            ['ex' => 'उत्तम मिलान', 'vg' => 'बहुत अच्छा मिलान', 'ok' => 'स्वीकार्य मिलान', 'low' => 'अनुशंसित नहीं'],
+            ['ex' => 'ઉત્તમ મિલાન', 'vg' => 'ખૂબ સારો મિલાન', 'ok' => 'સ્વીકાર્ય મિલાન', 'low' => 'ભલામણ નથી'],
+        ],
+        'summary' => [
+            ['ex' => '{s} of 36 gunas match. This is an excellent match; the couple is likely to share understanding, affection and family happiness.',
+             'vg' => '{s} of 36 gunas match. This is a very good match with strong overall compatibility.',
+             'ok' => '{s} of 36 gunas match. Traditionally 18 or more gunas are acceptable for marriage; the weaker areas below deserve attention.',
+             'low' => '{s} of 36 gunas match. Traditionally at least 18 gunas are needed, so this match is not recommended without a detailed study of both full charts.'],
+            ['ex' => '36 में से {s} गुण मिलते हैं। यह उत्तम मिलान है; दंपत्ति में समझ, स्नेह और पारिवारिक सुख की अच्छी संभावना है।',
+             'vg' => '36 में से {s} गुण मिलते हैं। यह बहुत अच्छा मिलान है और कुल अनुकूलता मज़बूत है।',
+             'ok' => '36 में से {s} गुण मिलते हैं। परंपरा के अनुसार विवाह के लिए 18 या अधिक गुण स्वीकार्य हैं; नीचे दिए कमज़ोर क्षेत्रों पर ध्यान दें।',
+             'low' => '36 में से {s} गुण मिलते हैं। परंपरा के अनुसार कम से कम 18 गुण आवश्यक हैं, इसलिए दोनों पूर्ण कुंडलियों के विस्तृत अध्ययन के बिना यह मिलान अनुशंसित नहीं है।'],
+            ['ex' => '36 માંથી {s} ગુણ મળે છે. આ ઉત્તમ મિલાન છે; દંપતીમાં સમજ, સ્નેહ અને પારિવારિક સુખની સારી સંભાવના છે.',
+             'vg' => '36 માંથી {s} ગુણ મળે છે. આ ખૂબ સારો મિલાન છે અને કુલ અનુકૂળતા મજબૂત છે.',
+             'ok' => '36 માંથી {s} ગુણ મળે છે. પરંપરા મુજબ લગ્ન માટે 18 કે વધુ ગુણ સ્વીકાર્ય છે; નીચે આપેલા નબળા ક્ષેત્રો પર ધ્યાન આપો.',
+             'low' => '36 માંથી {s} ગુણ મળે છે. પરંપરા મુજબ ઓછામાં ઓછા 18 ગુણ જરૂરી છે, તેથી બંનેની પૂર્ણ કુંડળીના વિગતવાર અભ્યાસ વિના આ મિલાન ભલામણપાત્ર નથી.'],
+        ],
+        'dosha' => [
+            ['nadi' => 'Nadi Dosha', 'bhakoot' => 'Bhakoot Dosha', 'mangal' => 'Mangal Dosha', 'present' => 'Present', 'absent' => 'Not present', 'cancelled' => 'Cancelled',
+             'nadi_yes' => 'Both have {n} Nadi. Nadi Dosha is traditionally the most serious dosha in matching and is linked to health and children.',
+             'nadi_no' => 'The two Nadis are different, so there is no Nadi Dosha.',
+             'nadi_cancel' => 'It is cancelled here because {why}.',
+             'nadi_why_rashi' => 'both share the same Moon sign but have different nakshatras',
+             'nadi_why_nak' => 'both share the same nakshatra but have different Moon signs',
+             'nadi_why_pada' => 'both share the same nakshatra but in different padas',
+             'bhakoot_yes' => 'The Moon signs are in a {t} relation from each other, which forms Bhakoot Dosha.',
+             'bhakoot_no' => 'The Moon signs are in a favourable relation, so there is no Bhakoot Dosha.',
+             'bhakoot_cancel' => 'It is cancelled here because the two Moon-sign lords are {why}.',
+             'same_lord' => 'the same planet', 'friends' => 'friends',
+             'mangal_both' => 'Both are Manglik, so the Mangal Dosha of one balances the other.',
+             'mangal_none' => 'Neither is Manglik.',
+             'mangal_one' => '{who} is Manglik and the other is not. Traditionally this needs remedies or a Manglik partner; the full charts should be checked for cancellation.',
+             'manglik' => 'Manglik (Mars in house {h})', 'not_manglik' => 'Not Manglik'],
+            ['nadi' => 'नाड़ी दोष', 'bhakoot' => 'भकूट दोष', 'mangal' => 'मंगल दोष', 'present' => 'उपस्थित', 'absent' => 'नहीं है', 'cancelled' => 'निरस्त',
+             'nadi_yes' => 'दोनों की {n} नाड़ी है। परंपरा में नाड़ी दोष मिलान का सबसे गंभीर दोष माना जाता है और यह स्वास्थ्य व संतान से जुड़ा है।',
+             'nadi_no' => 'दोनों की नाड़ी अलग है, इसलिए नाड़ी दोष नहीं है।',
+             'nadi_cancel' => 'यहाँ यह निरस्त है क्योंकि {why}।',
+             'nadi_why_rashi' => 'दोनों की चंद्र राशि एक है पर नक्षत्र अलग हैं',
+             'nadi_why_nak' => 'दोनों का नक्षत्र एक है पर चंद्र राशि अलग है',
+             'nadi_why_pada' => 'दोनों का नक्षत्र एक है पर चरण अलग हैं',
+             'bhakoot_yes' => 'दोनों चंद्र राशियाँ एक-दूसरे से {t} स्थिति में हैं, जिससे भकूट दोष बनता है।',
+             'bhakoot_no' => 'दोनों चंद्र राशियाँ अनुकूल स्थिति में हैं, इसलिए भकूट दोष नहीं है।',
+             'bhakoot_cancel' => 'यहाँ यह निरस्त है क्योंकि दोनों राशि स्वामी {why} हैं।',
+             'same_lord' => 'एक ही ग्रह', 'friends' => 'मित्र',
+             'mangal_both' => 'दोनों मांगलिक हैं, इसलिए एक का मंगल दोष दूसरे से संतुलित हो जाता है।',
+             'mangal_none' => 'दोनों में से कोई मांगलिक नहीं है।',
+             'mangal_one' => '{who} मांगलिक हैं और दूसरे नहीं। परंपरा में इसके लिए उपाय या मांगलिक साथी आवश्यक है; निरस्ती के लिए पूर्ण कुंडलियाँ देखें।',
+             'manglik' => 'मांगलिक (मंगल भाव {h} में)', 'not_manglik' => 'मांगलिक नहीं'],
+            ['nadi' => 'નાડી દોષ', 'bhakoot' => 'ભકૂટ દોષ', 'mangal' => 'મંગળ દોષ', 'present' => 'હાજર', 'absent' => 'નથી', 'cancelled' => 'નિરસ્ત',
+             'nadi_yes' => 'બંનેની {n} નાડી છે. પરંપરામાં નાડી દોષ મિલાનનો સૌથી ગંભીર દોષ ગણાય છે અને તે સ્વાસ્થ્ય તથા સંતાન સાથે જોડાયેલ છે.',
+             'nadi_no' => 'બંનેની નાડી અલગ છે, તેથી નાડી દોષ નથી.',
+             'nadi_cancel' => 'અહીં તે નિરસ્ત છે કારણ કે {why}.',
+             'nadi_why_rashi' => 'બંનેની ચંદ્ર રાશિ એક છે પણ નક્ષત્ર અલગ છે',
+             'nadi_why_nak' => 'બંનેનું નક્ષત્ર એક છે પણ ચંદ્ર રાશિ અલગ છે',
+             'nadi_why_pada' => 'બંનેનું નક્ષત્ર એક છે પણ ચરણ અલગ છે',
+             'bhakoot_yes' => 'બંને ચંદ્ર રાશિ એકબીજાથી {t} સ્થિતિમાં છે, જેનાથી ભકૂટ દોષ બને છે.',
+             'bhakoot_no' => 'બંને ચંદ્ર રાશિ અનુકૂળ સ્થિતિમાં છે, તેથી ભકૂટ દોષ નથી.',
+             'bhakoot_cancel' => 'અહીં તે નિરસ્ત છે કારણ કે બંને રાશિ સ્વામી {why} છે.',
+             'same_lord' => 'એક જ ગ્રહ', 'friends' => 'મિત્ર',
+             'mangal_both' => 'બંને માંગલિક છે, તેથી એકનો મંગળ દોષ બીજાથી સંતુલિત થાય છે.',
+             'mangal_none' => 'બેમાંથી કોઈ માંગલિક નથી.',
+             'mangal_one' => '{who} માંગલિક છે અને બીજા નથી. પરંપરામાં આ માટે ઉપાય અથવા માંગલિક સાથી જરૂરી છે; નિરસ્તી માટે પૂર્ણ કુંડળી જુઓ.',
+             'manglik' => 'માંગલિક (મંગળ ભાવ {h} માં)', 'not_manglik' => 'માંગલિક નથી'],
+        ],
+        'bhakoot_type' => [[2 => '2/12 (Dwi-Dwadash)', 5 => '5/9 (Nav-Pancham)', 6 => '6/8 (Shadashtak)'],
+            [2 => '2/12 (द्वि-द्वादश)', 5 => '5/9 (नव-पंचम)', 6 => '6/8 (षडाष्टक)'], [2 => '2/12 (દ્વિ-દ્વાદશ)', 5 => '5/9 (નવ-પંચમ)', 6 => '6/8 (ષડાષ્ટક)']],
     ];
-    // Sign lords (0-11)
-    private const SIGN_LORD = ['Mars','Venus','Mercury','Moon','Sun','Mercury','Venus','Mars','Jupiter','Saturn','Saturn','Jupiter'];
-    // Bhakoot: sign number difference → score
-    private const BHAKOOT_GOOD = [[1,7],[2,12],[3,11],[4,10],[5,9],[6,8]]; // pairs that give 7
-    // Nadi: nakshatra 0-26 → 0=Aadi,1=Madhya,2=Antya
-    private const NADI = [0,0,0,1,1,1,2,2,2,0,0,0,1,1,1,2,2,2,0,0,0,1,1,1,2,2,2];
 
-    // ─── Factor names ──────────────────────────────────────────────────────
-    private const FACTORS = [
-        'varna'   => ['max'=>1,  'name'=>'Varna',   'name_hi'=>'वर्ण',   'name_gu'=>'વર્ણ'],
-        'vashya'  => ['max'=>2,  'name'=>'Vashya',  'name_hi'=>'वश्य',   'name_gu'=>'વશ્ય'],
-        'tara'    => ['max'=>3,  'name'=>'Tara',    'name_hi'=>'तारा',   'name_gu'=>'તારા'],
-        'yoni'    => ['max'=>4,  'name'=>'Yoni',    'name_hi'=>'योनि',   'name_gu'=>'યોનિ'],
-        'graha'   => ['max'=>5,  'name'=>'Graha Maitri','name_hi'=>'ग्रह मैत्री','name_gu'=>'ગ્રહ મૈત્રી'],
-        'gana'    => ['max'=>6,  'name'=>'Gana',    'name_hi'=>'गण',     'name_gu'=>'ગણ'],
-        'bhakoot' => ['max'=>7,  'name'=>'Bhakoot', 'name_hi'=>'भकूट',   'name_gu'=>'ભકૂટ'],
-        'nadi'    => ['max'=>8,  'name'=>'Nadi',    'name_hi'=>'नाड़ी',   'name_gu'=>'નાડી'],
-    ];
+    private int $li;
+    public function __construct(private string $lang = 'en') { $this->li = ['en' => 0, 'hi' => 1, 'gu' => 2][$lang] ?? 0; $this->lang = ['en', 'hi', 'gu'][$this->li]; }
 
-    public function __construct(private string $lang = 'en') {}
+    private function L(string $k) { return self::L[$k][$this->li]; }
+    private function sign(int $i): string { return Lang::t($this->lang, 'astro.signs.' . Zodiac::SIGNS[$i]); }
+    private function nak(int $i): string { return Lang::t($this->lang, 'astro.nakshatras.' . Zodiac::NAKSHATRAS[$i]); }
+    private function planet(string $p): string { return Lang::t($this->lang, 'astro.planets.' . $p); }
 
-    /** Return one of three language variants. */
-    private function tr(string $en, string $hi, string $gu): string {
-        return match($this->lang) { 'hi' => $hi, 'gu' => $gu, default => $en };
-    }
-
-    /** Translate a list of proper nouns (animal names, gana, etc.) */
-    private function trList(string $key, int $index): string {
-        static $lists = [
-            'varna' => [
-                'en' => ['Brahmin','Kshatriya','Vaishya','Shudra'],
-                'hi' => ['ब्राह्मण','क्षत्रिय','वैश्य','शूद्र'],
-                'gu' => ['બ્રાહ્મણ','ક્ષત્રિય','વૈશ્ય','શૂદ્ર'],
-            ],
-            'vashya' => [
-                'en' => ['Chatushpad','Manav','Vanchar','Jalchar','Keeta'],
-                'hi' => ['चतुष्पद','मानव','वानचर','जलचर','कीट'],
-                'gu' => ['ચતુષ્પદ','માનવ','વાનચર','જળચર','કીટ'],
-            ],
-            'tara' => [
-                'en' => ['Janma','Sampat','Vipat','Kshema','Pratyak','Sadhana','Naidhana','Mitra','Atimitra'],
-                'hi' => ['जन्म','सम्पत','विपत','क्षेम','प्रत्यक','साधन','नैधन','मित्र','अतिमित्र'],
-                'gu' => ['જન્મ','સંપત','વિપત','ક્ષેમ','પ્રત્યક','સાધન','નૈધન','મિત્ર','અતિમિત્ર'],
-            ],
-            'animal' => [
-                'en' => ['Horse','Elephant','Sheep','Serpent','Dog','Cat','Rat','Cow','Buffalo','Tiger','Hare','Monkey','Mongoose','Lion','Deer'],
-                'hi' => ['घोड़ा','हाथी','भेड़','सर्प','कुत्ता','बिल्ली','चूहा','गाय','भैंस','बाघ','खरगोश','बंदर','नेवला','शेर','हिरण'],
-                'gu' => ['ઘોડો','હાથી','ઘેટું','સર્પ','કૂતરો','બિલાડી','ઉંદર','ગાય','ભેંસ','વાઘ','સસલું','વાંદરો','નોળિયો','સિંહ','હરણ'],
-            ],
-            'gana' => [
-                'en' => ['Deva','Manav','Rakshasa'],
-                'hi' => ['देव','मानव','राक्षस'],
-                'gu' => ['દેવ','માનવ','રાક્ષસ'],
-            ],
-            'nadi' => [
-                'en' => ['Aadi (Vata)','Madhya (Pitta)','Antya (Kapha)'],
-                'hi' => ['आदि (वात)','मध्य (पित्त)','अंत्य (कफ)'],
-                'gu' => ['આદિ (વાત)','મધ્ય (પિત્ત)','અંત્ય (કફ)'],
-            ],
-        ];
-        return $lists[$key][$this->lang][$index] ?? $lists[$key]['en'][$index] ?? '?';
-    }
-
-    /** Full Ashtakoot calculation */
-    public function calculate(array $boyK, array $girlK): array {
-        $bMoon = $this->moon($boyK);  $gMoon = $this->moon($girlK);
-        $bNak  = $bMoon['nak'];       $gNak  = $gMoon['nak'];
-        $bSign = $bMoon['sign'];      $gSign = $gMoon['sign'];
-
-        $factors = [
-            'varna'   => $this->varna($bSign, $gSign),
-            'vashya'  => $this->vashya($bSign, $gSign),
-            'tara'    => $this->tara($bNak, $gNak),
-            'yoni'    => $this->yoni($bNak, $gNak),
-            'graha'   => $this->graha($bSign, $gSign),
-            'gana'    => $this->gana($bNak, $gNak),
-            'bhakoot' => $this->bhakoot($bSign, $gSign),
-            'nadi'    => $this->nadi($bNak, $gNak),
-        ];
-
-        $total = array_sum(array_column($factors, 'score'));
-        $max   = 36;
-        $pct   = round($total / $max * 100);
-        [$verdict, $verdict_hi, $verdict_gu] = match(true) {
-            $total >= 28 => ['Excellent match — highly compatible', 'उत्तम मिलान — अत्यंत अनुकूल', 'ઉત્તમ મિલાન — અત્યંત અનુકૂળ'],
-            $total >= 21 => ['Good match — compatible with minor differences', 'अच्छा मिलान — मामूली भिन्नता के साथ अनुकूल', 'સારો મિલાન — નાના ભેદ સાથે અનુકૂળ'],
-            $total >= 18 => ['Average match — workable with effort', 'सामान्य मिलान — प्रयास से चलेगा', 'સામાન્ય મિલાન — પ્રયત્ને ચાલે'],
-            default      => ['Below average — significant incompatibilities', 'औसत से कम — महत्वपूर्ण असंगतियाँ', 'ઓછું — નોંધપાત્ર અસંગતતા'],
-        };
-        $mangal = ['boy' => $this->mangal($boyK), 'girl' => $this->mangal($girlK)];
-
-        // Enrich each factor with meta
-        foreach ($factors as $k => &$f) {
-            $f['name'] = self::FACTORS[$k]['name_' . $this->lang] ?? self::FACTORS[$k]['name'];
-            $f['max']  = self::FACTORS[$k]['max'];
+    /** Raw Moon data + Mangal status from a computed kundali (what we store). */
+    public static function raw(array $k): array {
+        $m = ['sign' => 0, 'nak' => 0, 'pada' => 1, 'deg' => 0.0];
+        foreach ($k['planets'] as $p) if ($p['name'] === 'Moon') {
+            $n = Zodiac::nakshatra((float) $p['lon']);
+            $m = ['sign' => (int) $p['sign'], 'nak' => $n['index'], 'pada' => $n['pada'], 'deg' => round(fmod((float) $p['lon'], 30.0), 2)];
         }
+        $md = $k['analysis']['mangal_dosha'] ?? null; $house = 0; $present = false;
+        if ($md) { $present = (bool) $md['present'];
+            foreach (['lagna', 'moon'] as $f) if (!empty($md['from'][$f]['present'])) { $house = (int) $md['from'][$f]['house']; break; } }
+        else foreach ($k['planets'] as $p) if ($p['name'] === 'Mars') { $house = (int) $p['house']; $present = in_array($house, [1, 2, 4, 7, 8, 12], true); }
+        return $m + ['mangal' => $present, 'mars_house' => $house];
+    }
 
+    /** Raw data from a stored row (also understands reports saved by the first version). */
+    private static function rawFromStored(array $j): array {
+        if (($j['v'] ?? 0) >= 2) return [$j['boy'], $j['girl']];
+        $f = fn($m, $mg) => ['sign' => (int) ($m['sign_idx'] ?? 0), 'nak' => (int) ($m['nak_idx'] ?? 0), 'pada' => (int) ($m['pada'] ?? 1), 'deg' => 0.0,
+            'mangal' => !empty($mg['present']), 'mars_house' => (int) ($mg['house'] ?? 0)];
+        return [$f($j['boy_moon'] ?? [], $j['mangal']['boy'] ?? []), $f($j['girl_moon'] ?? [], $j['mangal']['girl'] ?? [])];
+    }
+
+    private static function vashyaGroup(int $sign, float $deg): int {
+        return match ($sign) { 0, 1 => 0, 2, 5, 6, 10 => 1, 3, 11 => 2, 4 => 3, 7 => 4, 8 => $deg < 15 ? 1 : 0, 9 => $deg < 15 ? 0 : 2, default => 1 };
+    }
+    private static function rel(string $a, string $b): int { // 2 friend, 1 neutral, 0 enemy (as seen by $a)
+        return $a === $b || in_array($b, self::FRIEND[$a], true) ? 2 : (in_array($b, self::ENEMY[$a], true) ? 0 : 1);
+    }
+    private static function taraIdx(int $from, int $to): int { return (($to - $from + 27) % 27) % 9; } // 0 Janma … 8 Ati-Mitra
+
+    /** Points for each koota (language independent). */
+    public static function points(array $b, array $g): array {
+        $bv = self::VARNA[$b['sign']]; $gv = self::VARNA[$g['sign']];
+        $bw = self::vashyaGroup($b['sign'], (float) $b['deg']); $gw = self::vashyaGroup($g['sign'], (float) $g['deg']);
+        $bt = self::taraIdx($g['nak'], $b['nak']); $gt = self::taraIdx($b['nak'], $g['nak']);
+        $bad = [2, 4, 6];
+        $bl = self::LORD[$b['sign']]; $gl = self::LORD[$g['sign']];
+        $r = self::rel($bl, $gl) + self::rel($gl, $bl);
+        $graha = $bl === $gl ? 5 : [0 => 0, 1 => 0.5, 2 => 3, 3 => 4, 4 => 5][$r];
+        if ($r === 2 && self::rel($bl, $gl) !== 1) $graha = 1; // friend + enemy
+        $pos = (($g['sign'] - $b['sign'] + 12) % 12) + 1; $bk = in_array($pos, [2, 12, 5, 9, 6, 8], true);
         return [
-            'score' => $total, 'max' => $max, 'percent' => $pct,
-            'verdict' => match($this->lang) { 'hi' => $verdict_hi, 'gu' => $verdict_gu, default => $verdict },
-            'boy_moon'  => ['rashi' => Zodiac::SIGNS[$bSign], 'nakshatra' => Zodiac::NAKSHATRAS[$bNak], 'pada' => $bMoon['pada'], 'sign_idx' => $bSign, 'nak_idx' => $bNak],
-            'girl_moon' => ['rashi' => Zodiac::SIGNS[$gSign], 'nakshatra' => Zodiac::NAKSHATRAS[$gNak], 'pada' => $gMoon['pada'], 'sign_idx' => $gSign, 'nak_idx' => $gNak],
-            'mangal'  => $mangal,
-            'factors' => $factors,
+            'varna' => $bv <= $gv ? 1 : 0,
+            'vashya' => self::VASHYA_PTS[$bw][$gw],
+            'tara' => (in_array($bt, $bad, true) ? 0 : 1.5) + (in_array($gt, $bad, true) ? 0 : 1.5),
+            'yoni' => self::YONI_PTS[self::YONI[$b['nak']]][self::YONI[$g['nak']]],
+            'graha' => $graha,
+            'gana' => self::GANA_PTS[self::GANA[$b['nak']]][self::GANA[$g['nak']]],
+            'bhakoot' => $bk ? 0 : 7,
+            'nadi' => self::NADI[$b['nak']] === self::NADI[$g['nak']] ? 0 : 8,
+            '_m' => compact('bv', 'gv', 'bw', 'gw', 'bt', 'gt', 'bl', 'gl', 'pos'),
         ];
     }
 
-    private function moon(array $k): array {
-        foreach ($k['planets'] as $p) if ($p['name'] === 'Moon')
-            return ['sign' => $p['sign'], 'nak' => Zodiac::nakshatra((float)$p['lon'])['index'],
-                    'pada' => Zodiac::nakshatra((float)$p['lon'])['pada']];
-        return ['sign' => 0, 'nak' => 0, 'pada' => 1];
-    }
-
-    private function mangal(array $k): array {
-        // Use pre-computed analysis if available (checks from Lagna, Moon, and Venus)
-        if (isset($k['analysis']['mangal_dosha'])) {
-            $md = $k['analysis']['mangal_dosha'];
-            $house = 0;
-            foreach (['lagna', 'moon', 'venus'] as $from) {
-                if (!empty($md['from'][$from]['present'])) { $house = $md['from'][$from]['house'] ?? 0; break; }
-            }
-            if (!$house) $house = $md['from']['lagna']['house'] ?? 0;
-            $note = $md['present'] ? 'Mangal Dosha present — house ' . $house : 'No Mangal Dosha';
-            return ['present' => (bool)$md['present'], 'house' => $house, 'note' => $note];
+    /** Full, language-specific report from raw data. */
+    public function report(array $b, array $g, string $boyName, string $girlName): array {
+        $p = self::points($b, $g); $m = $p['_m']; unset($p['_m']);
+        $total = array_sum($p);
+        $names = $this->L('name'); $areas = $this->L('area'); $about = $this->L('about'); $res = $this->L('res');
+        $val = [
+            'varna' => [$this->L('varna')[$m['bv']], $this->L('varna')[$m['gv']]],
+            'vashya' => [$this->L('vashya')[$m['bw']], $this->L('vashya')[$m['gw']]],
+            'tara' => [$this->L('tara')[$m['bt']], $this->L('tara')[$m['gt']]],
+            'yoni' => [$this->L('yoni')[self::YONI[$b['nak']]], $this->L('yoni')[self::YONI[$g['nak']]]],
+            'graha' => [$this->planet($m['bl']), $this->planet($m['gl'])],
+            'gana' => [$this->L('gana')[self::GANA[$b['nak']]], $this->L('gana')[self::GANA[$g['nak']]]],
+            'bhakoot' => [$this->sign($b['sign']), $this->sign($g['sign'])],
+            'nadi' => [$this->L('nadi')[self::NADI[$b['nak']]], $this->L('nadi')[self::NADI[$g['nak']]]],
+        ];
+        $kootas = [];
+        foreach (self::MAX as $k => $max) {
+            $s = $p[$k];
+            $kootas[] = ['key' => $k, 'name' => $names[$k], 'area' => $areas[$k], 'max' => $max, 'score' => $s,
+                'boy' => $val[$k][0], 'girl' => $val[$k][1], 'about' => $about[$k], 'result' => $res[$s >= $max ? 'full' : ($s > 0 ? 'part' : 'zero')]];
         }
-        // Fallback: lagna-only check
-        foreach ($k['planets'] as $p) if ($p['name'] === 'Mars') {
-            $h = $p['house']; $present = in_array($h, [1,2,4,7,8,12], true);
-            return ['present' => $present, 'house' => $h,
-                'note' => $present ? 'Mangal Dosha present — house ' . $h : 'No Mangal Dosha'];
+        $band = $total >= 33 ? 'ex' : ($total >= 25 ? 'vg' : ($total >= 18 ? 'ok' : 'low'));
+        $D = $this->L('dosha');
+        // Nadi dosha + cancellation
+        $nadiSame = $p['nadi'] === 0; $why = null;
+        if ($nadiSame) {
+            if ($b['sign'] === $g['sign'] && $b['nak'] !== $g['nak']) $why = 'nadi_why_rashi';
+            elseif ($b['nak'] === $g['nak'] && $b['sign'] !== $g['sign']) $why = 'nadi_why_nak';
+            elseif ($b['nak'] === $g['nak'] && $b['pada'] !== $g['pada']) $why = 'nadi_why_pada';
         }
-        return ['present' => false, 'house' => 0, 'note' => 'No Mangal Dosha'];
+        $nadi = ['name' => $D['nadi'], 'state' => !$nadiSame ? 'absent' : ($why ? 'cancelled' : 'present'),
+            'text' => $nadiSame ? str_replace('{n}', $val['nadi'][0], $D['nadi_yes']) . ($why ? ' ' . str_replace('{why}', $D[$why], $D['nadi_cancel']) : '') : $D['nadi_no']];
+        // Bhakoot dosha + cancellation (same lord or mutual friends)
+        $bk = $p['bhakoot'] === 0; $pos = min($m['pos'], 14 - $m['pos']);
+        $bkWhy = !$bk ? null : ($m['bl'] === $m['gl'] ? 'same_lord' : (self::rel($m['bl'], $m['gl']) === 2 && self::rel($m['gl'], $m['bl']) === 2 ? 'friends' : null));
+        $bhakoot = ['name' => $D['bhakoot'], 'state' => !$bk ? 'absent' : ($bkWhy ? 'cancelled' : 'present'),
+            'text' => $bk ? str_replace('{t}', $this->L('bhakoot_type')[$pos] ?? '', $D['bhakoot_yes']) . ($bkWhy ? ' ' . str_replace('{why}', $D[$bkWhy], $D['bhakoot_cancel']) : '') : $D['bhakoot_no']];
+        // Mangal
+        $mg = fn($x) => $x['mangal'] ? str_replace('{h}', (string) $x['mars_house'], $D['manglik']) : $D['not_manglik'];
+        $mText = $b['mangal'] && $g['mangal'] ? $D['mangal_both'] : (!$b['mangal'] && !$g['mangal'] ? $D['mangal_none']
+            : str_replace('{who}', $b['mangal'] ? $boyName : $girlName, $D['mangal_one']));
+        $mangal = ['name' => $D['mangal'], 'state' => $b['mangal'] !== $g['mangal'] ? 'present' : ($b['mangal'] ? 'cancelled' : 'absent'),
+            'text' => $mText, 'boy' => $mg($b), 'girl' => $mg($g)];
+        $doshas = array_map(fn($d) => $d + ['label' => $D[$d['state']]], [$nadi, $bhakoot, $mangal]);
+        $person = fn($x) => ['rashi' => $this->sign($x['sign']), 'lord' => $this->planet(self::LORD[$x['sign']]), 'nakshatra' => $this->nak($x['nak']), 'pada' => $x['pada'],
+            'varna' => $this->L('varna')[self::VARNA[$x['sign']]], 'vashya' => $this->L('vashya')[self::vashyaGroup($x['sign'], (float) $x['deg'])],
+            'yoni' => $this->L('yoni')[self::YONI[$x['nak']]], 'gana' => $this->L('gana')[self::GANA[$x['nak']]], 'nadi' => $this->L('nadi')[self::NADI[$x['nak']]], 'mangal' => $mg($x)];
+        return ['score' => $total, 'max' => 36, 'percent' => (int) round($total / 36 * 100), 'band' => $band,
+            'verdict' => $this->L('verdict')[$band], 'summary' => str_replace('{s}', (string) $total, $this->L('summary')[$band]),
+            'boy' => $person($b), 'girl' => $person($g), 'kootas' => $kootas, 'doshas' => $doshas];
     }
 
-    private function varna(int $b, int $g): array {
-        $bv = self::VARNA[$b]; $gv = self::VARNA[$g];
-        $bn = $this->trList('varna', $bv); $gn = $this->trList('varna', $gv);
-        $score = ($gv <= $bv) ? 1 : 0;
-        $bLabel = $this->tr("Boy's varna", 'लड़के का वर्ण', 'છોકરાનો વર્ણ');
-        $gLabel = $this->tr("Girl's varna", 'लड़की का वर्ण', 'છોકરીનો વર્ણ');
-        $compat = $score
-            ? $this->tr("Girl's varna is equal or lower — compatible.", 'लड़की का वर्ण समान या कम — अनुकूल.', 'છોકરીનો વર્ણ સમાન અથવા ઓછો — અનુકૂળ.')
-            : $this->tr("Girl's varna is higher — not ideal, but other factors can compensate.", 'लड़की का वर्ण अधिक — आदर्श नहीं, पर अन्य गुण सहायक हो सकते हैं.', 'છોકરીનો વર્ણ ઊંચો — આદર્શ નહીં, પણ બીજા ગુણ ભરપાઈ કરી શકે.');
-        return ['score' => $score, 'boy' => $bn, 'girl' => $gn,
-            'detail' => "$bLabel: $bn (rank $bv). $gLabel: $gn (rank $gv). $compat"];
-    }
-
-    private function vashya(int $b, int $g): array {
-        $bg = self::VASHYA_GRP[$b]; $gg = self::VASHYA_GRP[$g];
-        $score = self::VASHYA_SCORE[$bg][$gg];
-        $bn = $this->trList('vashya', $bg); $gn = $this->trList('vashya', $gg);
-        $boy = $this->tr('Boy', 'लड़का', 'છોકરો'); $girl = $this->tr('Girl', 'लड़की', 'છોકરી');
-        $desc = $this->tr('Vashya shows mutual attraction and loyalty. Higher score means stronger bond.', 'वश्य पारस्परिक आकर्षण और वफादारी दर्शाता है. अधिक अंक मजबूत बंधन को दर्शाते हैं.', 'વશ્ય પરસ્પર આકર્ષણ અને વફાદારી દર્શાવે છે. વધારે ગુણ મક્કમ સંબંધ સૂચવે છે.');
-        return ['score' => $score, 'boy' => $bn, 'girl' => $gn,
-            'detail' => "$boy: $bn, $girl: $gn. Score $score/2. $desc"];
-    }
-
-    private function tara(int $bNak, int $gNak): array {
-        $bt = (($gNak - $bNak + 27) % 27) % 9;
-        $gt = (($bNak - $gNak + 27) % 27) % 9;
-        $good = [1,3,5,7];
-        $bs = in_array($bt, $good, true); $gs = in_array($gt, $good, true);
-        $score = ($bs && $gs) ? 3 : (($bs || $gs) ? 1.5 : 0);
-        $btn = $this->trList('tara', $bt); $gtn = $this->trList('tara', $gt);
-        $bLabel = $this->tr("Boy's tara from girl's nakshatra", 'लड़की के नक्षत्र से लड़के की तारा', 'છોકરીના નક્ષત્રથી છોકરાની તારા');
-        $gLabel = $this->tr("Girl's tara from boy's nakshatra", 'लड़के के नक्षत्र से लड़की की तारा', 'છોકરાના નક્ષત્રથી છોકરીની તારા');
-        $desc = $this->tr('Tara indicates health and well-being in the relationship.', 'तारा दंपत्ति के स्वास्थ्य और सुख का संकेत देता है.', 'તારા સંબંધમાં સ્વાસ્થ્ય અને સુખ સૂચવે છે.');
-        return ['score' => $score, 'boy_tara' => $btn, 'girl_tara' => $gtn,
-            'detail' => "$bLabel: $btn. $gLabel: $gtn. Score: $score/3. $desc"];
-    }
-
-    private function yoni(int $bNak, int $gNak): array {
-        $by = self::YONI[$bNak]; $gy = self::YONI[$gNak];
-        $raw = self::YONI_COMPAT[$by][$gy];
-        $score = round($raw / 4 * 4);
-        $ban = $this->trList('animal', $by); $gan = $this->trList('animal', $gy);
-        $bLabel = $this->tr("Boy's yoni", 'लड़के की योनि', 'છોકરાની યોનિ');
-        $gLabel = $this->tr("Girl's yoni", 'लड़की की योनि', 'છોકરીની યોનિ');
-        $desc = $this->tr('Yoni represents physical and temperamental compatibility. Higher score = greater harmony.', 'योनि शारीरिक और स्वभाव अनुकूलता दर्शाती है. अधिक अंक = अधिक सामंजस्य.', 'યોનિ શારીરિક અને સ્વભાવ સુસંગતતા દર્શાવે છે. વધારે ગુણ = વધારે સૌહાર્દ.');
-        return ['score' => $score, 'boy_animal' => $ban, 'girl_animal' => $gan,
-            'detail' => "$bLabel: $ban, $gLabel: $gan. Score: $score/4. $desc"];
-    }
-
-    private function graha(int $bSign, int $gSign): array {
-        $bl = self::SIGN_LORD[$bSign]; $gl = self::SIGN_LORD[$gSign];
-        $bf = in_array($gl, self::FRIENDS[$bl] ?? [], true);
-        $gf = in_array($bl, self::FRIENDS[$gl] ?? [], true);
-        $score = ($bf && $gf) ? 5 : (($bf || $gf) ? 4 : ($bl === $gl ? 5 : 0));
-        $bLabel = $this->tr("Boy's Moon sign lord", 'लड़के के चंद्र राशि का स्वामी', 'છોકરાની ચંદ્ર રાશિનો સ્વામી');
-        $gLabel = $this->tr("Girl's Moon sign lord", 'लड़की के चंद्र राशि का स्वामी', 'છોકરીની ચંદ્ર રાશિનો સ્વામી');
-        $compat = $bf && $gf
-            ? $this->tr("Both lords are mutual friends — excellent mental compatibility.", 'दोनों स्वामी परस्पर मित्र हैं — उत्तम मानसिक अनुकूलता.', 'બંને સ્વામી પરસ્પર મિત્ર — ઉત્તમ માનસિક સુસંગતતા.')
-            : ($bf || $gf
-                ? $this->tr("One-sided friendship — generally compatible.", 'एकतरफा मित्रता — सामान्यतः अनुकूल.', 'એકતરફી મિત્રતા — સામાન્ય રીતે અનુકૂળ.')
-                : ($bl === $gl
-                    ? $this->tr("Same lord — strong compatibility.", 'समान स्वामी — मजबूत अनुकूलता.', 'સરખો સ્વામી — મક્કમ સુસંગતતા.')
-                    : $this->tr("Lords are neutral or inimical — mental friction possible.", 'स्वामी तटस्थ या शत्रु — मानसिक तनाव संभव.', 'સ્વામી તટસ્થ અથવા શત્રુ — માનસિક ઘર્ષણ શક્ય.')));
-        return ['score' => $score, 'boy_lord' => $bl, 'girl_lord' => $gl,
-            'detail' => "$bLabel: $bl. $gLabel: $gl. $compat Score: $score/5."];
-    }
-
-    private function gana(int $bNak, int $gNak): array {
-        $bg = self::GANA[$bNak]; $gg = self::GANA[$gNak];
-        $score = match(true) {
-            $bg === $gg          => 6,
-            $bg === 0 && $gg === 1, $bg === 1 && $gg === 0 => 5,
-            $bg === 0 && $gg === 2 => 1,
-            $bg === 2 && $gg === 0 => 0,
-            default              => 3,
-        };
-        $bgn = $this->trList('gana', $bg); $ggn = $this->trList('gana', $gg);
-        $boy = $this->tr('Boy', 'लड़का', 'છોકરો'); $girl = $this->tr('Girl', 'लड़की', 'છોકરી');
-        $ganaDesc = $this->tr('Gana indicates temperament and nature. Same gana is ideal. Rakshasa-Deva combination is the most challenging.', 'गण स्वभाव और प्रकृति दर्शाता है. समान गण आदर्श है. राक्षस-देव संयोग सबसे कठिन है.', 'ગણ સ્વભાવ અને પ્રકૃતિ દર્શાવે છે. સરખો ગણ આદર્શ છે. રાક્ષસ-દેવ સંયોગ સૌથી કઠિન છે.');
-        $ganaWord = $this->tr('gana', 'गण', 'ગણ');
-        return ['score' => $score, 'boy_gana' => $bgn, 'girl_gana' => $ggn,
-            'detail' => "$boy: $bgn $ganaWord, $girl: $ggn $ganaWord. Score: $score/6. $ganaDesc"];
-    }
-
-    private function bhakoot(int $bSign, int $gSign): array {
-        $diff = abs($bSign - $gSign) + 1; if ($diff > 7) $diff = 13 - $diff;
-        $bad = [6, 8]; // 6/8 and 2/12 rashi pairs are inauspicious
-        $bad2 = in_array(abs($bSign - $gSign) + 1, [2, 12], true) || in_array(13 - abs($bSign - $gSign) - 1, [2, 12], true);
-        $isBad = in_array($diff, $bad, true) || $bad2;
-        $score = $isBad ? 0 : 7;
-        $bs = Zodiac::SIGNS[$bSign]; $gs = Zodiac::SIGNS[$gSign];
-        $boy = $this->tr('Boy', 'लड़का', 'છોકરો'); $girl = $this->tr('Girl', 'लड़की', 'છોકરી');
-        $bhakDesc = $isBad
-            ? $this->tr('Unfavourable Bhakoot — 6/8 or 2/12 sign relationship indicates potential financial or family difficulties.', 'अशुभ भकूट — 6/8 या 2/12 राशि संबंध में आर्थिक या पारिवारिक कठिनाई संभव.', 'અશુભ ભકૂટ — 6/8 અથવા 2/12 રાશિ સંબંધ — આર્થિક અથવા કૌટુંબિક મુશ્કેલી શક્ય.')
-            : $this->tr('Favourable Bhakoot — the sign combination supports prosperity and family happiness.', 'शुभ भकूट — राशि संयोग सुख-समृद्धि और पारिवारिक खुशी को सहायक है.', 'શુભ ભકૂટ — રાશિ સંયોગ સુખ-સમૃદ્ધિ અને કૌટુંબિક ખુશી માટે અનુકૂળ.');
-        return ['score' => $score, 'boy_rashi' => $bs, 'girl_rashi' => $gs,
-            'detail' => "$boy: $bs, $girl: $gs. Score: $score/7. $bhakDesc"];
-    }
-
-    private function nadi(int $bNak, int $gNak): array {
-        $bn = self::NADI[$bNak]; $gn = self::NADI[$gNak];
-        $same = ($bn === $gn);
-        $score = $same ? 0 : 8;
-        $bnn = $this->trList('nadi', $bn); $gnn = $this->trList('nadi', $gn);
-        $boy = $this->tr('Boy', 'लड़का', 'છોકરો'); $girl = $this->tr('Girl', 'लड़की', 'છોકરી');
-        $nadiDesc = $same
-            ? $this->tr('Same Nadi — this is Nadi Dosha, the most significant dosha in matching. It can indicate health issues for children or marital difficulties. Consultation with an astrologer is strongly advised.', 'समान नाड़ी — यह नाड़ी दोष है, जो मिलान में सबसे महत्वपूर्ण दोष है. संतान के स्वास्थ्य या वैवाहिक कठिनाई संभव. ज्योतिषी से परामर्श अवश्य करें.', 'સરખી નાડી — આ નાડી દોષ છે, જે મિલાનનો સૌથી મહત્ત્વનો દોષ છે. સંતાનના સ્વાસ્થ્ય અથવા વૈવાહિક મુશ્કેલી શક્ય. જ્યોતિષીની સલાહ ચોક્કસ લો.')
-            : $this->tr('Different Nadi — excellent! No Nadi Dosha. This is the highest-weighted factor.', 'भिन्न नाड़ी — उत्तम! नाड़ी दोष नहीं. यह सबसे अधिक भारांक वाला कारक है.', 'ભિન્ન નાડી — ઉત્તમ! નાડી દોષ નહીં. આ સૌથી વધારે ભારના ગુણ ધરાવતો ઘટક છે.');
-        return ['score' => $score, 'boy_nadi' => $bnn, 'girl_nadi' => $gnn,
-            'detail' => "$boy: $bnn, $girl: $gnn. Score: $score/8. $nadiDesc"];
-    }
-
+    // ---------- storage ----------
     private static bool $ready = false;
-    /** Create the reports table on first use. */
     public static function ensure(): void {
         if (self::$ready) return;
         Db::exec("CREATE TABLE IF NOT EXISTS milan_reports (
@@ -308,59 +292,35 @@ final class KundaliMilan {
         self::$ready = true;
     }
 
-    /** Save a milan report to DB. */
-    public static function save(int $userId, string $boyName, string $girlName, array $result): int {
+    public static function save(int $userId, string $boyName, string $girlName, array $boy, array $girl): int {
         self::ensure();
+        $score = array_sum(array_diff_key(self::points($boy, $girl), ['_m' => 1]));
         return Db::insert('INSERT INTO milan_reports (user_id,boy_name,girl_name,score,result_json,created_at) VALUES (?,?,?,?,?,NOW())',
-            [$userId, $boyName, $girlName, $result['score'], json_encode($result, JSON_UNESCAPED_UNICODE)]);
+            [$userId, mb_substr($boyName, 0, 120), mb_substr($girlName, 0, 120), $score, json_encode(['v' => 2, 'boy' => $boy, 'girl' => $girl])]);
     }
 
     public static function list(int $userId): array {
         self::ensure();
         $rows = Db::all('SELECT id,boy_name,girl_name,result_json,created_at FROM milan_reports WHERE user_id=? ORDER BY created_at DESC', [$userId]);
         foreach ($rows as &$r) {
-            $j = json_decode($r['result_json'] ?? '{}', true);
-            $r['score'] = $j['score'] ?? 0;
+            [$b, $g] = self::rawFromStored(json_decode($r['result_json'] ?: '{}', true) ?: []);
+            $r['score'] = array_sum(array_diff_key(self::points($b, $g), ['_m' => 1]));
             unset($r['result_json']);
         }
         return $rows;
     }
 
-    /** Regenerate factor details in given language from stored moon data. */
-    public function recalcDetails(array $result): array {
-        $bSign = $result['boy_moon']['sign_idx']  ?? array_search($result['boy_moon']['rashi'],     Zodiac::SIGNS,      true) ?: 0;
-        $gSign = $result['girl_moon']['sign_idx'] ?? array_search($result['girl_moon']['rashi'],    Zodiac::SIGNS,      true) ?: 0;
-        $bNak  = $result['boy_moon']['nak_idx']   ?? array_search($result['boy_moon']['nakshatra'], Zodiac::NAKSHATRAS, true) ?: 0;
-        $gNak  = $result['girl_moon']['nak_idx']  ?? array_search($result['girl_moon']['nakshatra'],Zodiac::NAKSHATRAS, true) ?: 0;
-        $factors = [
-            'varna'   => $this->varna($bSign, $gSign),   'vashya' => $this->vashya($bSign, $gSign),
-            'tara'    => $this->tara($bNak, $gNak),       'yoni'   => $this->yoni($bNak, $gNak),
-            'graha'   => $this->graha($bSign, $gSign),    'gana'   => $this->gana($bNak, $gNak),
-            'bhakoot' => $this->bhakoot($bSign, $gSign),  'nadi'   => $this->nadi($bNak, $gNak),
-        ];
-        foreach ($factors as $k => &$f) {
-            $f['name'] = self::FACTORS[$k]['name_' . $this->lang] ?? self::FACTORS[$k]['name'];
-            $f['max']  = self::FACTORS[$k]['max'];
-        }
-        $total = $result['score'];
-        $result['factors'] = $factors;
-        $result['verdict'] = match(true) {
-            $total >= 28 => $this->tr('Excellent match — highly compatible',       'उत्तम मिलान — अत्यंत अनुकूल',                    'ઉત્તમ મિલાન — અત્યંત અનુકૂળ'),
-            $total >= 21 => $this->tr('Good match — compatible with minor differences','अच्छा मिलान — मामूली भिन्नता के साथ अनुकूल',  'સારો મિલાન — નાના ભેદ સાથે અનુકૂળ'),
-            $total >= 18 => $this->tr('Average match — workable with effort',      'सामान्य मिलान — प्रयास से चलेगा',               'સામાન્ય મિલાન — પ્રયત્ને ચાલે'),
-            default      => $this->tr('Below average — significant incompatibilities','औसत से कम — महत्वपूर्ण असंगतियाँ',             'ઓછું — નોંધપાત્ર અસંગતતા'),
-        };
-        return $result;
-    }
-
     public static function get(int $id, int $userId, string $lang = 'en'): ?array {
         self::ensure();
-        $r = Db::one('SELECT * FROM milan_reports WHERE id=? AND user_id=?', [$id, $userId]);
+        $r = Db::one('SELECT id,boy_name,girl_name,created_at,result_json FROM milan_reports WHERE id=? AND user_id=?', [$id, $userId]);
         if (!$r) return null;
-        $r['result'] = json_decode($r['result_json'], true);
-        if ($lang !== 'en' && isset($r['result']['factors'])) {
-            $r['result'] = (new self($lang))->recalcDetails($r['result']);
-        }
-        return $r;
+        [$b, $g] = self::rawFromStored(json_decode($r['result_json'] ?: '{}', true) ?: []);
+        unset($r['result_json']);
+        return $r + (new self($lang))->report($b, $g, $r['boy_name'], $r['girl_name']);
+    }
+
+    public static function delete(int $id, int $userId): void {
+        self::ensure();
+        Db::exec('DELETE FROM milan_reports WHERE id=? AND user_id=?', [$id, $userId]);
     }
 }

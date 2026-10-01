@@ -190,27 +190,29 @@ final class Routes {
         $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($q); return $catSave($q, (int) $a['id']); }, false);
         $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
         // ---- Kundali Milan ----
-        $r->add('GET', '/milan', function (Request $q, array $u) {
-            return \App\Interp\KundaliMilan::list((int) $u['id']); });
+        $r->add('GET', '/milan', fn(Request $q, array $u) => \App\Interp\KundaliMilan::list((int) $u['id']));
         $r->add('GET', '/milan/{id}', function (Request $q, array $u, array $a) {
-            $lang = (string) $q->input('lang', 'en');
-            $row = \App\Interp\KundaliMilan::get((int) $a['id'], (int) $u['id'], $lang);
-            if (!$row) throw new ApiException('not_found', 'Not found', 404); return $row; });
+            $row = \App\Interp\KundaliMilan::get((int) $a['id'], (int) $u['id'], $q->lang($u));
+            if (!$row) throw new ApiException('not_found', 'Report not found', 404);
+            return $row; });
         $r->add('POST', '/milan', function (Request $q, array $u) {
-            $b = $q->body; $lang = (string) $q->input('lang', 'en');
-            $ks = new \App\Calc\KundaliService();
-            $compute = function (array $d) use ($ks): array {
-                $birth = \App\Calc\TimeResolver::resolve($d['date'], $d['time'] ?? '12:00', $d['tz'] ?? 'Asia/Kolkata');
-                return $ks->compute($birth, (float)($d['lat'] ?? 23.0), (float)($d['lon'] ?? 72.0)); };
-            $boyK  = isset($b['boy_profile_id'])  ? self::kundaliById((int)$b['boy_profile_id'],  $u) : $compute($b['boy']);
-            $girlK = isset($b['girl_profile_id']) ? self::kundaliById((int)$b['girl_profile_id'], $u) : $compute($b['girl']);
-            $result = (new \App\Interp\KundaliMilan($lang))->calculate($boyK, $girlK);
-            $boyName  = $b['boy_name']  ?? ($b['boy']['name']  ?? 'Boy');
-            $girlName = $b['girl_name'] ?? ($b['girl']['name'] ?? 'Girl');
-            $id = \App\Interp\KundaliMilan::save((int) $u['id'], $boyName, $girlName, $result);
-            return ['id' => $id, 'boy_name' => $boyName, 'girl_name' => $girlName] + $result; });
+            $b = $q->body; $ks = new \App\Calc\KundaliService();
+            $side = function (string $g) use ($b, $ks, $u): array {
+                if (!empty($b[$g . '_profile_id'])) {
+                    $p = ProfileService::get((int) $u['id'], (int) $b[$g . '_profile_id']); [, $k] = ProfileService::kundali($p);
+                    return [$k, $b[$g . '_name'] ?? $p['label']];
+                }
+                $d = $b[$g] ?? null;
+                if (!is_array($d) || empty($d['date']) || !isset($d['lat'], $d['lon']))
+                    throw new ApiException('validation_failed', 'Enter birth date and choose the place for both', 422);
+                $birth = \App\Calc\TimeResolver::resolve((string) $d['date'], (string) ($d['time'] ?: '12:00'), (string) ($d['tz'] ?? 'Asia/Kolkata'));
+                return [$ks->compute($birth, (float) $d['lat'], (float) $d['lon']), trim((string) ($d['name'] ?? '')) ?: ucfirst($g)];
+            };
+            [$bk, $bn] = $side('boy'); [$gk, $gn] = $side('girl');
+            $id = \App\Interp\KundaliMilan::save((int) $u['id'], $bn, $gn, \App\Interp\KundaliMilan::raw($bk), \App\Interp\KundaliMilan::raw($gk));
+            return ['id' => $id]; });
         $r->add('DELETE', '/milan/{id}', function (Request $q, array $u, array $a) {
-            \App\Interp\KundaliMilan::ensure(); \App\Core\Db::exec('DELETE FROM milan_reports WHERE id=? AND user_id=?', [$a['id'], $u['id']]); return ['deleted' => true]; });
+            \App\Interp\KundaliMilan::delete((int) $a['id'], (int) $u['id']); return ['deleted' => true]; });
 
         // ---- admin: overview, users and their kundalis ----
         $r->add('GET', '/admin/ai-status', function (Request $q) use ($adm) { $adm($q); return \App\Interp\AiChat::status(); }, false);
@@ -353,13 +355,6 @@ final class Routes {
     }
 
     /** @return array{0:array,1:int,2:array,3:string} profile, kundali id, kundali, lang */
-    private static function kundaliById(int $pid, array $u): array {
-        $p = \App\Core\Db::one('SELECT * FROM birth_profiles WHERE id=? AND user_id=?', [$pid, $u['id']]);
-        if (!$p) throw new ApiException('not_found', 'Profile not found', 404);
-        $b = \App\Calc\TimeResolver::resolve($p['birth_date'], $p['birth_time'], $p['tzid']);
-        return (new \App\Calc\KundaliService())->compute($b, (float)$p['lat'], (float)$p['lon']);
-    }
-
     private static function ctx(Request $q, array $u, array $a): array {
         $p = ProfileService::get((int) $u['id'], $a['id']); [$kid, $k] = ProfileService::kundali($p);
         return [$p, $kid, $k, $q->lang($u)];

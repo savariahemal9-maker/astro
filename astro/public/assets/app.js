@@ -452,134 +452,79 @@
     mark(); chips();
   }
 
-  // ---------- Chat (basic chat + Claude "AI Astrologer"): full page, saved conversations, own language picker ----------
+  // ---------- Kundali Milan (Ashtakoot): form + saved list, and the report ----------
   async function viewMilan(reportId = 0) {
-    const SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
-    const scoreColor = s => s >= 28 ? 'ok' : s >= 21 ? 'p' : s >= 18 ? 'warn' : 'err';
-    const bar = (score, max) => `<div class="ml-bar"><div class="ml-fill" style="width:${Math.round(score/max*100)}%;background:var(--${scoreColor(score/max*36)})"></div></div>`;
+    const M = k => esc(t('ml.' + k)), band = s => s >= 33 ? 'ex' : s >= 25 ? 'vg' : s >= 18 ? 'ok' : 'low';
+    const ring = (s, size = 132) => { const r = 52, c = 2 * Math.PI * r;
+      return `<svg class="mm-ring ${band(s)}" width="${size}" height="${size}" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="${r}" class="bg"/>
+        <circle cx="60" cy="60" r="${r}" class="fg" stroke-dasharray="${(s / 36 * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 60 60)"/></svg>`; };
     if (reportId) {
-      loading();
-      try {
-        const d = await api('GET', `/milan/${reportId}?lang=${lang}`);
-        const r = d.result;
-        const mn = (x, who) => x.present
-          ? `<div class="ml-dosha warn"><span class="ms">warning</span><span>${esc(who)} — ${esc(t('ui.mangal_dosha','Mangal Dosha'))} (${esc(t('ui.house','House'))} ${x.house})</span></div>`
-          : `<div class="ml-dosha ok"><span class="ms">check_circle</span><span>${esc(who)} — ${esc(t('ui.no_mangal','No Mangal Dosha'))}</span></div>`;
-        const bv = f => f.boy||f.boy_tara||f.boy_animal||f.boy_lord||f.boy_gana||f.boy_rashi||f.boy_nadi||'—';
-        const gv = f => f.girl||f.girl_tara||f.girl_animal||f.girl_lord||f.girl_gana||f.girl_rashi||f.girl_nadi||'—';
-        const pct = Math.round(r.score/36*100);
-        const cls = scoreColor(r.score);
-        const gaugeR=45, circ=2*Math.PI*gaugeR;
-        const gauge = `<svg class="ml-gauge-svg" viewBox="0 0 120 120" aria-hidden="true">
-          <circle cx="60" cy="60" r="${gaugeR}" class="ml-gauge-bg"/>
-          <circle cx="60" cy="60" r="${gaugeR}" class="ml-gauge-arc ${cls}"
-            stroke-dasharray="${(pct/100*circ).toFixed(1)} ${circ.toFixed(1)}"
-            transform="rotate(-90 60 60)"/></svg>`;
-        h(`<section class="ph"><div><p class="eyebrow">${esc(t('ui.kundali_milan'))}</p>
-            <h1>${esc(d.boy_name)} × ${esc(d.girl_name)}</h1></div>
-            <button class="btn ghost" onclick="location.hash='#/milan'"><span class="ms">arrow_back</span>${esc(t('ui.back'))}</button></section>
-          <section class="card ml-result-card">
-            <div class="ml-result-top">
-              <div class="ml-gauge-wrap">${gauge}
-                <div class="ml-gauge-inner"><b>${r.score}</b><span>/36</span></div></div>
-              <div class="ml-result-info">
-                <div class="ml-verdict ${cls}">${esc(r.verdict)}</div>
-                <div class="ml-moons">
-                  <div class="ml-moon"><span class="ms">person</span><div><b>${esc(d.boy_name)}</b><small>${esc(r.boy_moon.nakshatra)} · ${esc(r.boy_moon.rashi)}</small></div></div>
-                  <div class="ml-moon"><span class="ms">person</span><div><b>${esc(d.girl_name)}</b><small>${esc(r.girl_moon.nakshatra)} · ${esc(r.girl_moon.rashi)}</small></div></div>
-                </div>
-                <div class="ml-dosha-row">${mn(r.mangal.boy, d.boy_name)}${mn(r.mangal.girl, d.girl_name)}</div>
-              </div>
-            </div>
-            <div class="ml-bar"><div class="ml-fill ${cls}" style="width:${pct}%"></div></div>
-          </section>
-          <h2 style="margin:1.2rem 0 .6rem">${esc(t('ui.milan_factors'))}</h2>
-          <div class="ml-grid">${Object.values(r.factors).map(f => {
-            const sc = scoreColor(f.score/f.max*36), fp = Math.round(f.score/f.max*100);
-            return `<section class="card ml-factor">
-              <div class="ml-fhead"><b class="ml-fname">${esc(f.name)}</b><span class="ml-fscore ${sc}">${f.score}/${f.max}</span></div>
-              <div class="ml-bar"><div class="ml-fill ${sc}" style="width:${fp}%"></div></div>
-              <div class="ml-cmp">
-                <div class="ml-cmp-side"><span class="ml-cmp-who">${esc(d.boy_name)}</span><b>${esc(bv(f))}</b></div>
-                <span class="ml-cmp-vs">VS</span>
-                <div class="ml-cmp-side"><span class="ml-cmp-who">${esc(d.girl_name)}</span><b>${esc(gv(f))}</b></div>
-              </div>
-              <p class="ml-detail">${esc(f.detail)}</p></section>`;
-          }).join('')}</div>
-          <div class="noprint" style="margin:1.2rem 0"><button class="btn" onclick="window.print()"><span class="ms">download</span>${esc(t('ui.download_report'))}</button></div>`);
-      } catch(e) { h(errBox(e)); }
+      loading(); let d;
+      try { d = await api('GET', `/milan/${reportId}?lang=${lang}`); } catch (e) { h(errBox(e)); return; }
+      const who = (x, n, cls) => `<div class="mm-who ${cls}"><span class="mm-av"><span class="ms">${cls === 'boy' ? 'man' : 'woman'}</span></span>
+        <b>${esc(n)}</b><small>${M(cls)}</small><span>${esc(x.rashi)} · ${esc(x.nakshatra)}</span></div>`;
+      const rows = [['rashi', 'rashi'], ['lord', 'lord'], ['nak', 'nakshatra'], ['pada', 'pada'], ['varna', 'varna'], ['vashya', 'vashya'], ['yoni', 'yoni'], ['gana', 'gana'], ['nadi', 'nadi'], ['mangal', 'mangal']];
+      h(`${ph('favorite', t('ml.title'), `${d.boy_name} ${t('ml.vs')} ${d.girl_name}`, `<a class="btn ghost" href="#/milan"><span class="ms">arrow_back</span>${M('back')}</a>`, t('ml.eyebrow'))}
+        <section class="mm-hero">${who(d.boy, d.boy_name, 'boy')}
+          <div class="mm-score">${ring(d.score)}<div class="mm-sv"><b>${d.score}</b><small>/ 36 ${M('gunas')}</small></div></div>
+          ${who(d.girl, d.girl_name, 'girl')}
+          <div class="mm-verdict"><span class="mm-pill ${d.band}">${esc(d.verdict)}</span><p>${esc(d.summary)}</p></div></section>
+        <section class="card mm-sec"><div class="card-h"><span class="ms">table_chart</span>${M('table')}</div>
+          <div class="mm-table"><div class="mm-tr mm-th"><span>${M('koota')}</span><span>${esc(d.boy_name)}</span><span>${esc(d.girl_name)}</span><span>${M('points')}</span></div>
+          ${d.kootas.map(k => `<div class="mm-tr"><span class="mm-k"><b>${esc(k.name)}</b><small>${esc(k.area)}</small></span>
+            <span class="mm-v" data-l="${esc(d.boy_name)}">${esc(k.boy)}</span><span class="mm-v" data-l="${esc(d.girl_name)}">${esc(k.girl)}</span>
+            <span class="mm-p ${k.score >= k.max ? 'full' : k.score > 0 ? 'part' : 'zero'}"><b>${k.score}<small>/${k.max}</small></b><i><em style="width:${k.score / k.max * 100}%"></em></i></span></div>`).join('')}
+          <div class="mm-tr mm-tot"><span>${M('total')}</span><span></span><span></span><span class="mm-p ${band(d.score)}"><b>${d.score}<small>/36</small></b></span></div></div></section>
+        <section class="mm-sec"><h2 class="mm-h"><span class="ms">health_and_safety</span>${M('doshas')}</h2>
+          <div class="mm-doshas">${d.doshas.map(x => `<div class="mm-dosha ${x.state}"><div><b>${esc(x.name)}</b><span class="mm-st">${esc(x.label)}</span></div><p>${esc(x.text)}</p></div>`).join('')}</div></section>
+        <section class="card mm-sec"><div class="card-h"><span class="ms">nightlight</span>${M('details')}</div>
+          <div class="mm-table mm-det"><div class="mm-tr mm-th"><span></span><span>${esc(d.boy_name)}</span><span>${esc(d.girl_name)}</span></div>
+          ${rows.map(([l, k]) => `<div class="mm-tr"><span class="mm-k"><b>${M(l)}</b></span><span class="mm-v" data-l="${esc(d.boy_name)}">${esc(d.boy[k])}</span><span class="mm-v" data-l="${esc(d.girl_name)}">${esc(d.girl[k])}</span></div>`).join('')}</div></section>
+        <section class="mm-sec"><h2 class="mm-h"><span class="ms">menu_book</span>${M('explain')}</h2>
+          <div class="mm-ex">${d.kootas.map(k => `<div class="mm-exi"><div class="mm-exh"><b>${esc(k.name)}</b><span class="mm-p ${k.score >= k.max ? 'full' : k.score > 0 ? 'part' : 'zero'}"><b>${k.score}<small>/${k.max}</small></b></span></div>
+            <p>${esc(k.about)}</p><p class="mm-res">${esc(k.result)}</p></div>`).join('')}</div></section>
+        <p class="mm-note"><span class="ms">info</span>${M('note')}</p>
+        <div class="mm-act noprint"><button onclick="window.print()"><span class="ms">print</span>${M('print')}</button><a class="btn ghost" href="#/milan"><span class="ms">add</span>${M('new')}</a></div>`);
       return;
     }
-    // List / new form
     loading();
-    let profs = []; try { profs = await api('GET', '/profiles'); } catch(e) {}
-    let reports = []; try { reports = await api('GET', '/milan'); } catch(e) {}
-    const profOpts = profs.map(p => `<option value="${p.id}">${esc(p.label)} (${esc(p.birth_date)})</option>`).join('');
-    const birthFields = (prefix) => `<div class="row">
-      <label>${esc(t('ui.name'))}<input name="${prefix}_name" required></label>
-      <input type="hidden" name="${prefix}_profile" value="">
-    </div>
-    <div class="row">
-      <label>${esc(t('ui.birth_date'))}<input type="date" name="${prefix}_date" required></label>
-      <label>${esc(t('ui.birth_time'))}<input type="time" name="${prefix}_time"></label>
-    </div>
-    <label style="position:relative">${esc(t('ui.birth_place'))}<input name="${prefix}_place" placeholder="${esc(t('ui.place_search'))}…" autocomplete="off"><div class="suggest"></div></label>
-    <input type="hidden" name="${prefix}_lat"><input type="hidden" name="${prefix}_lon"><input type="hidden" name="${prefix}_tz" value="Asia/Kolkata">`;
-
-    h(`<section class="ph"><div><p class="eyebrow">${esc(t('ui.kundali_milan'))}</p><h1>${esc(t('ui.milan_sub'))}</h1></div></section>
-      <div class="ml-layout">
-        <section class="card">
-          <h2><span class="ms">calculate</span> ${esc(t('ui.new_milan'))}</h2>
-          <form id="mlf" class="stack">
-            <div class="ml-pair">
-              <div style="display:grid;gap:.8rem"><div class="card-h"><span class="ms">boy</span>${esc(t('ui.boy'))}</div>
-                ${profs.length ? `<label>${esc(t('ui.saved_kundali'))}<select name="boy_saved"><option value="">— ${esc(t('ui.enter_manually'))} —</option>${profOpts}</select></label>` : ''}
-                <div id="boy-fields" style="display:grid;gap:.7rem">${birthFields('boy')}</div></div>
-              <div style="display:grid;gap:.8rem"><div class="card-h"><span class="ms">girl</span>${esc(t('ui.girl'))}</div>
-                ${profs.length ? `<label>${esc(t('ui.saved_kundali'))}<select name="girl_saved"><option value="">— ${esc(t('ui.enter_manually'))} —</option>${profOpts}</select></label>` : ''}
-                <div id="girl-fields" style="display:grid;gap:.7rem">${birthFields('girl')}</div></div>
-            </div>
-            <button type="submit"><span class="ms">favorite</span>${esc(t('ui.calculate_milan'))}</button>
-          </form>
-        </section>
-        ${reports.length ? `<section class="card"><h2><span class="ms">history</span> ${esc(t('ui.saved_reports'))}</h2>
-          <div class="ml-list">${reports.map(r => `<div class="ml-item" onclick="location.hash='#/milan/${r.id}'">
-            <div><b>${esc(r.boy_name)} × ${esc(r.girl_name)}</b><small>${esc(r.created_at.slice(0,10))}</small></div>
-            <div class="ml-s ${scoreColor(r.score)}">${r.score}/36</div></div>`).join('')}</div></section>` : ''}
-      </div>`);
-
-    // Toggle manual/saved fields + disable hidden required inputs
-    ['boy','girl'].forEach(g => {
-      const sel = document.querySelector(`[name="${g}_saved"]`);
-      const div = document.getElementById(`${g}-fields`);
-      if (sel && div) {
-        const toggle = () => { const hide = !!sel.value; div.style.display = hide ? 'none' : ''; div.querySelectorAll('input,select').forEach(i => i.disabled = hide); };
-        sel.onchange = toggle;
-      }
-      // Place picker for manual entry fields
-      if (div) {
-        placePicker(div, r => {
-          div.querySelector(`[name="${g}_lat"]`).value = r.lat;
-          div.querySelector(`[name="${g}_lon"]`).value = r.lon;
-          div.querySelector(`[name="${g}_tz"]`).value = r.tzid || 'Asia/Kolkata';
-        }, `[name="${g}_place"]`);
-      }
+    let profs = [], reports = [];
+    try { [profs, reports] = await Promise.all([api('GET', '/profiles'), api('GET', '/milan')]); } catch (e) { h(errBox(e)); return; }
+    const side = g => `<div class="mm-side ${g}" data-g="${g}"><div class="mm-sh"><span class="mm-av"><span class="ms">${g === 'boy' ? 'man' : 'woman'}</span></span><b>${M(g)}</b></div>
+      ${profs.length ? `<label>${M('saved')}<select name="saved"><option value="">— ${M('manual')} —</option>${profs.map(p => `<option value="${p.id}">${esc(p.label)} · ${esc(p.birth_date)}</option>`).join('')}</select></label>` : ''}
+      <div class="mm-man"><label>${esc(t('ui.name'))}<input name="name" maxlength="120" required></label>
+        <div class="th-row"><label>${esc(t('ui.birth_date'))}<input type="date" name="date" required></label><label>${esc(t('ui.birth_time'))}<input type="time" name="time"></label></div>
+        <label>${esc(t('ui.birth_place'))}<input name="place_q" placeholder="${esc(t('ui.search_place'))}" autocomplete="off" required><div class="suggest"></div></label></div></div>`;
+    h(`${ph('favorite', t('ml.title'), t('ml.sub'), '', t('ml.eyebrow'))}
+      <form id="mlf" class="card mm-form"><div class="mm-pair">${side('boy')}<span class="mm-heart"><span class="ms">favorite</span></span>${side('girl')}</div>
+        <div id="mlerr"></div><button class="mm-go"><span class="ms">join_inner</span>${M('calc')}</button></form>
+      <section class="mm-sec"><h2 class="mm-h"><span class="ms">history</span>${M('recent')}</h2>
+        ${reports.length ? `<div class="mm-list">${reports.map(r => `<div class="mm-item"><a href="#/milan/${r.id}">${ring(+r.score, 54)}<span class="mm-is">${+r.score}</span>
+          <span class="mm-in"><b>${esc(r.boy_name)} <span class="ms">favorite</span> ${esc(r.girl_name)}</b><small>${esc(String(r.created_at).slice(0, 10))} · ${+r.score}/36 ${M('gunas')}</small></span></a>
+          <button type="button" class="icon-btn" data-del="${r.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div>`).join('')}</div>` : `<p class="pp-empty">${M('none')}</p>`}</section>`);
+    const f = document.getElementById('mlf'), place = {};
+    f.querySelectorAll('.mm-side').forEach(el => {
+      const g = el.dataset.g, man = el.querySelector('.mm-man'), sel = el.querySelector('[name=saved]');
+      placePicker(el, p => place[g] = p); el.querySelector('[name=place_q]').addEventListener('input', () => delete place[g]);
+      if (sel) sel.onchange = () => { const on = !!sel.value; man.hidden = on; man.querySelectorAll('input').forEach(i => i.disabled = on); };
     });
-
-    document.getElementById('mlf').onsubmit = async e => {
-      e.preventDefault(); const fd = new FormData(e.target);
-      const body = {};
-      ['boy','girl'].forEach(g => {
-        const pid = fd.get(`${g}_saved`);
-        if (pid) { body[`${g}_profile_id`] = +pid; body[`${g}_name`] = e.target.querySelector(`[name="${g}_saved"] option:checked`).text.split(' (')[0]; }
-        else { body[g] = { name: fd.get(`${g}_name`), date: fd.get(`${g}_date`), time: fd.get(`${g}_time`) || '12:00', lat: +fd.get(`${g}_lat`) || 23.0, lon: +fd.get(`${g}_lon`) || 72.0, tz: fd.get(`${g}_tz`) || 'Asia/Kolkata' };
-               body[`${g}_name`] = body[g].name; }
-      });
-      try { const r = await api('POST', `/milan?lang=${lang}`, body); location.hash = `#/milan/${r.id}`; }
-      catch(er) { toast(er.message, 'error'); }
+    f.onsubmit = async e => {
+      e.preventDefault(); const err = document.getElementById('mlerr'); err.innerHTML = ''; const body = {};
+      for (const el of f.querySelectorAll('.mm-side')) {
+        const g = el.dataset.g, sel = el.querySelector('[name=saved]'), v = n => el.querySelector(`[name=${n}]`).value;
+        if (sel && sel.value) { body[g + '_profile_id'] = +sel.value; body[g + '_name'] = profs.find(p => p.id === +sel.value)?.label; continue; }
+        if (!place[g]) { err.innerHTML = errBox({ message: t('ml.need_place') }); el.querySelector('[name=place_q]').focus(); return; }
+        body[g] = { name: v('name'), date: v('date'), time: v('time') || '12:00', lat: place[g].lat, lon: place[g].lon, tz: place[g].tzid || 'Asia/Kolkata' };
+      }
+      const btn = f.querySelector('.mm-go'); btn.disabled = true;
+      try { const r = await api('POST', '/milan', body); location.hash = '#/milan/' + r.id; } catch (e2) { err.innerHTML = errBox(e2); btn.disabled = false; }
     };
+    $app.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      if (!confirm(t('ml.del_q'))) return;
+      try { await api('DELETE', '/milan/' + b.dataset.del); b.closest('.mm-item').remove(); } catch (e) { toast(e.message); } });
   }
 
+  // ---------- Chat (basic chat + Claude "AI Astrologer"): full page, saved conversations, own language picker ----------
   async function viewChat(mode = 'rules') {
     const AI = mode === 'claude', LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} return null; };
     loading(); let profs; try { profs = await api('GET', '/profiles'); } catch (e) { h(errBox(e)); return; }
