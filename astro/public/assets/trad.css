@@ -397,3 +397,6 @@ body.kb-open .bnav{display:none!important}
   .mm-det .mm-tr{grid-template-columns:1fr 1fr} .mm-det .mm-th{display:none}
 }
 @media print{.mm-hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.mm-sec,.mm-tr,.mm-dosha,.mm-exi{break-inside:avoid}}
+.mm>.card,.mm>section,.mm>header{margin-left:0;margin-right:0}
+/* chat: when the keyboard is up the bottom bar is hidden, so the chat takes the full visible height */
+@media (max-width:960px){body.kb-open .cp{height:calc(var(--vvh,100dvh) - var(--strip) - 72px)!important}}
