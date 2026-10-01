@@ -471,3 +471,13 @@ body.kb-open .bnav{display:none!important}
   .bk-h,.bk-sec h3{break-after:avoid} .bk-facts,.bk-pros>div,.bk-score,.bk-fig,.bk-note,.bk-t tr{break-inside:avoid}
   .bk p{orphans:3;widows:3}
 }
+/* book fixes: white chapter titles, spacing under the running header, tables that keep their header */
+.bk-open h2,.bk-open .bk-num{color:#fff!important}
+.bk-run{padding:6mm 0 3mm;margin-bottom:6mm}
+.bk-foot{margin-top:6mm}
+.bk-two{display:grid;grid-template-columns:1fr 1fr;gap:6mm;margin-bottom:1em} .bk-two .bk-fig{max-width:none;margin:0}
+.bk-t thead{display:table-header-group}
+.bk-sec{padding-top:2mm} .bk-ch.flow .bk-sec{border-top:1px dashed #ecd6b8;padding-top:5mm}
+.bk-t .tag{font-size:.85em}
+@media print{.bk-t.keep{break-inside:avoid}.bk-t tr{break-inside:avoid}.bk-sec h3{break-after:avoid}.bk-sec>p:first-of-type{break-before:avoid}}
+@media (max-width:760px){.bk-two{grid-template-columns:1fr}}

@@ -49,7 +49,7 @@ final class ReportBook {
         $ch = [];
         $ch[] = $this->intro();
         $ch[] = $this->birth($k, $p);
-        $ch[] = ['id' => 'charts', 'title' => $this->t('ch_charts'), 'icon' => 'grid_view', 'blocks' => [['p', $this->t('charts_intro')], ['chart', 'D1'], ['chart', 'D9'], ['chart', 'moon'], ['planets']]];
+        $ch[] = ['id' => 'charts', 'title' => $this->t('ch_charts'), 'icon' => 'grid_view', 'blocks' => [['p', $this->t('charts_intro')], ['charts2', 'D1', 'D9'], ['chart', 'moon'], ['planets']]];
         $ch[] = ['id' => 'vargas', 'title' => $this->t('ch_vargas'), 'icon' => 'apps', 'blocks' => [['p', $this->t('vargas_intro')], ['chart', 'vargas']]];
         $ch[] = $this->lagna($k);
         $ch[] = $this->moon($k);
@@ -175,7 +175,7 @@ final class ReportBook {
             } else $blocks[] = ['p', $this->t('h_empty', ['lord' => $this->P($lord)])];
             $secs[] = ['title' => $this->hn($h) . ' ' . $this->t('table_house') . ' · ' . $H['name'], 'sub' => $H['topics'], 'blocks' => $blocks];
         }
-        return ['id' => 'houses', 'title' => $this->t('ch_houses'), 'icon' => 'home', 'sections' => $secs];
+        return ['id' => 'houses', 'title' => $this->t('ch_houses'), 'icon' => 'home', 'flow' => true, 'sections' => $secs];
     }
 
     private function firstSentences(string $s, int $n): string {
@@ -293,7 +293,7 @@ final class ReportBook {
             }
             $secs[] = ['title' => $fmt ? $fmt->format($d) : $d->format('F Y'), 'blocks' => $b];
         }
-        return ['id' => 'months', 'title' => $this->t('ch_months'), 'icon' => 'calendar_month', 'intro' => $this->t('month_intro'), 'sections' => $secs];
+        return ['id' => 'months', 'title' => $this->t('ch_months'), 'icon' => 'calendar_month', 'flow' => true, 'intro' => $this->t('month_intro'), 'sections' => $secs];
     }
 
     private function remedies(array $r): array {

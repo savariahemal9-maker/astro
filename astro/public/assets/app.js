@@ -1089,6 +1089,7 @@
     loading();
     let r; try { r = await api('GET', `/profiles/${id}/book?lang=${lang}&tzid=${encodeURIComponent(TZ)}`); } catch (e) { h(errBox(e)); return; }
     const k = r.kundali, P = r.profile, B = r.book, L = B.labels, b = k.birth;
+    document.title = `${P.label} - ${L.cover_title} - KarmYog Astro`; // Chrome uses this as the PDF file name
     const moonK = { ...k, vargas: { ...k.vargas, D1: { ...k.vargas.D1, lagna: k.vargas.D1.planets.Moon } } };
     const fig = (cap, svg) => `<figure class="bk-fig">${svg}<figcaption>${esc(cap)}</figcaption></figure>`;
     const charts = {
@@ -1096,9 +1097,9 @@
       moon: () => fig(t('ui.moon_chart', t('ui.moon_sign')), northChart(moonK, 'D1')), varsh: () => fig(t('ui.varshphal'), northChart(r.varshphal, 'D1')),
       vargas: () => `<div class="bk-vg">${Object.keys(k.vargas).filter(v => v !== 'D1').map(v => fig(vname(v), northChart(k, v))).join('')}</div>`,
     };
-    const planetsTable = () => `<table class="bk-t"><tr><th>${esc(L.table_planet)}</th><th>${esc(L.table_sign)}</th><th>${esc(L.table_deg)}</th><th>${esc(L.table_nak)}</th><th>${esc(L.table_house)}</th><th>${esc(L.table_status)}</th></tr>
+    const planetsTable = () => `<table class="bk-t keep"><thead><tr><th>${esc(L.table_planet)}</th><th>${esc(L.table_sign)}</th><th>${esc(L.table_deg)}</th><th>${esc(L.table_nak)}</th><th>${esc(L.table_house)}</th><th>${esc(L.table_status)}</th></tr></thead><tbody>
       <tr><td><b>${esc(t('ui.lagna'))}</b></td><td>${esc(tn('signs', k.lagna.sign_name))}</td><td>${esc(k.lagna.dms)}</td><td>${esc(tn('nakshatras', k.lagna.nakshatra))} ${k.lagna.pada}</td><td>1</td><td></td></tr>
-      ${k.planets.map(p => `<tr><td><b>${esc(tn('planets', p.name))}</b></td><td>${esc(tn('signs', p.sign_name))}</td><td>${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))} ${p.pada}</td><td>${p.house}</td><td>${esc(status(p))}</td></tr>`).join('')}</table>`;
+      ${k.planets.map(p => `<tr><td><b>${esc(tn('planets', p.name))}</b></td><td>${esc(tn('signs', p.sign_name))}</td><td>${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))} ${p.pada}</td><td>${p.house}</td><td>${status(p)}</td></tr>`).join('')}</tbody></table>`;
     const block = x => {
       switch (x[0]) {
         case 'p': return `<p>${esc(x[1])}</p>`;
@@ -1106,8 +1107,9 @@
         case 'note': return `<div class="bk-note"><span class="ms">info</span><p>${esc(x[1])}</p></div>`;
         case 'facts': return `<div class="bk-facts">${x[1].map(([l, v]) => `<div><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>`;
         case 'list': return `<ul class="bk-list">${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
-        case 'table': return `<table class="bk-t">${x[1].some(Boolean) ? `<tr>${x[1].map(c => `<th>${esc(c)}</th>`).join('')}</tr>` : ''}${x[2].map(row => `<tr>${row.map((c, i) => i ? `<td>${esc(c)}</td>` : `<td><b>${esc(c)}</b></td>`).join('')}</tr>`).join('')}</table>`;
+        case 'table': return `<table class="bk-t${x[2].length <= 10 ? ' keep' : ''}">${x[1].some(Boolean) ? `<thead><tr>${x[1].map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>` : ''}<tbody>${x[2].map(row => `<tr>${row.map((c, i) => i ? `<td>${esc(c)}</td>` : `<td><b>${esc(c)}</b></td>`).join('')}</tr>`).join('')}</tbody></table>`;
         case 'chart': return charts[x[1]] ? charts[x[1]]() : '';
+        case 'charts2': return `<div class="bk-two">${x.slice(1).map(c => charts[c]()).join('')}</div>`;
         case 'planets': return planetsTable();
         case 'score': return `<div class="bk-score"><span>${esc(x[1])}</span><i><em class="${x[2] >= 60 ? 'g' : x[2] < 45 ? 'r' : 'a'}" style="width:${Math.max(4, Math.min(100, x[2]))}%"></em></i></div>`;
         case 'pros': return `<div class="bk-pros"><div class="g"><b><span class="ms">thumb_up</span>${esc(t('ui.positive', 'Favourable'))}</b><ul>${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>
@@ -1456,7 +1458,9 @@
   }
 
   // ---------- Router ----------
+  const BASE_TITLE = document.title;
   async function route() {
+    document.title = BASE_TITLE;
     if (window.ADMIN_APP) return adminRoute();
     renderNav();
     const [, page, arg] = location.hash.split('/');
