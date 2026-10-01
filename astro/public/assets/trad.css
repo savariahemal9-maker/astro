@@ -400,3 +400,14 @@ body.kb-open .bnav{display:none!important}
 .mm>.card,.mm>section,.mm>header{margin-left:0;margin-right:0}
 /* chat: when the keyboard is up the bottom bar is hidden, so the chat takes the full visible height */
 @media (max-width:960px){body.kb-open .cp{height:calc(var(--vvh,100dvh) - var(--strip) - 72px)!important}}
+/* Milan remedies */
+.mm-rem{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed #ecdcc8}
+.mm-rh,.mm-kh{display:flex;align-items:center;gap:.35rem;color:var(--t-maroon);font-size:.92rem} .mm-rh .ms,.mm-kh .ms{font-size:18px;color:var(--t-saffron)}
+.mm-rem ul{list-style:none;margin:.5rem 0 0;padding:0;display:grid;gap:.6rem}
+.mm-rem li{font-size:.88rem;line-height:1.5;color:var(--t-ink)}
+.mm-who-tag{display:inline-block;margin:0 .4rem .2rem 0;padding:.1rem .55rem;border-radius:10px;font-size:.7rem;font-weight:700;vertical-align:1px}
+.mm-who-tag.boy{background:#e3ecf8;color:#2d5fa8} .mm-who-tag.girl{background:#f9e1ec;color:#a8285f} .mm-who-tag.both{background:#fdf0dd;color:#9a5a00}
+.mm-krem{margin-top:.8rem;background:#fff;border:1px solid #ecdcc8;border-left:5px solid #c79a2a;border-radius:12px;padding:.9rem 1rem}
+.mm-krem .mm-rem{margin-top:.2rem;padding-top:0;border:0}
+.mm-dosha{display:flex;flex-direction:column}
+.mm-dosha>.mm-rem{display:block}

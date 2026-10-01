@@ -463,6 +463,9 @@
       try { d = await api('GET', `/milan/${reportId}?lang=${lang}`); } catch (e) { h(errBox(e)); return; }
       const who = (x, n, cls) => `<div class="mm-who ${cls}"><span class="mm-av"><span class="ms">${cls === 'boy' ? 'man' : 'woman'}</span></span>
         <b>${esc(n)}</b><small>${M(cls)}</small><span>${esc(x.rashi)} · ${esc(x.nakshatra)}</span></div>`;
+      const who2 = w => w === 'boy' ? `${d.boy_name} · ${d.rem_labels.boy}` : w === 'girl' ? `${d.girl_name} · ${d.rem_labels.girl}` : d.rem_labels.both;
+      const remList = (list, bare) => list && list.length ? `<div class="mm-rem">${bare ? '' : `<b class="mm-rh"><span class="ms">spa</span>${esc(d.rem_labels.title)}</b>`}
+        <ul>${list.map(([w, tx]) => `<li><span class="mm-who-tag ${w}">${esc(who2(w))}</span>${esc(tx)}</li>`).join('')}</ul></div>` : '';
       const rows = [['rashi', 'rashi'], ['lord', 'lord'], ['nak', 'nakshatra'], ['pada', 'pada'], ['varna', 'varna'], ['vashya', 'vashya'], ['yoni', 'yoni'], ['gana', 'gana'], ['nadi', 'nadi'], ['mangal', 'mangal']];
       h(`<div class="mm">${ph('favorite', t('ml.title'), `${d.boy_name} ${t('ml.vs')} ${d.girl_name}`, `<a class="btn ghost" href="#/milan"><span class="ms">arrow_back</span>${M('back')}</a>`, t('ml.eyebrow'))}
         <section class="mm-hero">${who(d.boy, d.boy_name, 'boy')}
@@ -476,7 +479,8 @@
             <span class="mm-p ${k.score >= k.max ? 'full' : k.score > 0 ? 'part' : 'zero'}"><b>${k.score}<small>/${k.max}</small></b><i><em style="width:${k.score / k.max * 100}%"></em></i></span></div>`).join('')}
           <div class="mm-tr mm-tot"><span>${M('total')}</span><span></span><span></span><span class="mm-p ${band(d.score)}"><b>${d.score}<small>/36</small></b></span></div></div></section>
         <section class="mm-sec"><h2 class="mm-h"><span class="ms">health_and_safety</span>${M('doshas')}</h2>
-          <div class="mm-doshas">${d.doshas.map(x => `<div class="mm-dosha ${x.state}"><div><b>${esc(x.name)}</b><span class="mm-st">${esc(x.label)}</span></div><p>${esc(x.text)}</p></div>`).join('')}</div></section>
+          <div class="mm-doshas">${d.doshas.map(x => `<div class="mm-dosha ${x.state}"><div><b>${esc(x.name)}</b><span class="mm-st">${esc(x.label)}</span></div><p>${esc(x.text)}</p>${remList(x.remedies)}</div>`).join('')}</div>
+          ${d.koota_remedies.length ? `<div class="mm-krem"><b class="mm-kh"><span class="ms">spa</span>${esc(d.rem_labels.kootas)}</b>${remList(d.koota_remedies, true)}</div>` : ''}</section>
         <section class="card mm-sec"><div class="card-h"><span class="ms">nightlight</span>${M('details')}</div>
           <div class="mm-table mm-det"><div class="mm-tr mm-th"><span></span><span>${esc(d.boy_name)}</span><span>${esc(d.girl_name)}</span></div>
           ${rows.map(([l, k]) => `<div class="mm-tr"><span class="mm-k"><b>${M(l)}</b></span><span class="mm-v" data-l="${esc(d.boy_name)}">${esc(d.boy[k])}</span><span class="mm-v" data-l="${esc(d.girl_name)}">${esc(d.girl[k])}</span></div>`).join('')}</div></section>

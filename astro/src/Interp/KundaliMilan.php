@@ -46,6 +46,9 @@ final class KundaliMilan {
         'Mercury' => ['Sun', 'Venus'], 'Jupiter' => ['Sun', 'Moon', 'Mars'], 'Venus' => ['Mercury', 'Saturn'], 'Saturn' => ['Mercury', 'Venus']];
     private const ENEMY = ['Sun' => ['Venus', 'Saturn'], 'Moon' => [], 'Mars' => ['Mercury'], 'Mercury' => ['Moon'],
         'Jupiter' => ['Mercury', 'Venus'], 'Venus' => ['Sun', 'Moon'], 'Saturn' => ['Sun', 'Moon', 'Mars']];
+    private const MANTRA = ['Sun' => 'ॐ सूर्याय नमः', 'Moon' => 'ॐ चन्द्राय नमः', 'Mars' => 'ॐ भौमाय नमः', 'Mercury' => 'ॐ बुधाय नमः',
+        'Jupiter' => 'ॐ गुरवे नमः', 'Venus' => 'ॐ शुक्राय नमः', 'Saturn' => 'ॐ शनैश्चराय नमः'];
+    private const DAY = ['Sun' => 'Sunday', 'Moon' => 'Monday', 'Mars' => 'Tuesday', 'Mercury' => 'Wednesday', 'Jupiter' => 'Thursday', 'Venus' => 'Friday', 'Saturn' => 'Saturday'];
     private const MAX = ['varna' => 1, 'vashya' => 2, 'tara' => 3, 'yoni' => 4, 'graha' => 5, 'gana' => 6, 'bhakoot' => 7, 'nadi' => 8];
 
     /** [en, hi, gu] */
@@ -163,6 +166,68 @@ final class KundaliMilan {
              'mangal_one' => '{who} માંગલિક છે અને બીજા નથી. પરંપરામાં આ માટે ઉપાય અથવા માંગલિક સાથી જરૂરી છે; નિરસ્તી માટે પૂર્ણ કુંડળી જુઓ.',
              'manglik' => 'માંગલિક (મંગળ ભાવ {h} માં)', 'not_manglik' => 'માંગલિક નથી'],
         ],
+        'rem' => [
+            ['title' => 'What to do', 'boy' => 'Groom', 'girl' => 'Bride', 'both' => 'Both',
+             'nadi1' => 'Get a Nadi Dosha Nivaran puja (with Mahamrityunjaya jaap) done by a priest before the wedding, with both sitting together.',
+             'nadi2' => 'Both chant the Mahamrityunjaya mantra 108 times daily for at least 40 days: ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्। उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्॥',
+             'nadi3' => 'Donate grain, clothes or a cow (or its value) to a temple or needy family on an auspicious day, as Nadi Dosha daan.',
+             'bk6' => 'For 6/8 (Shadashtak): both worship Lord Shiva and Mata Parvati together, offer water and bel leaves on Mondays and chant "ॐ नमः शिवाय" 108 times.',
+             'bk2' => 'For 2/12 (Dwi-Dwadash): both worship Lakshmi-Narayan on Fridays and give food or sweets to the needy; keep joint finances open and planned.',
+             'bk5' => 'For 5/9 (Nav-Pancham): both worship Lord Ganesha and Vishnu on Thursdays; the Santan Gopal mantra is advised if children are delayed.',
+             'bk_lord' => '{name} strengthens the lord of their own Moon sign by chanting "{mantra}" 108 times every {day}.',
+             'bk_puja' => 'A Bhakoot Dosha shanti puja before the wedding, followed by Gauri-Shankar puja on the wedding day, is the traditional remedy.',
+             'mg_vivah_girl' => 'Before the wedding, {name} performs Kumbh Vivah (symbolic marriage to a clay pot) or Vishnu Vivah with a priest.',
+             'mg_vivah_boy' => 'Before the wedding, {name} performs Ark Vivah (symbolic marriage to the Ark plant) with a priest.',
+             'mg_puja' => '{name} gets a Mangal Dosha shanti puja done on a Tuesday, preferably at a Mangalnath or Hanuman temple.',
+             'mg_daily' => '{name} recites Hanuman Chalisa daily, fasts on Tuesdays and donates red lentils (masoor), jaggery or red cloth.',
+             'mg_both' => 'Both recite the Mangal Chandika Stotra together on Tuesdays; marrying after the age of 28 also reduces the effect of Mangal Dosha.',
+             'mg_partner' => 'Both are Manglik, so the doshas balance each other. A joint Hanuman puja on a Tuesday before the wedding is still auspicious.',
+             'gana' => 'Gana mismatch: both should practise patience in arguments and do a joint Rudrabhishek; Mahamrityunjaya jaap is also helpful.',
+             'graha' => 'Graha Maitri is weak: both should worship the lord of their own Moon sign and spend regular quiet time together to understand each other.',
+             'yoni' => 'Yoni mismatch: both should worship Lord Shiva and Parvati as Ardhanarishvara and wear a Gauri-Shankar Rudraksha after the wedding.',
+             'low' => 'Overall gunas are low: consult an astrologer with both full charts before deciding; Gauri-Shankar puja and Uma-Maheshwar vrat are traditional remedies.',
+             'kootas' => 'Remedies for weak kootas'],
+            ['title' => 'क्या करें', 'boy' => 'वर', 'girl' => 'कन्या', 'both' => 'दोनों',
+             'nadi1' => 'विवाह से पहले पुरोहित से नाड़ी दोष निवारण पूजा (महामृत्युंजय जाप सहित) करवाएँ, जिसमें दोनों साथ बैठें।',
+             'nadi2' => 'दोनों कम से कम 40 दिन तक रोज़ 108 बार महामृत्युंजय मंत्र जपें: ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्। उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्॥',
+             'nadi3' => 'शुभ दिन पर मंदिर या ज़रूरतमंद परिवार को अन्न, वस्त्र या गौ (या उसका मूल्य) नाड़ी दोष दान के रूप में दें।',
+             'bk6' => '6/8 (षडाष्टक) के लिए: दोनों मिलकर शिव-पार्वती की पूजा करें, सोमवार को जल और बेलपत्र चढ़ाएँ और 108 बार "ॐ नमः शिवाय" जपें।',
+             'bk2' => '2/12 (द्वि-द्वादश) के लिए: दोनों शुक्रवार को लक्ष्मी-नारायण की पूजा करें और ज़रूरतमंदों को भोजन या मिठाई दें; संयुक्त धन की योजना खुलकर बनाएँ।',
+             'bk5' => '5/9 (नव-पंचम) के लिए: दोनों गुरुवार को गणेश और विष्णु की पूजा करें; संतान में विलंब हो तो संतान गोपाल मंत्र करें।',
+             'bk_lord' => '{name} अपनी चंद्र राशि के स्वामी को बल देने के लिए हर {day} "{mantra}" 108 बार जपें।',
+             'bk_puja' => 'विवाह से पहले भकूट दोष शांति पूजा और विवाह के दिन गौरी-शंकर पूजा पारंपरिक उपाय है।',
+             'mg_vivah_girl' => 'विवाह से पहले {name} पुरोहित से कुंभ विवाह (मिट्टी के कलश से प्रतीकात्मक विवाह) या विष्णु विवाह करवाएँ।',
+             'mg_vivah_boy' => 'विवाह से पहले {name} पुरोहित से अर्क विवाह (आक के पौधे से प्रतीकात्मक विवाह) करवाएँ।',
+             'mg_puja' => '{name} मंगलवार को, हो सके तो मंगलनाथ या हनुमान मंदिर में, मंगल दोष शांति पूजा करवाएँ।',
+             'mg_daily' => '{name} रोज़ हनुमान चालीसा पढ़ें, मंगलवार का व्रत रखें और मसूर दाल, गुड़ या लाल वस्त्र दान करें।',
+             'mg_both' => 'दोनों मंगलवार को साथ में मंगल चंडिका स्तोत्र पढ़ें; 28 वर्ष की आयु के बाद विवाह से भी मंगल दोष का प्रभाव कम होता है।',
+             'mg_partner' => 'दोनों मांगलिक हैं, इसलिए दोष एक-दूसरे को संतुलित करते हैं। विवाह से पहले मंगलवार को संयुक्त हनुमान पूजा फिर भी शुभ है।',
+             'gana' => 'गण भिन्नता: दोनों बहस में धैर्य रखें और साथ में रुद्राभिषेक करें; महामृत्युंजय जाप भी सहायक है।',
+             'graha' => 'ग्रह मैत्री कमज़ोर है: दोनों अपनी चंद्र राशि के स्वामी की पूजा करें और एक-दूसरे को समझने के लिए नियमित शांत समय साथ बिताएँ।',
+             'yoni' => 'योनि भिन्नता: दोनों अर्धनारीश्वर रूप में शिव-पार्वती की पूजा करें और विवाह के बाद गौरी-शंकर रुद्राक्ष धारण करें।',
+             'low' => 'कुल गुण कम हैं: निर्णय से पहले दोनों पूर्ण कुंडलियों के साथ ज्योतिषी से परामर्श लें; गौरी-शंकर पूजा और उमा-महेश्वर व्रत पारंपरिक उपाय हैं।',
+             'kootas' => 'कमज़ोर कूटों के उपाय'],
+            ['title' => 'શું કરવું', 'boy' => 'વર', 'girl' => 'કન્યા', 'both' => 'બંને',
+             'nadi1' => 'લગ્ન પહેલાં પુરોહિત પાસે નાડી દોષ નિવારણ પૂજા (મહામૃત્યુંજય જાપ સાથે) કરાવો, જેમાં બંને સાથે બેસે.',
+             'nadi2' => 'બંને ઓછામાં ઓછા 40 દિવસ સુધી રોજ 108 વાર મહામૃત્યુંજય મંત્ર જપે: ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम्। उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्॥',
+             'nadi3' => 'શુભ દિવસે મંદિર કે જરૂરિયાતમંદ પરિવારને અનાજ, વસ્ત્ર કે ગાય (કે તેની કિંમત) નાડી દોષ દાન તરીકે આપો.',
+             'bk6' => '6/8 (ષડાષ્ટક) માટે: બંને સાથે મળીને શિવ-પાર્વતીની પૂજા કરો, સોમવારે જળ અને બીલીપત્ર ચઢાવો અને 108 વાર "ॐ नमः शिवाय" જપો.',
+             'bk2' => '2/12 (દ્વિ-દ્વાદશ) માટે: બંને શુક્રવારે લક્ષ્મી-નારાયણની પૂજા કરો અને જરૂરિયાતમંદોને ભોજન કે મીઠાઈ આપો; સંયુક્ત નાણાંનું આયોજન ખુલ્લેઆમ કરો.',
+             'bk5' => '5/9 (નવ-પંચમ) માટે: બંને ગુરુવારે ગણેશ અને વિષ્ણુની પૂજા કરો; સંતાનમાં વિલંબ થાય તો સંતાન ગોપાલ મંત્ર કરો.',
+             'bk_lord' => '{name} પોતાની ચંદ્ર રાશિના સ્વામીને બળ આપવા દર {day}ે "{mantra}" 108 વાર જપે.',
+             'bk_puja' => 'લગ્ન પહેલાં ભકૂટ દોષ શાંતિ પૂજા અને લગ્નના દિવસે ગૌરી-શંકર પૂજા પરંપરાગત ઉપાય છે.',
+             'mg_vivah_girl' => 'લગ્ન પહેલાં {name} પુરોહિત પાસે કુંભ વિવાહ (માટીના કળશ સાથે પ્રતીકાત્મક વિવાહ) કે વિષ્ણુ વિવાહ કરાવે.',
+             'mg_vivah_boy' => 'લગ્ન પહેલાં {name} પુરોહિત પાસે અર્ક વિવાહ (આકડાના છોડ સાથે પ્રતીકાત્મક વિવાહ) કરાવે.',
+             'mg_puja' => '{name} મંગળવારે, શક્ય હોય તો મંગળનાથ કે હનુમાન મંદિરમાં, મંગળ દોષ શાંતિ પૂજા કરાવે.',
+             'mg_daily' => '{name} રોજ હનુમાન ચાલીસા વાંચે, મંગળવારનો ઉપવાસ કરે અને મસૂરની દાળ, ગોળ કે લાલ વસ્ત્રનું દાન કરે.',
+             'mg_both' => 'બંને મંગળવારે સાથે મંગળ ચંડિકા સ્તોત્ર વાંચે; 28 વર્ષની ઉંમર પછી લગ્નથી પણ મંગળ દોષની અસર ઘટે છે.',
+             'mg_partner' => 'બંને માંગલિક છે, તેથી દોષ એકબીજાને સંતુલિત કરે છે. લગ્ન પહેલાં મંગળવારે સંયુક્ત હનુમાન પૂજા તેમ છતાં શુભ છે.',
+             'gana' => 'ગણ ભિન્નતા: બંને દલીલમાં ધીરજ રાખે અને સાથે રુદ્રાભિષેક કરે; મહામૃત્યુંજય જાપ પણ મદદરૂપ છે.',
+             'graha' => 'ગ્રહ મૈત્રી નબળી છે: બંને પોતાની ચંદ્ર રાશિના સ્વામીની પૂજા કરે અને એકબીજાને સમજવા નિયમિત શાંત સમય સાથે વિતાવે.',
+             'yoni' => 'યોનિ ભિન્નતા: બંને અર્ધનારીશ્વર રૂપે શિવ-પાર્વતીની પૂજા કરે અને લગ્ન પછી ગૌરી-શંકર રુદ્રાક્ષ ધારણ કરે.',
+             'low' => 'કુલ ગુણ ઓછા છે: નિર્ણય પહેલાં બંનેની પૂર્ણ કુંડળી સાથે જ્યોતિષીની સલાહ લો; ગૌરી-શંકર પૂજા અને ઉમા-મહેશ્વર વ્રત પરંપરાગત ઉપાયો છે.',
+             'kootas' => 'નબળા કૂટના ઉપાયો'],
+        ],
         'bhakoot_type' => [[2 => '2/12 (Dwi-Dwadash)', 5 => '5/9 (Nav-Pancham)', 6 => '6/8 (Shadashtak)'],
             [2 => '2/12 (द्वि-द्वादश)', 5 => '5/9 (नव-पंचम)', 6 => '6/8 (षडाष्टक)'], [2 => '2/12 (દ્વિ-દ્વાદશ)', 5 => '5/9 (નવ-પંચમ)', 6 => '6/8 (ષડાષ્ટક)']],
     ];
@@ -272,13 +337,34 @@ final class KundaliMilan {
             : str_replace('{who}', $b['mangal'] ? $boyName : $girlName, $D['mangal_one']));
         $mangal = ['name' => $D['mangal'], 'state' => $b['mangal'] !== $g['mangal'] ? 'present' : ($b['mangal'] ? 'cancelled' : 'absent'),
             'text' => $mText, 'boy' => $mg($b), 'girl' => $mg($g)];
+        // remedies: who should do what
+        $RM = $this->L('rem'); $tx = fn($k, $n = '') => str_replace('{name}', $n, $this->lang === 'gu' ? Lang::gu($RM[$k]) : $RM[$k]);
+        $mantra = fn($pl) => $this->lang === 'gu' ? Lang::gu(self::MANTRA[$pl]) : self::MANTRA[$pl];
+        $dayOf = fn($pl) => Lang::t($this->lang, 'astro.weekdays.' . self::DAY[$pl]);
+        $nadi['remedies'] = $nadi['state'] === 'present' ? [['both', $tx('nadi1')], ['both', $tx('nadi2')], ['both', $tx('nadi3')]] : [];
+        $bhakoot['remedies'] = [];
+        if ($bhakoot['state'] === 'present') {
+            $bhakoot['remedies'][] = ['both', $tx(['2' => 'bk2', '5' => 'bk5', '6' => 'bk6'][(string) $pos])];
+            foreach (['boy' => [$boyName, $m['bl']], 'girl' => [$girlName, $m['gl']]] as $w => [$n, $pl])
+                $bhakoot['remedies'][] = [$w, str_replace(['{mantra}', '{day}'], [$mantra($pl), $dayOf($pl)], $tx('bk_lord', $n))];
+            $bhakoot['remedies'][] = ['both', $tx('bk_puja')];
+        }
+        $mangal['remedies'] = [];
+        if ($mangal['state'] === 'present') {
+            [$w, $n] = $b['mangal'] ? ['boy', $boyName] : ['girl', $girlName];
+            $mangal['remedies'] = [[$w, $tx('mg_vivah_' . $w, $n)], [$w, $tx('mg_puja', $n)], [$w, $tx('mg_daily', $n)], ['both', $tx('mg_both')]];
+        } elseif ($mangal['state'] === 'cancelled') $mangal['remedies'] = [['both', $tx('mg_partner')]];
         $doshas = array_map(fn($d) => $d + ['label' => $D[$d['state']]], [$nadi, $bhakoot, $mangal]);
+        $kRem = [];
+        foreach (['gana', 'graha', 'yoni'] as $k) if ($p[$k] <= ($k === 'graha' ? 1 : 0)) $kRem[] = ['both', $tx($k)];
+        if ($total < 18) $kRem[] = ['both', $tx('low')];
+        $remLabels = ['title' => $RM['title'], 'kootas' => $RM['kootas'], 'boy' => $RM['boy'], 'girl' => $RM['girl'], 'both' => $RM['both']];
         $person = fn($x) => ['rashi' => $this->sign($x['sign']), 'lord' => $this->planet(self::LORD[$x['sign']]), 'nakshatra' => $this->nak($x['nak']), 'pada' => $x['pada'],
             'varna' => $this->L('varna')[self::VARNA[$x['sign']]], 'vashya' => $this->L('vashya')[self::vashyaGroup($x['sign'], (float) $x['deg'])],
             'yoni' => $this->L('yoni')[self::YONI[$x['nak']]], 'gana' => $this->L('gana')[self::GANA[$x['nak']]], 'nadi' => $this->L('nadi')[self::NADI[$x['nak']]], 'mangal' => $mg($x)];
         return ['score' => $total, 'max' => 36, 'percent' => (int) round($total / 36 * 100), 'band' => $band,
             'verdict' => $this->L('verdict')[$band], 'summary' => str_replace('{s}', (string) $total, $this->L('summary')[$band]),
-            'boy' => $person($b), 'girl' => $person($g), 'kootas' => $kootas, 'doshas' => $doshas];
+            'boy' => $person($b), 'girl' => $person($g), 'kootas' => $kootas, 'doshas' => $doshas, 'koota_remedies' => $kRem, 'rem_labels' => $remLabels];
     }
 
     // ---------- storage ----------
