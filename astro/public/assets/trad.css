@@ -498,3 +498,11 @@ body.kb-open .bnav{display:none!important}
 /* the global .ok status class must not paint Milan score rings and totals */
 .mm-ring.ok,.mm-p.ok,.mm-pill.ok{background:none}
 .mm-pill.ok{background:#fff}
+/* book: no stray table borders on the repeating header/footer, more breathing room inside pages */
+.bk,.bk>thead,.bk>tfoot,.bk>tbody,.bk>thead>tr,.bk>tfoot>tr,.bk>tbody>tr,.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{border:0!important;box-shadow:none;background:transparent}
+.bk{background:#fff}
+.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{padding-left:20mm!important;padding-right:20mm!important}
+.bk-run{padding-top:8mm}
+.bk-foot{padding-bottom:7mm}
+@page{size:A4;margin:10mm 0 12mm}
+@media (max-width:760px){.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{padding-left:5mm!important;padding-right:5mm!important}}
