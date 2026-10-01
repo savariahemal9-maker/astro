@@ -268,6 +268,11 @@ final class Routes {
                         return ['summary' => $A->summary($k), 'dosha_report' => $A->doshaReport($k, $tr), 'priority_remedies' => $A->priorityRemedies($k, $tr),
                                 'gem_report' => $A->gemReport($k), 'annual' => $A->annual($k, $vp), 'daily_reading' => $A->daily($k, $tr), 'luck' => $A->luck($k), 'yogas' => $A->yogas($k), 'monthly_reading' => $A->monthly($k, $tr)]; })();
         });
+        // printable long-form book: the full report plus chapters built from the knowledge base
+        $r->add('GET', '/profiles/{id}/book', function (Request $q, array $u, array $a) use ($r) {
+            [$h] = $r->match('GET', '/profiles/' . (int) $a['id'] . '/full-report'); $full = $h($q, $u, $a);
+            return $full + ['book' => (new \App\Interp\ReportBook($q->lang($u)))->build($full)];
+        });
         $r->add('GET', '/profiles/{id}/report', function (Request $q, array $u, array $a) {
             $p = ProfileService::get((int) $u['id'], $a['id']); [$kid, $k] = ProfileService::kundali($p); $lang = $q->lang($u);
             return self::cached($kid, 'report', gmdate('Y-m'), $lang, fn() => (new RuleEngine($lang))->report($k,
