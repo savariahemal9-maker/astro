@@ -525,3 +525,8 @@ main>*{margin-left:auto!important;margin-right:auto!important}
 .mm-item .icon-btn{flex:none}
 /* no zigzag border lines anywhere */
 .topbar.appbar::after,.ph::before,.sfoot::before,.th-hero::after{display:none!important}
+/* predictions card: inner padding and spacing around the remedies link / "why" box */
+.pp-card{padding:1.5rem 1.6rem!important}
+.pp-more{margin:1rem 0 .4rem!important}
+.pp-card>.coll,.pp-card>details{margin-top:1rem!important}
+@media (max-width:760px){.pp-card{padding:1.1rem 1rem!important}}
