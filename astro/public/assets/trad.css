@@ -517,3 +517,9 @@ body.kb-open .bnav{display:none!important}
 main>*{margin-left:auto!important;margin-right:auto!important}
 /* PDF: no repeating header/footer on the pages */
 @media print{.bk>thead,.bk>tfoot{display:none!important}}
+/* saved matches: full names (wrap instead of cutting), wider cards */
+.mm-list{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+.mm-item{padding:.7rem .8rem;align-items:center}
+.mm-in b{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;font-size:.98rem}
+.mm-in small{margin-top:.15rem}
+.mm-item .icon-btn{flex:none}
