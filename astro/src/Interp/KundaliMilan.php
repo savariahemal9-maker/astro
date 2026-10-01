@@ -47,8 +47,8 @@ final class KundaliMilan {
     private const ENEMY = ['Sun' => ['Venus', 'Saturn'], 'Moon' => [], 'Mars' => ['Mercury'], 'Mercury' => ['Moon'],
         'Jupiter' => ['Mercury', 'Venus'], 'Venus' => ['Sun', 'Moon'], 'Saturn' => ['Sun', 'Moon', 'Mars']];
     private const MANTRA = ['Sun' => 'ॐ सूर्याय नमः', 'Moon' => 'ॐ चन्द्राय नमः', 'Mars' => 'ॐ भौमाय नमः', 'Mercury' => 'ॐ बुधाय नमः',
-        'Jupiter' => 'ॐ गुरवे नमः', 'Venus' => 'ॐ शुक्राय नमः', 'Saturn' => 'ॐ शनैश्चराय नमः'];
-    private const DAY = ['Sun' => 'Sunday', 'Moon' => 'Monday', 'Mars' => 'Tuesday', 'Mercury' => 'Wednesday', 'Jupiter' => 'Thursday', 'Venus' => 'Friday', 'Saturn' => 'Saturday'];
+        'Jupiter' => 'ॐ गुरवे नमः', 'Venus' => 'ॐ शुक्राय नमः', 'Saturn' => 'ॐ शनैश्चराय नमः', 'Rahu' => 'ॐ राहवे नमः', 'Ketu' => 'ॐ केतवे नमः'];
+    private const DAY = ['Sun' => 'Sunday', 'Moon' => 'Monday', 'Mars' => 'Tuesday', 'Mercury' => 'Wednesday', 'Jupiter' => 'Thursday', 'Venus' => 'Friday', 'Saturn' => 'Saturday', 'Rahu' => 'Saturday', 'Ketu' => 'Tuesday'];
     private const MAX = ['varna' => 1, 'vashya' => 2, 'tara' => 3, 'yoni' => 4, 'graha' => 5, 'gana' => 6, 'bhakoot' => 7, 'nadi' => 8];
 
     /** [en, hi, gu] */
@@ -182,6 +182,14 @@ final class KundaliMilan {
              'mg_daily' => '{name} recites Hanuman Chalisa daily, fasts on Tuesdays and donates red lentils (masoor), jaggery or red cloth.',
              'mg_both' => 'Both recite the Mangal Chandika Stotra together on Tuesdays; marrying after the age of 28 also reduces the effect of Mangal Dosha.',
              'mg_partner' => 'Both are Manglik, so the doshas balance each other. A joint Hanuman puja on a Tuesday before the wedding is still auspicious.',
+             'varna' => 'Varna is weak: respect each other\'s work and views and take big decisions together without ego; both worship Lord Ganesha on Wednesdays.',
+             'vashya' => 'Vashya is weak: build attraction with shared time, small gestures and no controlling behaviour; both recite Durga Chalisa or offer red flowers to Maa Durga on Fridays.',
+             'tara' => 'Tara is weak: a Navagraha shanti puja before the wedding is advised, and each should strengthen the lord of their birth nakshatra.',
+             'tara_one' => '{name} chants "{mantra}" (lord of the birth nakshatra) 108 times every {day}.',
+             'dosha_ref' => 'This koota forms a dosha; follow the remedies given for it in the dosha check above.',
+             'sum_title' => 'Final summary', 'sum_pos' => 'Positive points', 'sum_neg' => 'Points needing care', 'sum_sol' => 'What to do for the weak points',
+             'pos_koota' => '{name}: {area} is well matched ({s}/{m}).', 'neg_koota' => '{name}: {area} is weak ({s}/{m}).',
+             'pos_dosha' => 'No {name}.', 'pos_cancel' => '{name} is cancelled.', 'neg_dosha' => '{name} is present.',
              'gana' => 'Gana mismatch: both should practise patience in arguments and do a joint Rudrabhishek; Mahamrityunjaya jaap is also helpful.',
              'graha' => 'Graha Maitri is weak: both should worship the lord of their own Moon sign and spend regular quiet time together to understand each other.',
              'yoni' => 'Yoni mismatch: both should worship Lord Shiva and Parvati as Ardhanarishvara and wear a Gauri-Shankar Rudraksha after the wedding.',
@@ -202,6 +210,14 @@ final class KundaliMilan {
              'mg_daily' => '{name} रोज़ हनुमान चालीसा पढ़ें, मंगलवार का व्रत रखें और मसूर दाल, गुड़ या लाल वस्त्र दान करें।',
              'mg_both' => 'दोनों मंगलवार को साथ में मंगल चंडिका स्तोत्र पढ़ें; 28 वर्ष की आयु के बाद विवाह से भी मंगल दोष का प्रभाव कम होता है।',
              'mg_partner' => 'दोनों मांगलिक हैं, इसलिए दोष एक-दूसरे को संतुलित करते हैं। विवाह से पहले मंगलवार को संयुक्त हनुमान पूजा फिर भी शुभ है।',
+             'varna' => 'वर्ण कमज़ोर है: एक-दूसरे के काम और विचारों का सम्मान करें और बड़े निर्णय बिना अहं के साथ मिलकर लें; दोनों बुधवार को गणेश जी की पूजा करें।',
+             'vashya' => 'वश्य कमज़ोर है: साथ समय बिताकर, छोटे स्नेह-भरे कार्यों से और बिना नियंत्रण के आकर्षण बढ़ाएँ; दोनों शुक्रवार को दुर्गा चालीसा पढ़ें या माँ दुर्गा को लाल फूल चढ़ाएँ।',
+             'tara' => 'तारा कमज़ोर है: विवाह से पहले नवग्रह शांति पूजा करवाएँ, और दोनों अपने जन्म नक्षत्र के स्वामी को बल दें।',
+             'tara_one' => '{name} हर {day} "{mantra}" (जन्म नक्षत्र स्वामी) 108 बार जपें।',
+             'dosha_ref' => 'इस कूट से दोष बनता है; ऊपर दोष जाँच में दिए उसके उपाय करें।',
+             'sum_title' => 'अंतिम सारांश', 'sum_pos' => 'सकारात्मक बातें', 'sum_neg' => 'ध्यान देने योग्य बातें', 'sum_sol' => 'कमज़ोर बातों के लिए क्या करें',
+             'pos_koota' => '{name}: {area} अच्छी तरह मेल खाता है ({s}/{m})।', 'neg_koota' => '{name}: {area} कमज़ोर है ({s}/{m})।',
+             'pos_dosha' => '{name} नहीं है।', 'pos_cancel' => '{name} निरस्त है।', 'neg_dosha' => '{name} उपस्थित है।',
              'gana' => 'गण भिन्नता: दोनों बहस में धैर्य रखें और साथ में रुद्राभिषेक करें; महामृत्युंजय जाप भी सहायक है।',
              'graha' => 'ग्रह मैत्री कमज़ोर है: दोनों अपनी चंद्र राशि के स्वामी की पूजा करें और एक-दूसरे को समझने के लिए नियमित शांत समय साथ बिताएँ।',
              'yoni' => 'योनि भिन्नता: दोनों अर्धनारीश्वर रूप में शिव-पार्वती की पूजा करें और विवाह के बाद गौरी-शंकर रुद्राक्ष धारण करें।',
@@ -222,6 +238,14 @@ final class KundaliMilan {
              'mg_daily' => '{name} રોજ હનુમાન ચાલીસા વાંચે, મંગળવારનો ઉપવાસ કરે અને મસૂરની દાળ, ગોળ કે લાલ વસ્ત્રનું દાન કરે.',
              'mg_both' => 'બંને મંગળવારે સાથે મંગળ ચંડિકા સ્તોત્ર વાંચે; 28 વર્ષની ઉંમર પછી લગ્નથી પણ મંગળ દોષની અસર ઘટે છે.',
              'mg_partner' => 'બંને માંગલિક છે, તેથી દોષ એકબીજાને સંતુલિત કરે છે. લગ્ન પહેલાં મંગળવારે સંયુક્ત હનુમાન પૂજા તેમ છતાં શુભ છે.',
+             'varna' => 'વર્ણ નબળો છે: એકબીજાના કામ અને વિચારોનું સન્માન કરો અને મોટા નિર્ણયો અહં વગર સાથે મળીને લો; બંને બુધવારે ગણેશજીની પૂજા કરે.',
+             'vashya' => 'વશ્ય નબળું છે: સાથે સમય વિતાવીને, નાનાં સ્નેહભર્યાં કાર્યોથી અને નિયંત્રણ વગર આકર્ષણ વધારો; બંને શુક્રવારે દુર્ગા ચાલીસા વાંચે કે મા દુર્ગાને લાલ ફૂલ ચઢાવે.',
+             'tara' => 'તારા નબળી છે: લગ્ન પહેલાં નવગ્રહ શાંતિ પૂજા કરાવો, અને બંને પોતાના જન્મ નક્ષત્રના સ્વામીને બળ આપે.',
+             'tara_one' => '{name} દર {day}ે "{mantra}" (જન્મ નક્ષત્ર સ્વામી) 108 વાર જપે.',
+             'dosha_ref' => 'આ કૂટથી દોષ બને છે; ઉપર દોષ તપાસમાં આપેલા તેના ઉપાયો કરો.',
+             'sum_title' => 'અંતિમ સારાંશ', 'sum_pos' => 'સકારાત્મક બાબતો', 'sum_neg' => 'ધ્યાન આપવાની બાબતો', 'sum_sol' => 'નબળી બાબતો માટે શું કરવું',
+             'pos_koota' => '{name}: {area} સારી રીતે મેળ ખાય છે ({s}/{m}).', 'neg_koota' => '{name}: {area} નબળું છે ({s}/{m}).',
+             'pos_dosha' => '{name} નથી.', 'pos_cancel' => '{name} નિરસ્ત છે.', 'neg_dosha' => '{name} હાજર છે.',
              'gana' => 'ગણ ભિન્નતા: બંને દલીલમાં ધીરજ રાખે અને સાથે રુદ્રાભિષેક કરે; મહામૃત્યુંજય જાપ પણ મદદરૂપ છે.',
              'graha' => 'ગ્રહ મૈત્રી નબળી છે: બંને પોતાની ચંદ્ર રાશિના સ્વામીની પૂજા કરે અને એકબીજાને સમજવા નિયમિત શાંત સમય સાથે વિતાવે.',
              'yoni' => 'યોનિ ભિન્નતા: બંને અર્ધનારીશ્વર રૂપે શિવ-પાર્વતીની પૂજા કરે અને લગ્ન પછી ગૌરી-શંકર રુદ્રાક્ષ ધારણ કરે.',
@@ -355,16 +379,44 @@ final class KundaliMilan {
             $mangal['remedies'] = [[$w, $tx('mg_vivah_' . $w, $n)], [$w, $tx('mg_puja', $n)], [$w, $tx('mg_daily', $n)], ['both', $tx('mg_both')]];
         } elseif ($mangal['state'] === 'cancelled') $mangal['remedies'] = [['both', $tx('mg_partner')]];
         $doshas = array_map(fn($d) => $d + ['label' => $D[$d['state']]], [$nadi, $bhakoot, $mangal]);
+        // a remedy for every koota below full points, shown in its card; plus the weak-koota list
+        foreach ($kootas as &$kt) {
+            $kt['remedies'] = [];
+            if ($kt['score'] >= $kt['max']) continue;
+            $kk = $kt['key'];
+            if (in_array($kk, ['bhakoot', 'nadi'], true)) { $kt['remedies'][] = ['both', $tx('dosha_ref')]; continue; }
+            $kt['remedies'][] = ['both', $tx($kk)];
+            if ($kk === 'tara') foreach (['boy' => [$boyName, $b], 'girl' => [$girlName, $g]] as $w => [$n, $x]) {
+                $pl = Zodiac::DASHA_ORDER[$x['nak'] % 9];
+                $kt['remedies'][] = [$w, str_replace(['{mantra}', '{day}'], [$mantra($pl), $dayOf($pl)], $tx('tara_one', $n))];
+            }
+        }
+        unset($kt);
         $kRem = [];
-        foreach (['gana', 'graha', 'yoni'] as $k) if ($p[$k] <= ($k === 'graha' ? 1 : 0)) $kRem[] = ['both', $tx($k)];
+        foreach ($kootas as $kt) if ($kt['score'] < $kt['max'] && !in_array($kt['key'], ['bhakoot', 'nadi'], true)) $kRem = array_merge($kRem, $kt['remedies']);
         if ($total < 18) $kRem[] = ['both', $tx('low')];
+        // final summary: positives, negatives, and what to do (koota + dosha remedies)
+        $f = fn($k, $v) => str_replace(array_map(fn($x) => '{' . $x . '}', array_keys($v)), array_values($v), $RM[$k]);
+        $pos = []; $neg = [];
+        foreach ($kootas as $kt) {
+            $v = ['name' => $kt['name'], 'area' => $kt['area'], 's' => $kt['score'], 'm' => $kt['max']];
+            if ($kt['score'] >= $kt['max']) $pos[] = $f('pos_koota', $v); else $neg[] = $f('neg_koota', $v);
+        }
+        foreach ([$nadi, $bhakoot, $mangal] as $d) {
+            if ($d['state'] === 'present') $neg[] = $f('neg_dosha', ['name' => $d['name']]);
+            else $pos[] = $f($d['state'] === 'cancelled' ? 'pos_cancel' : 'pos_dosha', ['name' => $d['name']]);
+        }
+        $sol = $kRem;
+        foreach ([$nadi, $bhakoot, $mangal] as $d) if ($d['state'] === 'present') $sol = array_merge($sol, $d['remedies']);
+        $final = ['title' => $RM['sum_title'], 'pos_title' => $RM['sum_pos'], 'neg_title' => $RM['sum_neg'], 'sol_title' => $RM['sum_sol'],
+            'positive' => $pos, 'negative' => $neg, 'solutions' => $sol];
         $remLabels = ['title' => $RM['title'], 'kootas' => $RM['kootas'], 'boy' => $RM['boy'], 'girl' => $RM['girl'], 'both' => $RM['both']];
         $person = fn($x) => ['rashi' => $this->sign($x['sign']), 'lord' => $this->planet(self::LORD[$x['sign']]), 'nakshatra' => $this->nak($x['nak']), 'pada' => $x['pada'],
             'varna' => $this->L('varna')[self::VARNA[$x['sign']]], 'vashya' => $this->L('vashya')[self::vashyaGroup($x['sign'], (float) $x['deg'])],
             'yoni' => $this->L('yoni')[self::YONI[$x['nak']]], 'gana' => $this->L('gana')[self::GANA[$x['nak']]], 'nadi' => $this->L('nadi')[self::NADI[$x['nak']]], 'mangal' => $mg($x)];
         return ['score' => $total, 'max' => 36, 'percent' => (int) round($total / 36 * 100), 'band' => $band,
             'verdict' => $this->L('verdict')[$band], 'summary' => str_replace('{s}', (string) $total, $this->L('summary')[$band]),
-            'boy' => $person($b), 'girl' => $person($g), 'kootas' => $kootas, 'doshas' => $doshas, 'koota_remedies' => $kRem, 'rem_labels' => $remLabels];
+            'boy' => $person($b), 'girl' => $person($g), 'kootas' => $kootas, 'doshas' => $doshas, 'koota_remedies' => $kRem, 'rem_labels' => $remLabels, 'final' => $final];
     }
 
     // ---------- storage ----------

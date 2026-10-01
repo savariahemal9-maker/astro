@@ -460,7 +460,6 @@ body.kb-open .bnav{display:none!important}
 .bk-fig{margin:0 auto 1em;max-width:105mm;text-align:center} .bk-fig svg{width:100%;height:auto} .bk-fig figcaption{font-weight:600;color:#7a1414;font-size:.9em}
 .bk-vg{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem} .bk-vg .bk-fig{max-width:none;margin:0;break-inside:avoid}
 @media (max-width:760px){.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{padding:0 4mm}.bk{font-size:14px}.bk-pros,.bk-cf{grid-template-columns:1fr}.bk-toc ol{columns:1}.bk-vg{grid-template-columns:1fr 1fr}.bk-cover{min-height:0}}
-@page{size:A4;margin:8mm 0 10mm;@bottom-center{content:counter(page);font:10pt Poppins,sans-serif;color:#8a5a2b}}
 @media print{
   html{font-size:16px!important} body{background:#fff!important}
   .tstrip,.appbar,.topbar,.sfoot,.bnav,#drawer,#scrim,.noprint{display:none!important} main{margin:0!important;padding:0!important;max-width:none!important}
@@ -484,3 +483,37 @@ body.kb-open .bnav{display:none!important}
 /* place suggestions: rows always start at the left edge */
 .suggest button.sg{justify-content:flex-start!important;text-align:left!important}
 .suggest button.sg>span:last-child{flex:1;min-width:0}
+/* Milan: koota remedies + final summary */
+.mm-exi{display:flex;flex-direction:column} .mm-exi .mm-rem{margin-top:auto;padding-top:.7rem}
+.mm-final{margin-top:1.4rem;background:#fff;border:1px solid #ecdcc8;border-top:5px solid var(--t-saffron);border-radius:16px;padding:1.1rem 1.2rem;box-shadow:0 8px 24px -14px rgba(90,30,0,.35)}
+.mm-fg{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.mm-fp,.mm-fn{border-radius:12px;padding:.8rem 1rem} .mm-fp{background:#ecf7ef} .mm-fn{background:#fcefed}
+.mm-fp>b,.mm-fn>b,.mm-fs>b{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem} .mm-fp>b{color:#1f7a44} .mm-fn>b{color:#b0281a} .mm-fs>b{color:var(--t-maroon)}
+.mm-fp ul,.mm-fn ul{margin:0;padding-left:1.1rem;display:grid;gap:.35rem;font-size:.9rem;line-height:1.5}
+.mm-fs{margin-top:.9rem;background:#fffaf3;border:1px dashed #e6c99a;border-radius:12px;padding:.8rem 1rem} .mm-fs .mm-rem{margin:0;padding:0;border:0}
+@media (max-width:760px){.mm-fg{grid-template-columns:1fr}}
+@media print{.mm-final,.mm-fp,.mm-fn{break-inside:avoid}}
+
+/* ---------- Kundali book as real A4 pages (what you see is what prints) ---------- */
+.bk-pages{background:none!important;box-shadow:none!important;max-width:none!important;display:grid;justify-content:center;gap:10mm;padding-bottom:6mm}
+.pg{width:210mm;height:297mm;background:#fff;box-shadow:0 8px 30px -10px rgba(90,30,0,.35);border-radius:4px;display:flex;flex-direction:column;padding:0 14mm;box-sizing:border-box;overflow:hidden;position:relative}
+.pg-run{flex:none;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:7mm 0 3mm;border-bottom:2px solid #e8920a;margin-bottom:6mm}
+.pg-run img{height:30px} .pg-run span{font-size:.72em;color:#8a5a2b;text-align:right}
+.pg-body{flex:1;min-height:0;overflow:hidden}
+.pg-body>:first-child{margin-top:0}
+.pg-foot{flex:none;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ecd6b8;padding:3mm 0 7mm;margin-top:4mm;font-size:.7em;color:#8a5a2b;letter-spacing:.03em}
+.pg-foot b{font-size:1.15em;color:#7a1414}
+.pg.cover{padding:0}
+.pg.cover .pg-body{display:flex}
+.pg.cover .bk-cover{flex:1;min-height:0;margin:6mm}
+.bk-sh h3{font-size:1.35em;color:#7a1414;margin:.6em 0 .15em;padding-bottom:.25em;border-bottom:2px solid #f0d2a8}
+.pg-body>.bk-sh:first-child h3{margin-top:0}
+.bk-sh.now h3::after{content:' ●';color:#e8920a}
+.bk-toc ol{columns:1} .bk-toc a{display:grid;grid-template-columns:auto 1fr auto;gap:.6em} .bk-toc a b{color:#7a1414}
+@page{size:A4;margin:0}
+@media print{
+  .bk-pages{display:block;zoom:1!important;gap:0;padding:0}
+  .pg{box-shadow:none;border-radius:0;margin:0;break-after:page;page-break-after:always}
+  .pg:last-child{break-after:auto}
+}
+.bk-vg{margin-bottom:.6rem}
