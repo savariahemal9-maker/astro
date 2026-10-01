@@ -3,6 +3,9 @@
 $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/');
 $root = preg_replace('#/(public|admin)$#', '', $base);
 $v = fn($f) => @filemtime(__DIR__ . '/assets/' . $f) ?: time(); // cache-busting
+// never cache this shell (browser or LiteSpeed), so a deploy is visible at once and always loads the new assets
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('X-LiteSpeed-Cache-Control: no-cache');
 ?><!doctype html>
 <html lang="en">
 <head>
