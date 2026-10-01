@@ -1314,12 +1314,6 @@
       const dateTxt = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang + '-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const acts = [['add', 'person_add', 'ui.add_chart'], ['predict', 'auto_awesome', 'ui.personal_predictions'], ['ai-chat', 'psychology', 'ui.nav_claude'], ['rashifal', 'stars', 'rf.title']];
       h(`${ph('waving_hand', `${t('ui.welcome')}, ${me.name}`, dateTxt, `<a class="btn" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a>`)}
-        <div class="db-today">
-          <section class="card"><div class="card-h"><span class="ms">calendar_month</span>${esc(t('ui.today_panchang'))} · ${esc(place.name.split(',')[0])}</div><div id="dbpc"><div class="db-pc">${'<div class="db-kv"><small>&nbsp;</small><b>…</b></div>'.repeat(4)}</div></div>
-            <p style="margin:.8rem 0 0"><a href="#/panchang">${esc(t('ui.panchang'))} →</a></p></section>
-          <section class="card"><div class="card-h"><span class="ms">bolt</span>${esc(t('ui.quick_actions'))}</div>
-            <div class="db-actions">${acts.map(([r, ic, l]) => `<a class="db-act" href="#/${r}"><span class="ms">${ic}</span>${esc(t(l))}</a>`).join('')}</div></section>
-        </div>
         <div class="m-sec"><h2>${esc(t('ui.my_charts'))} <span class="muted">(${list.length})</span></h2></div>
         <div class="db-list">${list.map(p => `<article class="db-k"><div class="db-k-h"><span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><div><h3>${esc(p.label)}</h3>
             <small>${esc(p.place_name.split(',')[0])}</small></div></div>

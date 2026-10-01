@@ -523,3 +523,5 @@ main>*{margin-left:auto!important;margin-right:auto!important}
 .mm-in b{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35;font-size:.98rem}
 .mm-in small{margin-top:.15rem}
 .mm-item .icon-btn{flex:none}
+/* no zigzag border lines anywhere */
+.topbar.appbar::after,.ph::before,.sfoot::before,.th-hero::after{display:none!important}
