@@ -1137,10 +1137,42 @@
         sx.blocks.forEach(push);
       });
     });
+    const block = x => {
+      switch (x[0]) {
+        case 'p': return `<p>${esc(x[1])}</p>`;
+        case 'h': return `<h4 class="bk-h">${esc(x[1])}</h4>`;
+        case 'note': return `<div class="bk-note"><span class="ms">info</span><p>${esc(x[1])}</p></div>`;
+        case 'facts': return `<div class="bk-facts">${x[1].map(([l, v]) => `<div><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>`;
+        case 'list': return `<ul class="bk-list">${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+        case 'table': return `<table class="bk-t${x[2].length <= 10 ? ' keep' : ''}">${x[1].some(Boolean) ? `<thead><tr>${x[1].map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>` : ''}<tbody>${x[2].map(row => `<tr>${row.map((c, i) => i ? `<td>${esc(c)}</td>` : `<td><b>${esc(c)}</b></td>`).join('')}</tr>`).join('')}</tbody></table>`;
+        case 'chart': return charts[x[1]] ? charts[x[1]]() : '';
+        case 'charts2': return `<div class="bk-two">${x.slice(1).map(c => charts[c]()).join('')}</div>`;
+        case 'planets': return planetsTable();
+        case 'score': return `<div class="bk-score"><span>${esc(x[1])}</span><i><em class="${x[2] >= 60 ? 'g' : x[2] < 45 ? 'r' : 'a'}" style="width:${Math.max(4, Math.min(100, x[2]))}%"></em></i></div>`;
+        case 'pros': return `<div class="bk-pros"><div class="g"><b><span class="ms">thumb_up</span>${esc(t('ui.positive', 'Favourable'))}</b><ul>${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>
+          <div class="r"><b><span class="ms">error</span>${esc(t('ui.challenging'))}</b><ul>${x[2].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div></div>`;
+      }
+      return '';
+    };
+    const chapter = (c, n) => {
+      if (!c.sections) return `<section class="bk-ch" id="bk-${c.id}">${opener(n, c)}${c.blocks.map(block).join('')}</section>`;
+      return c.sections.map((s, i) => `<section class="bk-ch${c.flow && i ? ' flow' : ''}"${i ? '' : ` id="bk-${c.id}"`}>${i && c.flow ? '' : opener(n, c)}${!i && c.intro ? `<p>${esc(c.intro)}</p>` : ''}
+        <div class="bk-sec${s.now ? ' now' : ''}"><h3>${esc(s.title)}</h3>${s.sub ? `<p class="bk-sub">${esc(s.sub)}</p>` : ''}${s.blocks.map(block).join('')}</div></section>`).join('');
+    };
     const gen = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang === 'hi' ? 'hi-IN' : 'gu-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     h(`<div class="bk-bar noprint"><a class="btn ghost" href="#/chart/${id}"><span class="ms">arrow_back</span>${esc(P.label)}</a>
         <button id="bkpdf" disabled><span class="ms">picture_as_pdf</span>${esc(t('ui.download_report'))}</button><span class="muted" id="bkst">…</span></div>
-      <div class="bk bk-pages" id="bkp"></div>`);
+      <table class="bk"><thead><tr><td><div class="bk-run"><img src="${LOGO}" alt="KarmYog Astro · Vastu"><span>${esc(P.label)} · ${esc(L.cover_title)}</span></div></td></tr></thead>
+      <tfoot><tr><td><div class="bk-foot">KarmYog Astro · Vastu · astro.hemalsavaria.com</div></td></tr></tfoot><tbody><tr><td>
+      <section class="bk-cover"><img class="bk-logo" src="${ASSET}brand/logo-square.webp" alt="KarmYog Astro · Vastu">
+        <p class="bk-k">${esc(L.cover_sub)}</p><h1>${esc(L.cover_title)}</h1><i class="bk-orn"></i>
+        <p class="bk-for">${esc(L.prepared_for)}</p><p class="bk-name">${esc(P.label)}</p>
+        <div class="bk-cf"><div><small>${esc(t('ui.birth_date'))}</small><b>${esc(b.local)}</b></div><div><small>${esc(t('ui.birth_place'))}</small><b>${esc(P.place_name)}</b></div>
+          <div><small>${esc(t('ui.lagna'))}</small><b>${esc(tn('signs', k.lagna.sign_name))}</b></div><div><small>${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', k.planets.find(p => p.name === 'Moon').sign_name))}</b></div></div>
+        <p class="bk-gen">${esc(L.generated)}: ${esc(gen)}</p></section>
+      <section class="bk-toc"><h2>${esc(L.contents)}</h2><ol>${B.chapters.map(c => `<li><a href="#bk-${c.id}" onclick="event.preventDefault();document.getElementById('bk-${c.id}').scrollIntoView({behavior:'smooth'})"><span class="ms">${esc(c.icon)}</span>${esc(c.title)}</a></li>`).join('')}</ol></section>
+      ${B.chapters.map((c, i) => chapter(c, i + 1)).join('')}
+      </td></tr></tbody></table><div class="bk bk-pages bk-off" id="bkp" aria-hidden="true"></div>`);;
     // load the real fonts before measuring, otherwise text grows afterwards and pages overflow
     if (document.fonts) { await Promise.all(['400', '500', '600', '700'].flatMap(w => [`${w} 16px Poppins`, `${w} 16px "Hind Vadodara"`]).map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; }
     const host = document.getElementById('bkp'); if (!host) return;
@@ -1187,11 +1219,29 @@
     }
     tocBody.innerHTML = `<section class="bk-toc"><h2>${esc(L.contents)}</h2><ol>${B.chapters.map(c => `<li><a href="#" data-pg="${chPage[c.id]}"><span class="ms">${esc(c.icon)}</span><span>${esc(c.title)}</span><b>${chPage[c.id] || ''}</b></a></li>`).join('')}</ol></section>`;
     tocBody.querySelectorAll('[data-pg]').forEach(a => a.onclick = e => { e.preventDefault(); host.children[+a.dataset.pg - 1]?.scrollIntoView({ behavior: 'smooth' }); });
-    // fit pages to small screens
-    const fit = () => { host.style.zoom = ''; const w = host.parentElement.clientWidth, pw = host.firstElementChild.offsetWidth; host.style.zoom = w < pw ? (w / pw).toFixed(3) : ''; };
-    fit(); window.addEventListener('resize', fit, { once: true });
-    document.getElementById('bkst').textContent = `${pageNo} · ${t('ui.print_hint')}`;
-    const btn = document.getElementById('bkpdf'); btn.disabled = false; btn.onclick = () => window.print();
+    // the PDF is built from the hidden A4 pages directly (no print dialog, so its margins/scale cannot cut anything)
+    const loadJs = src => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok();
+      const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error('PDF library could not load')); document.head.appendChild(el); });
+    const st = document.getElementById('bkst'), btn = document.getElementById('bkpdf'); st.textContent = `${pageNo} pages`; btn.disabled = false;
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await loadJs('https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js');
+        await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true }), pages = [...host.children];
+        // the browser draws each page itself (SVG foreignObject); fonts are embedded once and reused
+        const fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(host).catch(() => '');
+        for (let i = 0; i < pages.length; i++) {
+          st.textContent = `PDF ${i + 1} / ${pages.length}`;
+          const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 1.4, quality: 0.8, backgroundColor: '#ffffff', fontEmbedCSS, cacheBust: false });
+          if (i) pdf.addPage();
+          pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+        pdf.save(`${(P.label.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Kundali')} - KarmYog Kundali Report.pdf`);
+        st.textContent = `${pageNo} pages`;
+      } catch (e) { toast(e.message || 'PDF error'); st.textContent = ''; }
+      btn.disabled = false;
+    };
   }
   function viewAdd() {
     h(`${ph('person_add', t('ui.add_chart'), t('ui.add_sub'))}
