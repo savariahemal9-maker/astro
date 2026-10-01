@@ -527,3 +527,7 @@ body.kb-open .bnav{display:none!important}
 /* safety gap: measured on screen with 28px spare, released in print so small print differences never clip */
 .pg-body{box-sizing:border-box;padding-bottom:28px}
 @media print{.pg-body{padding-bottom:0!important}}
+/* hidden A4 pages used only to build the PDF */
+.bk-off{position:fixed!important;left:-12000px;top:0;display:block!important;pointer-events:none}
+.bk-off .pg{box-shadow:none;border-radius:0;margin:0 0 10px}
+@media print{.bk-off{display:none!important}}
