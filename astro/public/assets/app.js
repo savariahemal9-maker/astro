@@ -1084,63 +1084,58 @@
   }
 
   // ---------- Printable multi-page report (browser "Save as PDF" keeps Hindi/Gujarati text shaping correct) ----------
+  // ---------- Printable kundali book (A4): cover, contents, chapters built by the server from the knowledge base ----------
   async function viewPrint(id) {
     loading();
-    let r; try { r = await api('GET', `/profiles/${id}/full-report?lang=${lang}&tzid=${encodeURIComponent(TZ)}`); } catch (e) { h(errBox(e)); return; }
-    const k = r.kundali, b = k.birth, s = k.meta.settings, P = r.profile;
-    const items = (d) => d.items.map(it => `<div class="interp"><p style="margin:0">${esc(it.text)}</p>
-      <p class="deriv">${esc(t('ui.rule'))}: ${esc(it.derivation.rule)} · ${it.derivation.from_calculated.map(f => `${esc(f.path)} = ${esc(Array.isArray(f.value) ? f.value.join(', ') : f.value)}`).join('; ')}</p></div>`).join('');
-    const block = (title, d) => `<h2>${esc(title)}</h2>${items(d)}`;
-    r.predictions.life.items = r.predictions.life.items.filter(i => i.section !== 'timeline');
-    const sec = (title, body, calc) => `<section class="page"><h1>${esc(title)}</h1>${calc ? calcTag() : interpTag()}${body}</section>`;
-    const planetRows = k.planets.map(p => `<tr><td>${esc(tn('planets', p.name))}</td><td>${esc(tn('signs', p.sign_name))}</td><td>${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))} ${p.pada}</td><td>${esc(tn('planets', p.nakshatra_lord))}</td><td>${p.house}</td><td>${status(p)}</td></tr>`).join('');
-    const vargaCharts = Object.keys(k.vargas).map(v => `<figure class="vc"><figcaption>${esc(vname(v))}</figcaption>${northChart(k, v)}</figure>`).join('');
-    const dasha = k.dasha.mahadasha.map(md => `<tr class="md"><td><strong>${esc(tn('planets', md.lord))}</strong></td><td>${md.start}</td><td>${md.end}</td><td>${md.antardasha.map(a => `${esc(tn('planets', a.lord))} ${a.start}`).join(' · ')}</td></tr>`).join('');
-    const tr = r.transits;
-    const trRows = tr.planets.map(p => `<tr><td>${esc(tn('planets', p.name))}${p.retrograde && !['Rahu', 'Ketu'].includes(p.name) ? ' *' : ''}</td><td>${esc(tn('signs', p.sign_name))} ${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))}</td><td>${p.house_from_lagna}</td><td>${p.house_from_moon}</td></tr>`).join('');
-    const sens = Object.entries(k.sensitivity.lagna).map(([d, x]) => `<tr><td>${d}</td><td>${x.changes_if_earlier_by_min}</td><td>${x.changes_if_later_by_min}</td></tr>`).join('');
-    const toc = [t('ui.whole_life'), t('ui.mdphal'), t('ui.planet_results'), t('ui.varshphal'), t('ui.birth_details'), t('ui.charts') + ' & ' + t('ui.planets'), t('ui.all_charts'), t('ui.dasha'), t('ui.transits') + ' & ' + t('ui.doshas'),
-      t('ui.predictions'), t('ui.gemstones') + ' & ' + t('ui.influences'), t('ui.sensitivity_title')];
-    h(`<div class="noprint row" style="margin-bottom:1rem"><button onclick="window.print()">${esc(t('ui.download_report'))}</button><a href="#/chart/${id}">← ${esc(P.label)}</a><span class="muted">${esc(t('ui.print_hint'))}</span></div>
-    <div class="report">
-    <section class="cover"><p class="brand">${esc(t('ui.app_name'))}</p><h1>${esc(P.label)}</h1>
-      <table><tr><th>${esc(t('ui.birth_date'))}</th><td>${esc(b.local)} (${esc(b.tzid)}, UTC${b.offset_minutes >= 0 ? '+' : '−'}${Math.floor(Math.abs(b.offset_minutes) / 60)}:${String(Math.abs(b.offset_minutes) % 60).padStart(2, '0')}, ${esc(b.offset_source)})</td></tr>
-      <tr><th>${esc(t('ui.utc'))}</th><td>${esc(b.utc)}</td></tr><tr><th>${esc(t('ui.birth_place'))}</th><td>${esc(P.place_name)} (${b.lat}, ${b.lon})</td></tr>
-      <tr><th>${esc(t('ui.time_accuracy'))}</th><td>${esc(t('ui.' + P.time_accuracy))}</td></tr>
-      <tr><th>${esc(t('ui.lagna'))}</th><td>${esc(tn('signs', k.lagna.sign_name))} ${esc(k.lagna.dms)} · ${esc(tn('nakshatras', k.lagna.nakshatra))} ${k.lagna.pada}</td></tr>
-      <tr><th>${esc(t('ui.settings'))}</th><td>${esc(t('ui.ayanamsa'))} ${esc(s.ayanamsa)} ${esc(k.meta.ayanamsa_dms)} · ${esc(s.node)} node · ${esc(s.zodiac)} · ${esc(s.house_system)} · Swiss Ephemeris ${esc(k.meta.engine.swisseph)}</td></tr>
-      <tr><th>${esc(t('ui.as_on'))}</th><td>${esc(r.as_on)} · ${esc(t('ui.generated'))} ${esc(r.generated_utc)}</td></tr></table>
-      ${b.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}
-      <h2>${esc(t('ui.contents'))}</h2><ol>${toc.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
-</section>
-    ${sec(t('ui.charts') + ' & ' + t('ui.planets'), `<div class="two"><figure class="vc"><figcaption>${esc(vname('D1'))}</figcaption>${northChart(k, 'D1')}</figure>
-      <figure class="vc"><figcaption>${esc(vname('D9'))}</figcaption>${northChart(k, 'D9')}</figure></div>${legend()}
-      <table><tr><th>${esc(t('ui.planet'))}</th><th>${esc(t('ui.sign'))}</th><th>${esc(t('ui.degree'))}</th><th>${esc(t('ui.nakshatra'))}</th><th>${esc(t('ui.lord'))}</th><th>${esc(t('ui.house'))}</th><th>${esc(t('ui.status'))}</th></tr>
-      <tr><td>${esc(t('ui.lagna'))}</td><td>${esc(tn('signs', k.lagna.sign_name))}</td><td>${esc(k.lagna.dms)}</td><td>${esc(tn('nakshatras', k.lagna.nakshatra))} ${k.lagna.pada}</td><td></td><td>1</td><td></td></tr>${planetRows}</table>`, true)}
-    ${sec(t('ui.all_charts'), `<div class="grid">${vargaCharts}</div>${legend()}`, true)}
-    ${sec(t('ui.dasha'), `<p class="muted">${esc(t('ui.dasha'))} · ${esc(tn('nakshatras', k.dasha.moon_nakshatra))}</p><table><tr><th>${esc(t('ui.mahadasha'))}</th><th>${esc(t('ui.from'))}</th><th>${esc(t('ui.to'))}</th><th>${esc(t('ui.antardasha'))}</th></tr>${dasha}</table>`, true)}
-    ${sec(t('ui.transits') + ' & ' + t('ui.doshas'), `<p class="muted">${esc(t('ui.as_on'))} ${esc(r.as_on)}</p><table><tr><th>${esc(t('ui.planet'))}</th><th>${esc(t('ui.sign'))}</th><th>${esc(t('ui.nakshatra'))}</th><th>${esc(t('ui.from_lagna'))}</th><th>${esc(t('ui.from_moon'))}</th></tr>${trRows}</table>
-      <h2>${esc(t('ui.doshas'))}</h2><div class="checks">${r.dosha_report.items.map(i => `<div class="check ${i.present ? 'on' : ''}"><b>${esc(i.name)}</b><small>${esc(i.present ? t('ui.present') : t('ui.absent'))} · ${esc(i.rule)}</small></div>`).join('')}</div>
-      ${r.dosha_report.items.filter(i => i.present).map(i => `<div class="interp"><h3>${esc(i.name)}</h3>${factList(i.factors)}<p><b>${esc(t('ui.effects'))}:</b> ${esc(i.effects)}</p><p><b>${esc(t('ui.remedy_how'))}:</b> ${esc(i.remedy)}</p></div>`).join('')}`, true)}
-    ${sec(t('ui.overview'), `<div class="two"><div>${dial(r.summary.overall)}</div><div>${Object.entries(r.summary.planets).map(([n, x]) => bar(esc(tn('planets', n)), x.score)).join('')}</div></div>
-      <p class="muted">${esc(r.summary.method.planet)}. ${esc(r.summary.method.percent)}.</p>`)}
-    ${sec(t('ui.daily_kundali') + ' ' + (r.as_on || '').slice(0, 10), r.daily_reading.items.map(i => `<div class="interp"><h3>${esc(i.title)} · ${i.score}</h3><p>${esc(i.prediction)}</p><p class="deriv">${esc(i.reason)}</p><p>${esc(i.guidance)}</p></div>`).join(''))}
-    ${sec(t('ui.priority_remedies'), r.priority_remedies.items.map(i => `<div class="interp"><h3>${i.rank}. ${esc(i.title)}</h3><p><b>${esc(t('ui.issue'))}:</b> ${esc(i.issue)}</p><p><b>${esc(t('ui.remedy_how'))}:</b> ${esc(i.how)}</p><p><b>${esc(t('ui.benefit'))}:</b> ${esc(i.benefit)}</p></div>`).join(''))}
-    ${sec(t('ui.annual_prediction'), `<p>${esc(r.annual.muntha)}</p>` + r.annual.items.map(i => `<div class="interp"><h3>${esc(i.title)} · ${esc(t('ui.v_' + i.verdict))}</h3><p>${esc(i.prediction)}</p><p class="deriv">${esc(i.reason)}</p><p>${esc(i.description)}</p><p>${esc(i.guidance)}</p></div>`).join(''))}
-    ${sec(t('ui.predictions'), block(t('ui.daily'), r.predictions.daily) + block(t('ui.monthly'), r.predictions.monthly) + block(t('ui.mahadasha_pred'), r.predictions.dasha) + block(t('ui.life'), r.predictions.life))}
-    ${sec(t('ui.whole_life'), r.predictions.life.sections.map(it => `<div class="interp"><h3>${esc(it.title)}</h3><p style="margin:0">${esc(it.text)}</p><p class="deriv">${esc(t('ui.rule'))}: ${esc(it.derivation.rule)}</p></div>`).join(''))}
-    ${sec(t('ui.mdphal'), r.predictions.mdphal.items.map(it => `<div class="interp"><h3>${esc(it.title)}</h3><p class="sub">${esc(it.subtitle)}</p><p style="margin:0">${esc(it.text)}</p></div>`).join(''))}
-    ${sec(t('ui.planet_results'), r.planet_results.items.map(it => `<div class="interp"><h3>${esc(it.title)}</h3><p class="sub">${esc(it.subtitle)}</p><p style="margin:0">${esc(it.text)}</p><ol class="rem">${it.remedies.map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>`).join(''))}
-    ${sec(t('ui.varshphal') + ' ' + r.varshphal.return_local.slice(0, 10) + ' → ' + r.varshphal.valid_until_local.slice(0, 10), `<div class="two"><figure class="vc">${northChart(r.varshphal, 'D1')}</figure><div><table>
-      <tr><th>${esc(t('ui.return_moment'))}</th><td>${esc(r.varshphal.return_local)}</td></tr><tr><th>${esc(t('ui.lagna'))}</th><td>${esc(tn('signs', r.varshphal.lagna.sign_name))} ${esc(r.varshphal.lagna.dms)}</td></tr>
-      <tr><th>${esc(t('ui.muntha'))}</th><td>${esc(tn('signs', r.varshphal.muntha.sign_name))} · ${r.varshphal.muntha.house}</td></tr></table>
-      <table>${r.varshphal.planets.map(p => `<tr><td>${esc(tn('planets', p.name))}</td><td>${esc(tn('signs', p.sign_name))} ${esc(p.dms)}</td><td>${p.house}</td></tr>`).join('')}</table></div></div><p class="muted">${esc(r.varshphal.meta.method)}</p>`, true)}
-    ${sec(t('ui.gemstones'), `<div class="grid">${r.gem_report.recommended.concat(r.gem_report.caution).map(gemCard).join('')}</div>` + block(t('ui.influences'), r.gemstones.influences))}
-    ${sec(t('ui.sensitivity_title'), `<p>${esc(t('ui.sensitivity_note'))}</p><table><tr><th>${esc(t('ui.charts'))}</th><th>${esc(t('ui.min_earlier'))}</th><th>${esc(t('ui.min_later'))}</th></tr>${sens}</table>
-      ${P.time_accuracy === 'approximate' ? `<div class="warn">${esc(t('ui.approx_warning'))}</div>` : ''}`, true)}
-    </div>`);
+    let r; try { r = await api('GET', `/profiles/${id}/book?lang=${lang}&tzid=${encodeURIComponent(TZ)}`); } catch (e) { h(errBox(e)); return; }
+    const k = r.kundali, P = r.profile, B = r.book, L = B.labels, b = k.birth;
+    const moonK = { ...k, vargas: { ...k.vargas, D1: { ...k.vargas.D1, lagna: k.vargas.D1.planets.Moon } } };
+    const fig = (cap, svg) => `<figure class="bk-fig">${svg}<figcaption>${esc(cap)}</figcaption></figure>`;
+    const charts = {
+      D1: () => fig(vname('D1'), northChart(k, 'D1')), D9: () => fig(vname('D9'), northChart(k, 'D9')),
+      moon: () => fig(t('ui.moon_chart', t('ui.moon_sign')), northChart(moonK, 'D1')), varsh: () => fig(t('ui.varshphal'), northChart(r.varshphal, 'D1')),
+      vargas: () => `<div class="bk-vg">${Object.keys(k.vargas).filter(v => v !== 'D1').map(v => fig(vname(v), northChart(k, v))).join('')}</div>`,
+    };
+    const planetsTable = () => `<table class="bk-t"><tr><th>${esc(L.table_planet)}</th><th>${esc(L.table_sign)}</th><th>${esc(L.table_deg)}</th><th>${esc(L.table_nak)}</th><th>${esc(L.table_house)}</th><th>${esc(L.table_status)}</th></tr>
+      <tr><td><b>${esc(t('ui.lagna'))}</b></td><td>${esc(tn('signs', k.lagna.sign_name))}</td><td>${esc(k.lagna.dms)}</td><td>${esc(tn('nakshatras', k.lagna.nakshatra))} ${k.lagna.pada}</td><td>1</td><td></td></tr>
+      ${k.planets.map(p => `<tr><td><b>${esc(tn('planets', p.name))}</b></td><td>${esc(tn('signs', p.sign_name))}</td><td>${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))} ${p.pada}</td><td>${p.house}</td><td>${esc(status(p))}</td></tr>`).join('')}</table>`;
+    const block = x => {
+      switch (x[0]) {
+        case 'p': return `<p>${esc(x[1])}</p>`;
+        case 'h': return `<h4 class="bk-h">${esc(x[1])}</h4>`;
+        case 'note': return `<div class="bk-note"><span class="ms">info</span><p>${esc(x[1])}</p></div>`;
+        case 'facts': return `<div class="bk-facts">${x[1].map(([l, v]) => `<div><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>`;
+        case 'list': return `<ul class="bk-list">${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+        case 'table': return `<table class="bk-t">${x[1].some(Boolean) ? `<tr>${x[1].map(c => `<th>${esc(c)}</th>`).join('')}</tr>` : ''}${x[2].map(row => `<tr>${row.map((c, i) => i ? `<td>${esc(c)}</td>` : `<td><b>${esc(c)}</b></td>`).join('')}</tr>`).join('')}</table>`;
+        case 'chart': return charts[x[1]] ? charts[x[1]]() : '';
+        case 'planets': return planetsTable();
+        case 'score': return `<div class="bk-score"><span>${esc(x[1])}</span><i><em class="${x[2] >= 60 ? 'g' : x[2] < 45 ? 'r' : 'a'}" style="width:${Math.max(4, Math.min(100, x[2]))}%"></em></i></div>`;
+        case 'pros': return `<div class="bk-pros"><div class="g"><b><span class="ms">thumb_up</span>${esc(t('ui.positive', 'Favourable'))}</b><ul>${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>
+          <div class="r"><b><span class="ms">error</span>${esc(t('ui.challenging'))}</b><ul>${x[2].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div></div>`;
+      }
+      return '';
+    };
+    const opener = (n, c) => `<header class="bk-open"><span class="bk-num">${String(n).padStart(2, '0')}</span><span class="bk-ic"><span class="ms">${esc(c.icon)}</span></span><h2>${esc(c.title)}</h2><i class="bk-orn"></i></header>`;
+    const chapter = (c, n) => {
+      if (!c.sections) return `<section class="bk-ch" id="bk-${c.id}">${opener(n, c)}${c.blocks.map(block).join('')}</section>`;
+      return c.sections.map((s, i) => `<section class="bk-ch${c.flow && i ? ' flow' : ''}"${i ? '' : ` id="bk-${c.id}"`}>${i && c.flow ? '' : opener(n, c)}${!i && c.intro ? `<p>${esc(c.intro)}</p>` : ''}
+        <div class="bk-sec${s.now ? ' now' : ''}"><h3>${esc(s.title)}</h3>${s.sub ? `<p class="bk-sub">${esc(s.sub)}</p>` : ''}${s.blocks.map(block).join('')}</div></section>`).join('');
+    };
+    const gen = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang === 'hi' ? 'hi-IN' : 'gu-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    h(`<div class="bk-bar noprint"><a class="btn ghost" href="#/chart/${id}"><span class="ms">arrow_back</span>${esc(P.label)}</a>
+        <button onclick="window.print()"><span class="ms">picture_as_pdf</span>${esc(t('ui.download_report'))}</button><span class="muted">${esc(t('ui.print_hint'))}</span></div>
+      <table class="bk"><thead><tr><td><div class="bk-run"><img src="${LOGO}" alt="KarmYog Astro · Vastu"><span>${esc(P.label)} · ${esc(L.cover_title)}</span></div></td></tr></thead>
+      <tfoot><tr><td><div class="bk-foot">KarmYog Astro · Vastu · astro.hemalsavaria.com</div></td></tr></tfoot><tbody><tr><td>
+      <section class="bk-cover"><img class="bk-logo" src="${ASSET}brand/logo-square.webp" alt="KarmYog Astro · Vastu">
+        <p class="bk-k">${esc(L.cover_sub)}</p><h1>${esc(L.cover_title)}</h1><i class="bk-orn"></i>
+        <p class="bk-for">${esc(L.prepared_for)}</p><p class="bk-name">${esc(P.label)}</p>
+        <div class="bk-cf"><div><small>${esc(t('ui.birth_date'))}</small><b>${esc(b.local)}</b></div><div><small>${esc(t('ui.birth_place'))}</small><b>${esc(P.place_name)}</b></div>
+          <div><small>${esc(t('ui.lagna'))}</small><b>${esc(tn('signs', k.lagna.sign_name))}</b></div><div><small>${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', k.planets.find(p => p.name === 'Moon').sign_name))}</b></div></div>
+        <p class="bk-gen">${esc(L.generated)}: ${esc(gen)}</p></section>
+      <section class="bk-toc"><h2>${esc(L.contents)}</h2><ol>${B.chapters.map(c => `<li><a href="#bk-${c.id}" onclick="event.preventDefault();document.getElementById('bk-${c.id}').scrollIntoView({behavior:'smooth'})"><span class="ms">${esc(c.icon)}</span>${esc(c.title)}</a></li>`).join('')}</ol></section>
+      ${B.chapters.map((c, i) => chapter(c, i + 1)).join('')}
+      </td></tr></tbody></table>`);
   }
-
   function viewAdd() {
     h(`${ph('person_add', t('ui.add_chart'), t('ui.add_sub'))}
       <div class="addwrap"><section class="card">${chartForm()}</section>
