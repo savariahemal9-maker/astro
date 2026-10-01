@@ -517,3 +517,13 @@ body.kb-open .bnav{display:none!important}
   .pg:last-child{break-after:auto}
 }
 .bk-vg{margin-bottom:.6rem}
+/* print must use exactly the screen sizes the pages were measured with; only .pg decides page breaks */
+@media print{
+  .bk.bk-pages{font-size:15px!important;line-height:1.75!important}
+  .pg *{break-before:auto!important;break-after:auto!important}
+  .pg .bk-cover{min-height:0!important}
+  .pg{break-after:page!important} .pg:last-child{break-after:auto!important}
+}
+/* safety gap: measured on screen with 28px spare, released in print so small print differences never clip */
+.pg-body{box-sizing:border-box;padding-bottom:28px}
+@media print{.pg-body{padding-bottom:0!important}}
