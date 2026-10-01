@@ -51,11 +51,7 @@
     const a = ([k, l, ic], cls = '') => `<a href="#/${k}" class="${cls}${is(k) ? ' on' : ''}"${is(k) ? ' aria-current="page"' : ''}><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`;
     // desktop top navigation
     const top = [['home', 'home.nav', 'home'], ...(token ? [['dashboard', 'ui.nav_kundali', 'auto_stories']] : []), ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'],
-<<<<<<< HEAD
       ...(token ? [['predict', 'ui.nav_predict', 'auto_awesome'], ['milan', 'ui.kundali_milan', 'favorite'], ['ai-chat', 'ui.nav_claude', 'psychology']] : [])];
-=======
-      ...(token ? [['predict', 'ui.nav_predict', 'auto_awesome'], ['ai-chat', 'ui.nav_claude', 'psychology']] : [])];
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     $rail.innerHTML = top.map(x => a(x)).join('');
     // account area
     document.getElementById('acct').innerHTML = token
@@ -63,11 +59,7 @@
       : `<a class="btn text" href="#/login">${esc(t('ui.sign_in'))}</a><a class="btn" href="#/register">${esc(t('ui.register'))}</a>`;
     // drawer (phones / narrow screens): everything
     const all = [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ...(token ? [
-<<<<<<< HEAD
       ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['milan', 'ui.kundali_milan', 'favorite'],
-=======
-      ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'],
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
       ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'], ['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
       : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
     document.getElementById('drawer').innerHTML = `<div class="drawer-h"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></div>${all.map(x => a(x)).join('')}`;
@@ -211,14 +203,9 @@
           const sr = mins(p.sunrise), ss = mins(p.sunset), day = Math.max(1, ss - sr), night = mins(p.next_sunrise) + 1440 - ss, mu = day / 15;
           const abh = [sr + 7 * mu, sr + 8 * mu], brahma = [sr - 2 * night / 15, sr - night / 15];
           const isToday = f.date.value === today(), now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
-<<<<<<< HEAD
           const sunM = isToday ? nowM : Math.round((sr + ss) / 2); // today=current time, other=solar noon
           const k = Math.max(0, Math.min(1, (sunM - sr) / day)), ang = Math.PI * (1 - k), sx = 150 + 120 * Math.cos(ang), sy = 140 - 120 * Math.sin(ang);
           const arc = `<svg class="pn-arc" viewBox="0 0 300 160" aria-hidden="true"><path d="M30 140 A120 120 0 0 1 270 140" class="a0"/>${isToday && sunM > sr && sunM < ss ? `<path d="M30 140 A120 120 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)}" class="a1"/>` : ''}<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="11" class="sun"/>
-=======
-          const k = Math.max(0, Math.min(1, (nowM - sr) / day)), ang = Math.PI * (1 - k), sx = 150 + 120 * Math.cos(ang), sy = 140 - 120 * Math.sin(ang);
-          const arc = `<svg class="pn-arc" viewBox="0 0 300 160" aria-hidden="true"><path d="M30 140 A120 120 0 0 1 270 140" class="a0"/>${isToday && nowM > sr && nowM < ss ? `<path d="M30 140 A120 120 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)}" class="a1"/><circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="11" class="sun"/>` : ''}
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
             <line x1="14" y1="140" x2="286" y2="140" class="hz"/><text x="30" y="158" text-anchor="middle">${tm(p.sunrise)}</text><text x="270" y="158" text-anchor="middle">${tm(p.sunset)}</text></svg>`;
           const t0 = p.tithi[0], limb = (n, ic, lbl, x, name, extra = '') => `<li><span class="pn-n">${n}</span><span class="ms">${ic}</span><div><small>${esc(lbl)}</small><b>${name}</b>${extra}</div>
               ${x && x.ends ? `<em>${esc(t('ui.until'))} ${fmtLoc(x.ends)}</em>` : '<em></em>'}</li>`;
@@ -371,7 +358,6 @@
     st.date = st.date || today();
     let mine = cats.filter(c => c.selected), editing = !mine.length, seq = 0;
     const PI = { daily: 'today', weekly: 'date_range', monthly: 'calendar_month', yearly: 'event_repeat', lifetime: 'all_inclusive' };
-<<<<<<< HEAD
     if (!profs.length) { h(`${ph('auto_awesome', t('ui.personal_predictions'), t('ui.pp_sub'))}<section class="pp-hero"><a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section><p class="muted">${esc(t('ui.no_kundali'))}</p>`); return; }
     h(`<div class="pp-layout">
       <div class="pp-catbar">
@@ -400,19 +386,6 @@
         <div class="pp-result" id="ppt" aria-live="polite"></div>
       </div>
     </div>`);
-=======
-    const hero = `${ph('auto_awesome', t('ui.personal_predictions'), t('ui.pp_sub'))}<section class="pp-hero">`;
-    if (!profs.length) { h(hero + `<a class="btn accent" href="#/add"><span class="ms">add</span>${esc(t('ui.new_kundali'))}</a></section><p class="muted">${esc(t('ui.no_kundali'))}</p>`); return; }
-    h(hero + `<div class="pp-pickrow"><div class="pp-kpick"><button type="button" class="pp-kbtn" id="ppkb" aria-haspopup="listbox" aria-expanded="false"></button>
-        <div class="pp-kpanel" id="ppkp" hidden><input type="search" id="ppks" placeholder="${esc(t('ui.search'))}…" aria-label="${esc(t('ui.search'))}" autocomplete="off"><ul role="listbox" id="ppkl"></ul></div></div>
-        <a class="pp-kadd" href="#/add" aria-label="${esc(t('ui.new_kundali'))}"><span class="ms">add</span></a></div></section>
-      <section class="pp-controls"><div class="pp-row"><h2 class="pp-h"><span class="ms">category</span>${esc(t('ui.my_categories'))}</h2>
-        <button type="button" class="pp-edit" id="ppe"><span class="ms">tune</span>${esc(t('ui.manage_categories'))}</button></div>
-        <div id="ppc"></div>
-        <div class="pp-when"><div class="pp-seg" id="ppp" role="tablist">${PERIODS.map(p => `<button type="button" role="tab" data-p="${p}"><span class="ms">${PI[p]}</span><span>${esc(t('ui.p_' + p))}</span></button>`).join('')}</div>
-          <label class="pp-date"><span class="ms">event</span><input type="date" id="ppd" value="${esc(st.date)}" aria-label="${esc(t('ui.date'))}"></label></div></section>
-      <div id="ppt" aria-live="polite"></div>`);
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     const $c = document.getElementById('ppc'), $t = document.getElementById('ppt');
     const av = p => `<span class="avatar">${esc(p.label.trim().charAt(0).toUpperCase())}</span><span class="pp-pn"><b>${esc(p.label)}</b><small>${esc(p.birth_date)} · ${esc(p.place_name.split(',')[0])}</small></span>`;
     const $kb = document.getElementById('ppkb'), $kp = document.getElementById('ppkp'), $ks = document.getElementById('ppks'), $kl = document.getElementById('ppkl');
@@ -425,20 +398,11 @@
     const mark = () => {
       $kb.innerHTML = av(profs.find(p => p.id === st.kid)) + '<span class="ms">expand_more</span>';
       $app.querySelectorAll('[data-p]').forEach(b => { const on = b.dataset.p === st.per; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
-<<<<<<< HEAD
       const ppdl = document.getElementById('ppd'); if (ppdl) { const pw = ppdl.closest('.pp-side-block'); if(pw) pw.style.display = st.per === 'lifetime' ? 'none' : ''; }
     };
     const chips = () => {
       if (editing) {
         $c.innerHTML = cats.map(c => `<label class="pp-chip pick${c.selected ? ' on' : ''}"><input type="checkbox" value="${c.id}"${c.selected ? ' checked' : ''}><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</label>`).join('') + `<div class="pp-pick-act"><button id="pps"><span class="ms">check</span>${esc(t('ui.save'))}</button>${mine.length ? `<button class="ghost" id="ppx" type="button">${esc(t('ui.cancel'))}</button>` : ''}</div>`;
-=======
-      document.getElementById('ppd').closest('.pp-date').hidden = st.per === 'lifetime';
-    };
-    const chips = () => {
-      if (editing) {
-        $c.innerHTML = `<div class="pp-pick">${cats.map(c => `<label class="pp-chip pick${c.selected ? ' on' : ''}"><input type="checkbox" value="${c.id}"${c.selected ? ' checked' : ''}><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</label>`).join('')}</div>
-          <div class="row pp-pick-act"><button id="pps"><span class="ms">check</span>${esc(t('ui.save'))}</button>${mine.length ? `<button class="ghost" id="ppx" type="button">${esc(t('ui.cancel'))}</button>` : ''}</div>`;
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
         $c.querySelectorAll('.pick input').forEach(i => i.onchange = () => i.parentElement.classList.toggle('on', i.checked));
         document.getElementById('ppx')?.addEventListener('click', () => { editing = false; chips(); });
         document.getElementById('pps').onclick = async () => {
@@ -447,11 +411,7 @@
             toast(t('ui.saved')); editing = !mine.length; save(); chips(); } catch (e) { toast(e.message, 'error'); } };
       } else {
         if (!mine.find(c => c.id === st.cat)) st.cat = mine[0]?.id;
-<<<<<<< HEAD
         $c.innerHTML = mine.map(c => `<button type="button" class="pp-chip${c.id === st.cat ? ' on' : ''}" data-c="${c.id}"><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</button>`).join('');
-=======
-        $c.innerHTML = `<div class="pp-cats">${mine.map(c => `<button type="button" class="pp-chip${c.id === st.cat ? ' on' : ''}" data-c="${c.id}"><span class="ms">${esc(c.icon)}</span>${esc(c.name)}</button>`).join('')}</div>`;
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
         $c.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { st.cat = +b.dataset.c; save(); chips(); });
       }
       show();
@@ -462,7 +422,6 @@
     const yr = d => d.slice(0, 4);
     const list = (cls, icon, title, items) => items && items.length ? `<section class="pp-adv ${cls}"><h3><span class="ms">${icon}</span>${esc(title)}</h3><ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>` : '';
     const card = d => `<article class="pp-card lvl-${d.level}">
-<<<<<<< HEAD
       <div class="pp-top">
         <div class="pp-top-l">
           <div class="pp-toprow"><span class="pp-badge"><span class="ms">${esc(d.category.icon)}</span>${esc(d.category.name)}</span><span class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</span></div>
@@ -484,21 +443,6 @@
       ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
         <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
       </article>`;
-=======
-      <header class="pp-sum"><div class="pp-sum-l"><span class="pp-badge"><span class="ms">${esc(d.category.icon)}</span>${esc(d.category.name)}</span>
-          <h2>${esc(d.headline)}</h2><p class="pp-range"><span class="ms">event</span>${esc(rangeText(d.range) || t('ui.p_lifetime'))}</p></div>
-        <div class="pp-meter" title="${esc(d.score_label)}">${ring(d.score)}<div class="pp-meter-v"><b>${d.score}</b><small>/100</small></div></div></header>
-      <div class="pp-lvlrow"><span class="pp-lvl">${esc(d.level_text)}</span><small>${esc(d.score_label)}</small></div>
-      <p class="pp-exp">${esc(d.explanation)}</p>
-      ${d.caution ? `<div class="pp-caution"><span class="ms">report</span><span>${esc(d.caution)}</span></div>` : ''}
-      ${d.personal && d.personal.length ? `<section class="pp-says"><h3><span class="ms">menu_book</span>${esc(t('ui.kundali_says'))}</h3><ul>${d.personal.map(x => `<li class="${x.good ? 'good' : 'care'}"><span class="ms">${x.good ? 'thumb_up' : 'error'}</span><span>${esc(x.text)}</span></li>`).join('')}</ul></section>` : ''}
-      <div class="pp-grid">${list('upay', 'spa', t('ui.simple_upay'), (d.upay || []).slice(0, 2))}</div>
-      <p class="pp-more"><a href="#/chart/${st.kid}" data-open-tab="remedies"><span class="ms">spa</span>${esc(t('ui.all_remedies'))}</a></p>
-      ${d.timeline && d.timeline.length ? `<section class="pp-life"><h3><span class="ms">timeline</span>${esc(t('ui.life_phases'))}</h3><ol>${d.timeline.map(x => `<li class="${x.favourable ? 'good' : 'care'}"><b>${yr(x.start)} – ${yr(x.end)}</b><span>${esc(t(x.favourable ? 'ui.good_phase' : 'ui.care_phase'))}</span></li>`).join('')}</ol></section>` : ''}
-      ${collapsible(t('ui.why_details'), `<div class="two"><div><h3>${esc(t('ui.positive_factors'))}</h3><ul class="lines">${d.details.positive.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div>
-        <div><h3>${esc(t('ui.challenging_factors'))}</h3><ul class="lines">${d.details.challenging.map(x => `<li><b>${esc(x.text)}</b><small>${esc(x.effect)}</small></li>`).join('') || `<li class="muted">${esc(t('ui.none'))}</li>`}</ul></div></div>`)}
-      <p class="pp-disc"><span class="ms">info</span>${esc(d.disclaimer)}</p></article>`;
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     const show = () => {
       if (!st.cat) { $t.innerHTML = `<p class="pp-empty"><span class="ms">touch_app</span>${esc(t('ui.no_categories'))}</p>`; return; }
       const my = ++seq; $t.innerHTML = skel();
@@ -509,7 +453,6 @@
   }
 
   // ---------- Chat (basic chat + Claude "AI Astrologer"): full page, saved conversations, own language picker ----------
-<<<<<<< HEAD
   async function viewMilan(reportId = 0) {
     const SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
     const scoreColor = s => s >= 28 ? 'ok' : s >= 21 ? 'p' : s >= 18 ? 'warn' : 'err';
@@ -550,7 +493,7 @@
             </div>
             <div class="ml-bar"><div class="ml-fill ${cls}" style="width:${pct}%"></div></div>
           </section>
-          <h2 style="margin:1.2rem 0 .6rem">${esc(t('ui.milan_factors'))} (${esc(t('ui.ashtakoot','Ashtakoot'))})</h2>
+          <h2 style="margin:1.2rem 0 .6rem">${esc(t('ui.milan_factors'))}</h2>
           <div class="ml-grid">${Object.values(r.factors).map(f => {
             const sc = scoreColor(f.score/f.max*36), fp = Math.round(f.score/f.max*100);
             return `<section class="card ml-factor">
@@ -563,7 +506,7 @@
               </div>
               <p class="ml-detail">${esc(f.detail)}</p></section>`;
           }).join('')}</div>
-          <div class="noprint" style="margin:1.2rem 0"><button class="btn" onclick="window.print()"><span class="ms">download</span>${esc(t('ui.download_pdf'))}</button></div>`);
+          <div class="noprint" style="margin:1.2rem 0"><button class="btn" onclick="window.print()"><span class="ms">download</span>${esc(t('ui.download_report'))}</button></div>`);
       } catch(e) { h(errBox(e)); }
       return;
     }
@@ -637,8 +580,6 @@
     };
   }
 
-=======
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
   async function viewChat(mode = 'rules') {
     const AI = mode === 'claude', LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} return null; };
     loading(); let profs; try { profs = await api('GET', '/profiles'); } catch (e) { h(errBox(e)); return; }
@@ -647,7 +588,6 @@
     let clang = LS('chat_lang') || 'auto', thread = +(LS('cthread_' + mode) || 0) || null, st = { msgs: [], ctx: {}, q: [] }, busy = false;
     const LANGS = [['auto', t('chat.lang_auto')], ['en', 'English'], ['hi', 'हिन्दी'], ['gu', 'ગુજરાતી']];
     h(`<section class="cp${AI ? ' ai' : ''}">
-<<<<<<< HEAD
       <aside class="cp-side" id="cps">
         <div class="cp-sh"><button type="button" class="btn cp-new" id="cpn" style="flex:1"><span class="ms">edit_square</span>${esc(t('ui.new_chat'))}</button><button type="button" class="icon-btn cp-x" id="cpx" aria-label="${esc(t('ui.close'))}"><span class="ms">close</span></button></div>
         <div class="cp-list" id="cpl"></div>
@@ -665,20 +605,6 @@
         <div class="chat-log" id="chl" aria-live="polite"></div>
         <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="800" enterkeyhint="send" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
 
-=======
-      <aside class="cp-side" id="cps"><div class="cp-sh"><b>${esc(t('chat.saved'))}</b><button type="button" class="icon-btn cp-x" id="cpx" aria-label="${esc(t('ui.close'))}"><span class="ms">close</span></button></div>
-        <button type="button" class="btn cp-new" id="cpn"><span class="ms">add</span>${esc(t('ui.new_chat'))}</button><div class="cp-list" id="cpl"></div></aside>
-      <div class="cp-main">
-        <div class="cp-bar">
-          <button type="button" class="icon-btn cp-menu" id="cpm" aria-label="${esc(t('chat.saved'))}"><span class="ms">history</span></button>
-          <label class="cp-pick"><span class="ms">person</span><select id="chk" aria-label="${esc(t('ui.select_kundali'))}">${profs.map(p => `<option value="${p.id}"${p.id === kid ? ' selected' : ''}>${esc(p.label)}</option>`).join('')}</select></label>
-          <label class="cp-pick"><span class="ms">translate</span><select id="chlg" aria-label="${esc(t('chat.lang_label'))}">${LANGS.map(([v, n]) => `<option value="${v}"${v === clang ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
-          <button type="button" class="icon-btn" id="chn" title="${esc(t('ui.new_chat'))}" aria-label="${esc(t('ui.new_chat'))}"><span class="ms">edit_square</span></button>
-        </div>
-        <div class="chat-log" id="chl" aria-live="polite"></div>
-        <form class="chat-in" id="chf"><input name="m" autocomplete="off" maxlength="800" enterkeyhint="send" placeholder="${esc(t('chat.placeholder'))}" aria-label="${esc(t('chat.placeholder'))}"><button aria-label="${esc(t('ui.send'))}"><span class="ms">send</span></button></form>
-        <p class="chat-note">${esc(t(AI ? 'chat.claude_disclaimer' : 'chat.disclaimer'))}</p>
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
       </div><div class="cp-shade" id="cpd"></div></section>`);
     const $l = document.getElementById('chl'), f = document.getElementById('chf'), side = document.getElementById('cps');
     const tm = ts => new Date(ts || Date.now()).toLocaleTimeString(lang === 'en' ? 'en-IN' : lang + '-IN', { hour: 'numeric', minute: '2-digit' });
@@ -728,13 +654,9 @@
     f.onsubmit = e => { e.preventDefault(); ask(f.m.value); };
     document.getElementById('chk').onchange = e => { kid = +e.target.value; LS('chat_kid', kid); greet(); markActive(); };
     document.getElementById('chlg').onchange = e => { clang = e.target.value; LS('chat_lang', clang); };
-<<<<<<< HEAD
     const newChatFn = () => { greet(); markActive(); side.classList.remove('open'); f.m.focus(); };
     document.getElementById('cpn').onclick = newChatFn;
     const _chn = document.getElementById('chn'); if (_chn) _chn.onclick = newChatFn;
-=======
-    document.getElementById('chn').onclick = document.getElementById('cpn').onclick = () => { greet(); markActive(); side.classList.remove('open'); f.m.focus(); };
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     document.getElementById('cpm').onclick = () => side.classList.add('open');
     document.getElementById('cpx').onclick = document.getElementById('cpd').onclick = () => side.classList.remove('open');
     LS('chat_kid', kid);
@@ -1594,11 +1516,7 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-<<<<<<< HEAD
     if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat', 'ai-chat', 'milan'].includes(page) && !token) { location.hash = '#/login'; return; }
-=======
-    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat', 'ai-chat'].includes(page) && !token) { location.hash = '#/login'; return; }
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     if (page === 'login' || page === 'register') return viewAuth(page);
     if (page === 'forgot') return viewForgot();
     if (page === 'reset' && arg) return viewReset(arg);
@@ -1607,10 +1525,7 @@
     if (page === 'charts') { location.hash = '#/dashboard'; return; }
     if (page === 'add') return viewAdd();
     if (page === 'predict') return viewPredict();
-<<<<<<< HEAD
     if (page === 'milan') return viewMilan(arg ? parseInt(arg,10) : 0);
-=======
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
     if (page === 'chat') return viewChat();
     if (page === 'ai-chat') return viewChat('claude');
     if (page === 'rashifal') return viewRashifal(['daily', 'weekly', 'monthly'].includes(arg) ? arg : 'daily');
@@ -1644,8 +1559,4 @@
   new MutationObserver(() => { if (obsBusy) return; obsBusy = true; requestAnimationFrame(() => { obsBusy = false; fmtDates($app); stagger($app); enhanceFields($app); countUp($app); $app.querySelectorAll('.dial[data-v]:not(.go), .ring[data-v]:not(.go), .bar[data-v]:not(.go)').forEach(el => requestAnimationFrame(() => el.classList.add('go'))); }); }).observe($app, { childList: true, subtree: true });
   window.addEventListener('hashchange', route);
   loadLang(lang).then(route).catch(e => h(errBox(e)));
-<<<<<<< HEAD
 })();
-=======
-})();
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e

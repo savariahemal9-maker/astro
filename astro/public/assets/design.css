@@ -222,11 +222,7 @@ input,select,textarea{max-width:100%}
 /* ---------- Chat page: full page (no floating card), saved chats sidebar ---------- */
 body:has(.cp) main{padding:0!important;max-width:none}
 body:has(.cp) main>*{max-width:none}
-<<<<<<< HEAD
 .cp{display:grid;grid-template-columns:300px minmax(0,1fr);grid-template-rows:1fr;height:calc(100dvh - 64px);background:#fff;position:relative}
-=======
-.cp{display:grid;grid-template-columns:300px minmax(0,1fr);height:calc(100dvh - 64px);background:#fff;position:relative}
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
 .cp-side{display:flex;flex-direction:column;gap:.6rem;padding:1rem .8rem;border-right:1px solid var(--md-outline-v);background:#f7faf8;min-height:0}
 .cp-sh{display:flex;align-items:center;justify-content:space-between;padding:0 .3rem} .cp-sh b{font-size:1rem}
 .cp-x{display:none}
@@ -238,11 +234,7 @@ body:has(.cp) main>*{max-width:none}
 .cp-open small{color:var(--mut);font-size:.75rem}
 .cp-del{flex:none;opacity:.45;background:transparent!important} .cp-item:hover .cp-del{opacity:1}
 .cp-empty{font-size:.85rem;padding:.4rem}
-<<<<<<< HEAD
 .cp-main{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
-=======
-.cp-main{display:flex;flex-direction:column;min-width:0;min-height:0}
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
 .cp-top{display:flex;align-items:center;gap:.7rem;padding:.65rem 1rem;background:linear-gradient(90deg,var(--md-primary),#0b8a5a);color:#fff}
 .cp-top .chat-who{flex:1}
 .cp-menu{display:none;color:#fff;background:rgba(255,255,255,.14)!important}
@@ -252,27 +244,15 @@ body:has(.cp) main>*{max-width:none}
 .cp-pick select{background:transparent!important;border:0!important;box-shadow:none!important;min-height:36px;padding:0 .3rem;font-weight:600;min-width:0;max-width:180px}
 .cp-bar .icon-btn{margin-left:auto}
 .cp .chat-log{flex:1;min-height:0;border:0}
-<<<<<<< HEAD
 .cp .chat-in{padding:.6rem 1rem .6rem;padding-bottom:max(.6rem,env(safe-area-inset-bottom,.6rem))}
 .cp-shade{display:none}
 .cp .msg{max-width:min(760px,86%)}
 @media (max-width:860px){
   .cp{grid-template-columns:1fr}
-=======
-.cp .chat-in{padding:.6rem 1rem calc(.6rem + env(safe-area-inset-bottom,0px))}
-.cp-shade{display:none}
-.cp .msg{max-width:min(760px,86%)}
-@media (max-width:860px){
-  .cp{grid-template-columns:1fr;height:calc(100dvh - 64px - 68px - env(safe-area-inset-bottom,0px))}
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
   .cp-side{position:fixed;inset:64px auto 0 0;width:min(86vw,320px);z-index:60;transform:translateX(-105%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.12)}
   .cp-side.open{transform:none} .cp-side.open~.cp-shade{display:block;position:fixed;inset:64px 0 0 0;background:rgba(0,0,0,.3);z-index:55}
   .cp-x,.cp-menu{display:inline-grid}
   .cp-top{padding:.55rem .7rem;gap:.5rem} .cp-top .chat-av{width:36px;height:36px} .cp-top .chat-who b{font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cp-bar{padding:.45rem .6rem;gap:.4rem} .cp-pick select{max-width:34vw;font-size:.88rem}
   .cp .msg{max-width:92%} .cp .chat-note{font-size:.64rem;padding:0 .6rem .35rem}
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e

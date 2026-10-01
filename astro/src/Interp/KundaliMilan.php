@@ -297,13 +297,26 @@ final class KundaliMilan {
             'detail' => "$boy: $bnn, $girl: $gnn. Score: $score/8. $nadiDesc"];
     }
 
+    private static bool $ready = false;
+    /** Create the reports table on first use. */
+    public static function ensure(): void {
+        if (self::$ready) return;
+        Db::exec("CREATE TABLE IF NOT EXISTS milan_reports (
+            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, user_id INT UNSIGNED NOT NULL, boy_name VARCHAR(120) NOT NULL, girl_name VARCHAR(120) NOT NULL,
+            score DECIMAL(4,1) NOT NULL DEFAULT 0, result_json MEDIUMTEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX (user_id, created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        self::$ready = true;
+    }
+
     /** Save a milan report to DB. */
     public static function save(int $userId, string $boyName, string $girlName, array $result): int {
+        self::ensure();
         return Db::insert('INSERT INTO milan_reports (user_id,boy_name,girl_name,score,result_json,created_at) VALUES (?,?,?,?,?,NOW())',
             [$userId, $boyName, $girlName, $result['score'], json_encode($result, JSON_UNESCAPED_UNICODE)]);
     }
 
     public static function list(int $userId): array {
+        self::ensure();
         $rows = Db::all('SELECT id,boy_name,girl_name,result_json,created_at FROM milan_reports WHERE user_id=? ORDER BY created_at DESC', [$userId]);
         foreach ($rows as &$r) {
             $j = json_decode($r['result_json'] ?? '{}', true);
@@ -341,6 +354,7 @@ final class KundaliMilan {
     }
 
     public static function get(int $id, int $userId, string $lang = 'en'): ?array {
+        self::ensure();
         $r = Db::one('SELECT * FROM milan_reports WHERE id=? AND user_id=?', [$id, $userId]);
         if (!$r) return null;
         $r['result'] = json_decode($r['result_json'], true);
