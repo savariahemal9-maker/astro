@@ -464,7 +464,7 @@
       const who = (x, n, cls) => `<div class="mm-who ${cls}"><span class="mm-av"><span class="ms">${cls === 'boy' ? 'man' : 'woman'}</span></span>
         <b>${esc(n)}</b><small>${M(cls)}</small><span>${esc(x.rashi)} · ${esc(x.nakshatra)}</span></div>`;
       const rows = [['rashi', 'rashi'], ['lord', 'lord'], ['nak', 'nakshatra'], ['pada', 'pada'], ['varna', 'varna'], ['vashya', 'vashya'], ['yoni', 'yoni'], ['gana', 'gana'], ['nadi', 'nadi'], ['mangal', 'mangal']];
-      h(`${ph('favorite', t('ml.title'), `${d.boy_name} ${t('ml.vs')} ${d.girl_name}`, `<a class="btn ghost" href="#/milan"><span class="ms">arrow_back</span>${M('back')}</a>`, t('ml.eyebrow'))}
+      h(`<div class="mm">${ph('favorite', t('ml.title'), `${d.boy_name} ${t('ml.vs')} ${d.girl_name}`, `<a class="btn ghost" href="#/milan"><span class="ms">arrow_back</span>${M('back')}</a>`, t('ml.eyebrow'))}
         <section class="mm-hero">${who(d.boy, d.boy_name, 'boy')}
           <div class="mm-score">${ring(d.score)}<div class="mm-sv"><b>${d.score}</b><small>/ 36 ${M('gunas')}</small></div></div>
           ${who(d.girl, d.girl_name, 'girl')}
@@ -484,7 +484,7 @@
           <div class="mm-ex">${d.kootas.map(k => `<div class="mm-exi"><div class="mm-exh"><b>${esc(k.name)}</b><span class="mm-p ${k.score >= k.max ? 'full' : k.score > 0 ? 'part' : 'zero'}"><b>${k.score}<small>/${k.max}</small></b></span></div>
             <p>${esc(k.about)}</p><p class="mm-res">${esc(k.result)}</p></div>`).join('')}</div></section>
         <p class="mm-note"><span class="ms">info</span>${M('note')}</p>
-        <div class="mm-act noprint"><button onclick="window.print()"><span class="ms">print</span>${M('print')}</button><a class="btn ghost" href="#/milan"><span class="ms">add</span>${M('new')}</a></div>`);
+        <div class="mm-act noprint"><button onclick="window.print()"><span class="ms">print</span>${M('print')}</button><a class="btn ghost" href="#/milan"><span class="ms">add</span>${M('new')}</a></div></div>`);
       return;
     }
     loading();
@@ -495,13 +495,13 @@
       <div class="mm-man"><label>${esc(t('ui.name'))}<input name="name" maxlength="120" required></label>
         <div class="th-row"><label>${esc(t('ui.birth_date'))}<input type="date" name="date" required></label><label>${esc(t('ui.birth_time'))}<input type="time" name="time"></label></div>
         <label>${esc(t('ui.birth_place'))}<input name="place_q" placeholder="${esc(t('ui.search_place'))}" autocomplete="off" required><div class="suggest"></div></label></div></div>`;
-    h(`${ph('favorite', t('ml.title'), t('ml.sub'), '', t('ml.eyebrow'))}
+    h(`<div class="mm">${ph('favorite', t('ml.title'), t('ml.sub'), '', t('ml.eyebrow'))}
       <form id="mlf" class="card mm-form"><div class="mm-pair">${side('boy')}<span class="mm-heart"><span class="ms">favorite</span></span>${side('girl')}</div>
         <div id="mlerr"></div><button class="mm-go"><span class="ms">join_inner</span>${M('calc')}</button></form>
       <section class="mm-sec"><h2 class="mm-h"><span class="ms">history</span>${M('recent')}</h2>
         ${reports.length ? `<div class="mm-list">${reports.map(r => `<div class="mm-item"><a href="#/milan/${r.id}">${ring(+r.score, 54)}<span class="mm-is">${+r.score}</span>
           <span class="mm-in"><b>${esc(r.boy_name)} <span class="ms">favorite</span> ${esc(r.girl_name)}</b><small>${esc(String(r.created_at).slice(0, 10))} · ${+r.score}/36 ${M('gunas')}</small></span></a>
-          <button type="button" class="icon-btn" data-del="${r.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div>`).join('')}</div>` : `<p class="pp-empty">${M('none')}</p>`}</section>`);
+          <button type="button" class="icon-btn" data-del="${r.id}" aria-label="${esc(t('ui.delete'))}"><span class="ms">delete</span></button></div>`).join('')}</div>` : `<p class="pp-empty">${M('none')}</p>`}</section></div>`);
     const f = document.getElementById('mlf'), place = {};
     f.querySelectorAll('.mm-side').forEach(el => {
       const g = el.dataset.g, man = el.querySelector('.mm-man'), sel = el.querySelector('[name=saved]');
@@ -1407,7 +1407,8 @@
   }
   // hide the bottom bar while the on-screen keyboard is up
   (() => { const isField = el => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !['checkbox', 'radio', 'button', 'submit'].includes(el.type);
-    const upd = () => document.body.classList.toggle('kb-open', isField(document.activeElement) || !!(window.visualViewport && visualViewport.height < innerHeight * 0.75));
+    const upd = () => { if (window.visualViewport) document.documentElement.style.setProperty('--vvh', visualViewport.height + 'px');
+      document.body.classList.toggle('kb-open', isField(document.activeElement) || !!(window.visualViewport && visualViewport.height < innerHeight * 0.75)); };
     document.addEventListener('focusin', upd); document.addEventListener('focusout', () => setTimeout(upd, 60));
     window.visualViewport?.addEventListener('resize', upd); })();
   // create a kundali straight from the quick form data (place already resolved)
