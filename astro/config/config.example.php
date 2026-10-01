@@ -26,5 +26,10 @@ return [
         'geonames_username' => '', // free account at geonames.org; needed for timezones outside India
     ],
     'auth' => ['token_ttl_days' => 30],
-    'app'  => ['debug' => false, 'cors_origins' => ['*'], 'admins' => ['your-admin-email@example.com']], // admins can edit remedy rules at #/admin
+    // Optional: smarter chat wording via Google Gemini (free key at aistudio.google.com). Empty key = rule-based chat only.
+    'ai'   => ['key' => '', 'model' => 'gemini-3.8-flash'],
+    // Optional: separate "AI Astrologer" chat powered by Claude (key from console.anthropic.com). Empty key = page shows "not set up".
+    'claude' => ['key' => '', 'model' => 'claude-haiku-4-5'],
+    'mail' => ['from' => 'no-reply@example.com'], // sender for password-reset emails (PHP mail())
+    'app'  => ['base_url' => 'https://example.com', 'debug' => false, 'cors_origins' => ['*']], // admin panel: /admin/ (separate admin accounts)
 ];
