@@ -460,6 +460,7 @@ body.kb-open .bnav{display:none!important}
 .bk-fig{margin:0 auto 1em;max-width:105mm;text-align:center} .bk-fig svg{width:100%;height:auto} .bk-fig figcaption{font-weight:600;color:#7a1414;font-size:.9em}
 .bk-vg{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem} .bk-vg .bk-fig{max-width:none;margin:0;break-inside:avoid}
 @media (max-width:760px){.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{padding:0 4mm}.bk{font-size:14px}.bk-pros,.bk-cf{grid-template-columns:1fr}.bk-toc ol{columns:1}.bk-vg{grid-template-columns:1fr 1fr}.bk-cover{min-height:0}}
+@page{size:A4;margin:8mm 0 10mm;@bottom-center{content:counter(page);font:10pt Poppins,sans-serif;color:#8a5a2b}}
 @media print{
   html{font-size:16px!important} body{background:#fff!important}
   .tstrip,.appbar,.topbar,.sfoot,.bnav,#drawer,#scrim,.noprint{display:none!important} main{margin:0!important;padding:0!important;max-width:none!important}
@@ -494,40 +495,6 @@ body.kb-open .bnav{display:none!important}
 @media (max-width:760px){.mm-fg{grid-template-columns:1fr}}
 @media print{.mm-final,.mm-fp,.mm-fn{break-inside:avoid}}
 
-/* ---------- Kundali book as real A4 pages (what you see is what prints) ---------- */
-.bk-pages{background:none!important;box-shadow:none!important;max-width:none!important;display:grid;justify-content:center;gap:10mm;padding-bottom:6mm}
-.pg{width:210mm;height:297mm;background:#fff;box-shadow:0 8px 30px -10px rgba(90,30,0,.35);border-radius:4px;display:flex;flex-direction:column;padding:0 14mm;box-sizing:border-box;overflow:hidden;position:relative}
-.pg-run{flex:none;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:7mm 0 3mm;border-bottom:2px solid #e8920a;margin-bottom:6mm}
-.pg-run img{height:30px} .pg-run span{font-size:.72em;color:#8a5a2b;text-align:right}
-.pg-body{flex:1;min-height:0;overflow:hidden}
-.pg-body>:first-child{margin-top:0}
-.pg-foot{flex:none;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ecd6b8;padding:3mm 0 7mm;margin-top:4mm;font-size:.7em;color:#8a5a2b;letter-spacing:.03em}
-.pg-foot b{font-size:1.15em;color:#7a1414}
-.pg.cover{padding:0}
-.pg.cover .pg-body{display:flex}
-.pg.cover .bk-cover{flex:1;min-height:0;margin:6mm}
-.bk-sh h3{font-size:1.35em;color:#7a1414;margin:.6em 0 .15em;padding-bottom:.25em;border-bottom:2px solid #f0d2a8}
-.pg-body>.bk-sh:first-child h3{margin-top:0}
-.bk-sh.now h3::after{content:' ●';color:#e8920a}
-.bk-toc ol{columns:1} .bk-toc a{display:grid;grid-template-columns:auto 1fr auto;gap:.6em} .bk-toc a b{color:#7a1414}
-@page{size:A4;margin:0}
-@media print{
-  .bk-pages{display:block;zoom:1!important;gap:0;padding:0}
-  .pg{box-shadow:none;border-radius:0;margin:0;break-after:page;page-break-after:always}
-  .pg:last-child{break-after:auto}
-}
-.bk-vg{margin-bottom:.6rem}
-/* print must use exactly the screen sizes the pages were measured with; only .pg decides page breaks */
-@media print{
-  .bk.bk-pages{font-size:15px!important;line-height:1.75!important}
-  .pg *{break-before:auto!important;break-after:auto!important}
-  .pg .bk-cover{min-height:0!important}
-  .pg{break-after:page!important} .pg:last-child{break-after:auto!important}
-}
-/* safety gap: measured on screen with 28px spare, released in print so small print differences never clip */
-.pg-body{box-sizing:border-box;padding-bottom:28px}
-@media print{.pg-body{padding-bottom:0!important}}
-/* hidden A4 pages used only to build the PDF */
-.bk-off{position:fixed!important;left:-12000px;top:0;display:block!important;pointer-events:none}
-.bk-off .pg{box-shadow:none;border-radius:0;margin:0 0 10px}
-@media print{.bk-off{display:none!important}}
+/* the global .ok status class must not paint Milan score rings and totals */
+.mm-ring.ok,.mm-p.ok,.mm-pill.ok{background:none}
+.mm-pill.ok{background:#fff}
