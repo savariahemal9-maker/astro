@@ -335,4 +335,8 @@ html{scroll-padding-top:calc(var(--strip) + 90px)}
 .th-form .suggest{position:static}
 input[name=place_q]{scroll-margin-top:calc(var(--strip,32px) + 80px)}
 body.kb-open .bnav{display:none!important}
+<<<<<<< HEAD
 @media (max-width:860px){body.kb-open main{padding-bottom:1rem!important}}
+=======
+@media (max-width:860px){body.kb-open main{padding-bottom:1rem!important}}
+>>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
