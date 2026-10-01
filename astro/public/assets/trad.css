@@ -506,3 +506,10 @@ body.kb-open .bnav{display:none!important}
 .bk-foot{padding-bottom:7mm}
 @page{size:A4;margin:10mm 0 12mm}
 @media (max-width:760px){.bk>thead td,.bk>tfoot td,.bk>tbody>tr>td{padding-left:5mm!important;padding-right:5mm!important}}
+/* Milan hero on phones: no mandala behind names, smaller ring, names wrap cleanly */
+@media (max-width:760px){
+  .mm-hero{background:linear-gradient(135deg,#7a1414,#a8320c 60%,#d2690e)!important;grid-template-columns:1fr 104px 1fr;gap:.4rem;padding:1rem .6rem}
+  .mm-score svg{width:96px;height:96px} .mm-sv b{font-size:1.45rem} .mm-sv small{font-size:.68rem}
+  .mm-who{min-width:0} .mm-who b{font-size:.95rem;line-height:1.25;word-break:break-word} .mm-who small{font-size:.66rem} .mm-who>span:last-child{font-size:.74rem;line-height:1.3}
+  .mm-verdict p{font-size:.9rem;line-height:1.5}
+}
