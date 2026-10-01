@@ -481,3 +481,6 @@ body.kb-open .bnav{display:none!important}
 .bk-t .tag{font-size:.85em}
 @media print{.bk-t.keep{break-inside:avoid}.bk-t tr{break-inside:avoid}.bk-sec h3{break-after:avoid}.bk-sec>p:first-of-type{break-before:avoid}}
 @media (max-width:760px){.bk-two{grid-template-columns:1fr}}
+/* place suggestions: rows always start at the left edge */
+.suggest button.sg{justify-content:flex-start!important;text-align:left!important}
+.suggest button.sg>span:last-child{flex:1;min-width:0}
