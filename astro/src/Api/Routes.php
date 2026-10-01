@@ -189,7 +189,6 @@ final class Routes {
         $r->add('POST', '/admin/categories', function (Request $q, array $u) use ($adm, $catSave) { $adm($q); return $catSave($q, null); }, false);
         $r->add('PUT', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm, $catSave) { $adm($q); return $catSave($q, (int) $a['id']); }, false);
         $r->add('DELETE', '/admin/categories/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM prediction_categories WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
-<<<<<<< HEAD
         // ---- Kundali Milan ----
         $r->add('GET', '/milan', function (Request $q, array $u) {
             return \App\Interp\KundaliMilan::list((int) $u['id']); });
@@ -211,10 +210,8 @@ final class Routes {
             $id = \App\Interp\KundaliMilan::save((int) $u['id'], $boyName, $girlName, $result);
             return ['id' => $id, 'boy_name' => $boyName, 'girl_name' => $girlName] + $result; });
         $r->add('DELETE', '/milan/{id}', function (Request $q, array $u, array $a) {
-            \App\Core\Db::exec('DELETE FROM milan_reports WHERE id=? AND user_id=?', [$a['id'], $u['id']]); return ['deleted' => true]; });
+            \App\Interp\KundaliMilan::ensure(); \App\Core\Db::exec('DELETE FROM milan_reports WHERE id=? AND user_id=?', [$a['id'], $u['id']]); return ['deleted' => true]; });
 
-=======
->>>>>>> 267f35bbbeef03a842e14c0ea5b2725111f7c76e
         // ---- admin: overview, users and their kundalis ----
         $r->add('GET', '/admin/ai-status', function (Request $q) use ($adm) { $adm($q); return \App\Interp\AiChat::status(); }, false);
         $r->add('GET', '/admin/claude-status', function (Request $q) use ($adm) { $adm($q); return \App\Interp\ClaudeChat::status(); }, false);
