@@ -1104,39 +1104,6 @@
     const planetsTable = () => `<table class="bk-t keep"><thead><tr><th>${esc(L.table_planet)}</th><th>${esc(L.table_sign)}</th><th>${esc(L.table_deg)}</th><th>${esc(L.table_nak)}</th><th>${esc(L.table_house)}</th><th>${esc(L.table_status)}</th></tr></thead><tbody>
       <tr><td><b>${esc(t('ui.lagna'))}</b></td><td>${esc(tn('signs', k.lagna.sign_name))}</td><td>${esc(k.lagna.dms)}</td><td>${esc(tn('nakshatras', k.lagna.nakshatra))} ${k.lagna.pada}</td><td>1</td><td></td></tr>
       ${k.planets.map(p => `<tr><td><b>${esc(tn('planets', p.name))}</b></td><td>${esc(tn('signs', p.sign_name))}</td><td>${esc(p.dms)}</td><td>${esc(tn('nakshatras', p.nakshatra))} ${p.pada}</td><td>${p.house}</td><td>${status(p)}</td></tr>`).join('')}</tbody></table>`;
-    // every block becomes a "unit"; tables and lists can continue on the next page, headings stay with what follows
-    const unit = x => {
-      switch (x[0]) {
-        case 'p': return { html: `<p>${esc(x[1])}</p>` };
-        case 'h': return { html: `<h4 class="bk-h">${esc(x[1])}</h4>`, keep: true };
-        case 'note': return { html: `<div class="bk-note"><span class="ms">info</span><p>${esc(x[1])}</p></div>` };
-        case 'facts': return { html: `<div class="bk-facts">${x[1].map(([l, v]) => `<div><small>${esc(l)}</small><b>${esc(v)}</b></div>`).join('')}</div>` };
-        case 'list': return { list: x[1].map(i => `<li>${esc(i)}</li>`) };
-        case 'table': return { table: x[2].map(row => `<tr>${row.map((c, i) => i ? `<td>${esc(c)}</td>` : `<td><b>${esc(c)}</b></td>`).join('')}</tr>`),
-          head: x[1].some(Boolean) ? `<thead><tr>${x[1].map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>` : '' };
-        case 'chart': return { html: charts[x[1]] ? charts[x[1]]() : '' };
-        case 'charts2': return { html: `<div class="bk-two">${x.slice(1).map(c => charts[c]()).join('')}</div>` };
-        case 'planets': return { html: planetsTable() };
-        case 'score': return { html: `<div class="bk-score"><span>${esc(x[1])}</span><i><em class="${x[2] >= 60 ? 'g' : x[2] < 45 ? 'r' : 'a'}" style="width:${Math.max(4, Math.min(100, x[2]))}%"></em></i></div>` };
-        case 'pros': return { html: `<div class="bk-pros"><div class="g"><b><span class="ms">thumb_up</span>${esc(t('ui.positive'))}</b><ul>${x[1].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>
-          <div class="r"><b><span class="ms">error</span>${esc(t('ui.challenging'))}</b><ul>${x[2].map(i => `<li>${esc(i)}</li>`).join('')}</ul></div></div>` };
-      }
-      return { html: '' };
-    };
-    const opener = (n, c) => `<header class="bk-open"><span class="bk-num">${String(n).padStart(2, '0')}</span><span class="bk-ic"><span class="ms">${esc(c.icon)}</span></span><h2>${esc(c.title)}</h2><i class="bk-orn"></i></header>`;
-    const units = [];
-    B.chapters.forEach((c, ci) => {
-      units.push({ html: opener(ci + 1, c), page: true, keep: true, ch: c.id });
-      if (c.intro) units.push({ html: `<p>${esc(c.intro)}</p>` });
-      const push = x => { if (x[0] === 'chart' && x[1] === 'vargas') { const v = Object.keys(k.vargas).filter(n => n !== 'D1');
-          for (let j = 0; j < v.length; j += 3) units.push({ html: `<div class="bk-vg">${v.slice(j, j + 3).map(n => fig(vname(n), northChart(k, n))).join('')}</div>` }); }
-        else units.push(unit(x)); };
-      (c.blocks || []).forEach(push);
-      (c.sections || []).forEach((sx, i) => {
-        units.push({ html: `<div class="bk-sh${sx.now ? ' now' : ''}"><h3>${esc(sx.title)}</h3>${sx.sub ? `<p class="bk-sub">${esc(sx.sub)}</p>` : ''}</div>`, page: !c.flow && i > 0, keep: true });
-        sx.blocks.forEach(push);
-      });
-    });
     const block = x => {
       switch (x[0]) {
         case 'p': return `<p>${esc(x[1])}</p>`;
@@ -1154,6 +1121,7 @@
       }
       return '';
     };
+    const opener = (n, c) => `<header class="bk-open"><span class="bk-num">${String(n).padStart(2, '0')}</span><span class="bk-ic"><span class="ms">${esc(c.icon)}</span></span><h2>${esc(c.title)}</h2><i class="bk-orn"></i></header>`;
     const chapter = (c, n) => {
       if (!c.sections) return `<section class="bk-ch" id="bk-${c.id}">${opener(n, c)}${c.blocks.map(block).join('')}</section>`;
       return c.sections.map((s, i) => `<section class="bk-ch${c.flow && i ? ' flow' : ''}"${i ? '' : ` id="bk-${c.id}"`}>${i && c.flow ? '' : opener(n, c)}${!i && c.intro ? `<p>${esc(c.intro)}</p>` : ''}
@@ -1161,7 +1129,7 @@
     };
     const gen = new Date().toLocaleDateString(lang === 'en' ? 'en-IN' : lang === 'hi' ? 'hi-IN' : 'gu-IN', { day: 'numeric', month: 'long', year: 'numeric' });
     h(`<div class="bk-bar noprint"><a class="btn ghost" href="#/chart/${id}"><span class="ms">arrow_back</span>${esc(P.label)}</a>
-        <button id="bkpdf" disabled><span class="ms">picture_as_pdf</span>${esc(t('ui.download_report'))}</button><span class="muted" id="bkst">…</span></div>
+        <button onclick="window.print()"><span class="ms">picture_as_pdf</span>${esc(t('ui.download_report'))}</button><span class="muted">${esc(t('ui.print_hint'))}</span></div>
       <table class="bk"><thead><tr><td><div class="bk-run"><img src="${LOGO}" alt="KarmYog Astro · Vastu"><span>${esc(P.label)} · ${esc(L.cover_title)}</span></div></td></tr></thead>
       <tfoot><tr><td><div class="bk-foot">KarmYog Astro · Vastu · astro.hemalsavaria.com</div></td></tr></tfoot><tbody><tr><td>
       <section class="bk-cover"><img class="bk-logo" src="${ASSET}brand/logo-square.webp" alt="KarmYog Astro · Vastu">
@@ -1172,76 +1140,7 @@
         <p class="bk-gen">${esc(L.generated)}: ${esc(gen)}</p></section>
       <section class="bk-toc"><h2>${esc(L.contents)}</h2><ol>${B.chapters.map(c => `<li><a href="#bk-${c.id}" onclick="event.preventDefault();document.getElementById('bk-${c.id}').scrollIntoView({behavior:'smooth'})"><span class="ms">${esc(c.icon)}</span>${esc(c.title)}</a></li>`).join('')}</ol></section>
       ${B.chapters.map((c, i) => chapter(c, i + 1)).join('')}
-      </td></tr></tbody></table><div class="bk bk-pages bk-off" id="bkp" aria-hidden="true"></div>`);;
-    // load the real fonts before measuring, otherwise text grows afterwards and pages overflow
-    if (document.fonts) { await Promise.all(['400', '500', '600', '700'].flatMap(w => [`${w} 16px Poppins`, `${w} 16px "Hind Vadodara"`]).map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; }
-    const host = document.getElementById('bkp'); if (!host) return;
-    const run = `<div class="pg-run"><img src="${LOGO}" alt="KarmYog Astro · Vastu"><span>${esc(P.label)} · ${esc(L.cover_title)}</span></div>`;
-    let pageNo = 0, body;
-    const newPage = (cls = '') => { pageNo++; const pg = document.createElement('div'); pg.className = 'pg ' + cls;
-      pg.innerHTML = (cls ? '' : run) + `<div class="pg-body"></div>` + (cls === 'cover' ? '' : `<div class="pg-foot"><span>KarmYog Astro · Vastu · astro.hemalsavaria.com</span><b>${pageNo}</b></div>`);
-      host.appendChild(pg); body = pg.querySelector('.pg-body'); return pg; };
-    const over = () => body.scrollHeight > body.clientHeight + 1;
-    const add = html => { const tmp = document.createElement('div'); tmp.innerHTML = html; const ns = [...tmp.childNodes]; ns.forEach(n => body.appendChild(n)); return ns; };
-    const drop = ns => ns.forEach(n => n.remove());
-    const room = () => { const l = body.lastElementChild; return l ? body.getBoundingClientRect().bottom - l.getBoundingClientRect().bottom : body.clientHeight; };
-    // cover + contents
-    newPage('cover'); body.innerHTML = `<section class="bk-cover"><img class="bk-logo" src="${ASSET}brand/logo-square.webp" alt="KarmYog Astro · Vastu">
-        <p class="bk-k">${esc(L.cover_sub)}</p><h1>${esc(L.cover_title)}</h1><i class="bk-orn"></i>
-        <p class="bk-for">${esc(L.prepared_for)}</p><p class="bk-name">${esc(P.label)}</p>
-        <div class="bk-cf"><div><small>${esc(t('ui.birth_date'))}</small><b>${esc(b.local)}</b></div><div><small>${esc(t('ui.birth_place'))}</small><b>${esc(P.place_name)}</b></div>
-          <div><small>${esc(t('ui.lagna'))}</small><b>${esc(tn('signs', k.lagna.sign_name))}</b></div><div><small>${esc(t('ui.moon_sign'))}</small><b>${esc(tn('signs', k.planets.find(p => p.name === 'Moon').sign_name))}</b></div></div>
-        <p class="bk-gen">${esc(L.generated)}: ${esc(gen)}</p></section>`;
-    newPage(); const tocBody = body; const chPage = {};
-    // flow every unit into A4 pages
-    newPage();
-    const placeRows = (u) => {
-      const tag = u.list ? 'ul' : 'table', cls = u.list ? 'bk-list' : 'bk-t';
-      const open = () => { const [el] = add(`<${tag} class="${cls}">${u.head || ''}${u.list ? '' : '<tbody></tbody>'}</${tag}>`); return u.list ? el : el.querySelector('tbody'); };
-      let box = open();
-      if (over()) { drop([box.closest(tag)]); newPage(); box = open(); }
-      for (const r of (u.list || u.table)) {
-        box.insertAdjacentHTML('beforeend', r); const last = box.lastElementChild;
-        if (over() && box.children.length > 1) { last.remove(); newPage(); box = open(); box.insertAdjacentHTML('beforeend', r); }
-      }
-    };
-    for (let i = 0; i < units.length; i++) {
-      const u = units[i];
-      if (u.page && body.childElementCount) newPage();
-      if (u.ch) chPage[u.ch] = pageNo;
-      if (u.list || u.table) { placeRows(u); continue; }
-      let ns = add(u.html);
-      // a heading must not end a page: keep at least ~120px of room after it
-      const tooLow = () => u.keep && room() < 120;
-      if ((over() || tooLow()) && body.childElementCount > ns.length) {
-        drop(ns); newPage(); if (u.ch) chPage[u.ch] = pageNo; ns = add(u.html);
-      }
-    }
-    tocBody.innerHTML = `<section class="bk-toc"><h2>${esc(L.contents)}</h2><ol>${B.chapters.map(c => `<li><a href="#" data-pg="${chPage[c.id]}"><span class="ms">${esc(c.icon)}</span><span>${esc(c.title)}</span><b>${chPage[c.id] || ''}</b></a></li>`).join('')}</ol></section>`;
-    tocBody.querySelectorAll('[data-pg]').forEach(a => a.onclick = e => { e.preventDefault(); host.children[+a.dataset.pg - 1]?.scrollIntoView({ behavior: 'smooth' }); });
-    // the PDF is built from the hidden A4 pages directly (no print dialog, so its margins/scale cannot cut anything)
-    const loadJs = src => new Promise((ok, no) => { if (document.querySelector(`script[src="${src}"]`)) return ok();
-      const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => no(new Error('PDF library could not load')); document.head.appendChild(el); });
-    const st = document.getElementById('bkst'), btn = document.getElementById('bkpdf'); st.textContent = `${pageNo} pages`; btn.disabled = false;
-    btn.onclick = async () => {
-      btn.disabled = true;
-      try {
-        await loadJs('https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js');
-        await loadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-        const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true }), pages = [...host.children];
-        // the browser draws each page itself (SVG foreignObject); fonts are embedded once and reused
-        const fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(host).catch(() => '');
-        for (let i = 0; i < pages.length; i++) {
-          st.textContent = `PDF ${i + 1} / ${pages.length}`;
-          const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 1.4, quality: 0.8, backgroundColor: '#ffffff', fontEmbedCSS, cacheBust: false });
-          if (i) pdf.addPage();
-          pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        }
-        pdf.save(`${(P.label.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Kundali')} - KarmYog Kundali Report.pdf`);
-        st.textContent = `${pageNo} pages`;
-      } catch (e) { toast(e.message || 'PDF error'); st.textContent = ''; }
-      btn.disabled = false;
-    };
+      </td></tr></tbody></table>`);
   }
   function viewAdd() {
     h(`${ph('person_add', t('ui.add_chart'), t('ui.add_sub'))}
