@@ -1233,7 +1233,7 @@
         const fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(host).catch(() => '');
         for (let i = 0; i < pages.length; i++) {
           st.textContent = `PDF ${i + 1} / ${pages.length}`;
-          const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 1.6, quality: 0.88, backgroundColor: '#ffffff', fontEmbedCSS, cacheBust: false });
+          const img = await window.htmlToImage.toJpeg(pages[i], { pixelRatio: 1.4, quality: 0.8, backgroundColor: '#ffffff', fontEmbedCSS, cacheBust: false });
           if (i) pdf.addPage();
           pdf.addImage(img, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
