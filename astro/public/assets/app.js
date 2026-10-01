@@ -1141,7 +1141,8 @@
     h(`<div class="bk-bar noprint"><a class="btn ghost" href="#/chart/${id}"><span class="ms">arrow_back</span>${esc(P.label)}</a>
         <button id="bkpdf" disabled><span class="ms">picture_as_pdf</span>${esc(t('ui.download_report'))}</button><span class="muted" id="bkst">…</span></div>
       <div class="bk bk-pages" id="bkp"></div>`);
-    await (document.fonts ? document.fonts.ready : Promise.resolve());
+    // load the real fonts before measuring, otherwise text grows afterwards and pages overflow
+    if (document.fonts) { await Promise.all(['400', '500', '600', '700'].flatMap(w => [`${w} 16px Poppins`, `${w} 16px "Hind Vadodara"`]).map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; }
     const host = document.getElementById('bkp'); if (!host) return;
     const run = `<div class="pg-run"><img src="${LOGO}" alt="KarmYog Astro · Vastu"><span>${esc(P.label)} · ${esc(L.cover_title)}</span></div>`;
     let pageNo = 0, body;
