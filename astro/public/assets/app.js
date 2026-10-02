@@ -1189,7 +1189,7 @@
     } catch (e) { h(admWrap('overview', errBox(e))); } }
   async function viewAdminUsers(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
-      h(admWrap('users', `<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.5rem"><h1 style="margin:0">${esc(t('ui.admin_users'))}</h1><a href="#/users/new" class="tonal" style="text-decoration:none;padding:.4rem .8rem;border-radius:.5rem;font-size:.9rem"><span class="ms" style="font-size:1.1rem;vertical-align:middle">person_add</span> Add User</a></div>
+      h(admWrap('users', `<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.5rem"><h1 style="margin:0">${esc(t('ui.admin_users'))}</h1><a href="#/users/new" style="text-decoration:none;color:var(--t-saffron);font-weight:600;font-size:.9rem"><span class="ms" style="font-size:1.1rem;vertical-align:middle;margin-right:.2rem">person_add</span>Add User</a></div>
         <form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / email"><button><span class="ms">search</span></button></form>
         <section class="card"><div class="scroll"><table><tr><th>Name</th><th>Email</th><th>Plan</th><th>Kundalis</th><th>Joined</th><th>Status</th></tr>
         ${d.items.map(u => `<tr><td><a href="#/users/${u.id}"><b>${esc(u.name)}</b></a></td><td>${esc(u.email)}</td><td><span class="chip ${u.plan === 'premium' ? 'ok' : ''}">${esc(u.plan)}</span></td><td>${u.kundalis}</td><td>${esc(u.created_at.slice(0, 10))}</td><td>${+u.disabled ? '<span class="chip warn">Disabled</span>' : 'Active'}</td></tr>`).join('')}</table></div>${pager(d)}</section>`));
@@ -1205,7 +1205,7 @@
           <label class="check"><input type="checkbox" name="disabled"${+u.disabled ? ' checked' : ''}> Disable this account (signs the user out)</label>
           <div class="row"><button>${esc(t('ui.save'))}</button><button type="button" class="ghost danger" id="ud"><span class="ms">delete</span>Delete user</button></div></form></section>
         <section class="card"><div class="card-h" style="justify-content:space-between"><div><span class="ms">auto_stories</span>${esc(t('ui.admin_kundalis'))} (${u.profiles.length})</div>
-          <a href="#/users/${id}/kundali" class="tonal" style="text-decoration:none;padding:.3rem .7rem;border-radius:.5rem;font-size:.85rem"><span class="ms" style="font-size:1rem;vertical-align:middle">add</span> Add</a></div>
+          <a href="#/users/${id}/kundali" style="text-decoration:none;color:var(--t-saffron);font-weight:600;font-size:.9rem"><span class="ms" style="font-size:1rem;vertical-align:middle;margin-right:.2rem">add_circle</span>Add Kundali</a></div>
           <div class="scroll"><table><tr><th>Kundali</th><th>Birth</th><th>Place</th><th></th></tr>
           ${u.profiles.map(p => `<tr><td><b>${esc(p.label)}</b></td><td>${esc(p.birth_date)} ${esc(p.birth_time.slice(0, 5))}</td><td>${esc(p.place_name)}</td>
             <td style="white-space:nowrap"><a class="icon-btn" href="#/kundalis/${p.id}" title="Edit"><span class="ms">edit</span></a>
