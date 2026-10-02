@@ -49,23 +49,26 @@
     const cur = location.hash.split('/')[1] || (token ? 'dashboard' : 'home');
     const is = k => cur === k || (k === 'dashboard' && ['chart', 'print', 'charts', 'edit', 'add'].includes(cur)) || (k === 'ai-chat' && cur === 'chat') || (k === 'profile' && cur === 'admin');
     const a = ([k, l, ic], cls = '') => `<a href="#/${k}" class="${cls}${is(k) ? ' on' : ''}"${is(k) ? ' aria-current="page"' : ''}><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`;
-    // desktop top navigation
-    const top = [['home', 'home.nav', 'home'], ...(token ? [['dashboard', 'ui.nav_kundali', 'auto_stories']] : []), ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'],
-      ...(token ? [['predict', 'ui.nav_predict', 'auto_awesome'], ['milan', 'ui.kundali_milan', 'favorite'], ['ai-chat', 'ui.nav_claude', 'psychology']] : [])];
+    // desktop top navigation — always show all items; protected ones gate on click
+    const top = [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'],
+      ['panchang', 'ui.panchang', 'calendar_month'], ['world-outlook', 'ui.nav_world', 'public'],
+      ['predict', 'ui.nav_predict', 'auto_awesome'], ['milan', 'ui.kundali_milan', 'favorite'], ['ai-chat', 'ui.nav_claude', 'psychology']];
     $rail.innerHTML = top.map(x => a(x)).join('');
     // account area
     document.getElementById('acct').innerHTML = token
       ? `<a class="acct-btn${is('profile') ? ' on' : ''}" href="#/profile" aria-label="${esc(t('ui.my_profile'))}"><span class="ms">account_circle</span></a>`
       : `<a class="btn text" href="#/login">${esc(t('ui.sign_in'))}</a><a class="btn" href="#/register">${esc(t('ui.register'))}</a>`;
-    // drawer (phones / narrow screens): everything
-    const all = [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ...(token ? [
-      ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'], ['milan', 'ui.kundali_milan', 'favorite'],
-      ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'], ['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
-      : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
+    // drawer (phones / narrow screens): everything always visible
+    const all = [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'],
+      ['world-outlook', 'ui.nav_world', 'public'], ['dashboard', 'ui.nav_kundali', 'auto_stories'],
+      ['add', 'ui.add_chart', 'person_add'], ['predict', 'ui.personal_predictions', 'auto_awesome'],
+      ['milan', 'ui.kundali_milan', 'favorite'], ['ai-chat', 'ui.nav_claude', 'psychology'], ['chat', 'ui.chat', 'forum'],
+      ...(token ? [['profile', 'ui.my_profile', 'account_circle'], ['logout', 'ui.sign_out', 'logout']]
+                : [['login', 'ui.sign_in', 'login'], ['register', 'ui.register', 'person_add']])];
     document.getElementById('drawer').innerHTML = `<div class="drawer-h"><img src="${LOGO}" alt="${esc(t('ui.app_name'))}"></div>${all.map(x => a(x)).join('')}`;
     // phones: five destinations
-    const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['ai-chat', 'ui.nav_chat', 'forum'], ['profile', 'ui.nav_profile', 'account_circle']]
-      : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['login', 'ui.sign_in', 'login']];
+    const bl = token ? [['home', 'home.nav', 'home'], ['dashboard', 'ui.nav_kundali', 'auto_stories'], ['rashifal', 'rf.title', 'stars'], ['world-outlook', 'ui.nav_world', 'public'], ['profile', 'ui.nav_profile', 'account_circle']]
+      : [['home', 'home.nav', 'home'], ['rashifal', 'rf.title', 'stars'], ['panchang', 'ui.panchang', 'calendar_month'], ['world-outlook', 'ui.nav_world', 'public'], ['login', 'ui.sign_in', 'login']];
     $bnav.innerHTML = bl.map(x => a(x)).join('');
     renderStrip(); renderFooter();
   }
@@ -1167,7 +1170,8 @@
 
   // ---------- Admin: remedy rules ----------
   const ADM = [['overview', 'ui.admin_overview', 'monitoring'], ['users', 'ui.admin_users', 'group'], ['kundalis', 'ui.admin_kundalis', 'auto_stories'],
-    ['categories', 'ui.categories', 'category'], ['remedies', 'ui.remedy_rules', 'spa'], ['plans', 'ui.admin_plans', 'workspace_premium'], ['admins', 'ui.admin_admins', 'shield_person']];
+    ['categories', 'ui.categories', 'category'], ['remedies', 'ui.remedy_rules', 'spa'], ['plans', 'ui.admin_plans', 'workspace_premium'], ['admins', 'ui.admin_admins', 'shield_person'],
+    ['world-countries', 'ui.world_countries', 'public'], ['world-topics', 'ui.world_topics', 'topic']];
   const adminTabs = () => '';
   const admWrap = (cur, html) => `<div class="adm"><aside class="adm-nav"><p class="adm-brand"><span class="ms">admin_panel_settings</span>${esc(t('ui.admin'))}</p>
     ${ADM.map(([k, l, ic]) => `<a class="${cur === k ? 'on' : ''}" href="#/${k}"><span class="ms">${ic}</span><span>${esc(t(l))}</span></a>`).join('')}
@@ -1379,6 +1383,86 @@
     } catch (e) { h(errBox(e)); }
   }
 
+  // ---------- Admin: World Countries & Topics ----------
+  async function viewAdminWorldCountries() {
+    loading();
+    try {
+      const rows = await api('GET', '/admin/world-countries');
+      h(admWrap('world-countries', `<h1>World Countries</h1>
+        <div style="margin-bottom:1rem"><a href="#/world-countries/new" style="color:var(--t-saffron);font-weight:600;font-size:.9rem;text-decoration:none">+ Add Country</a></div>
+        <section class="card"><div class="scroll"><table><tr><th>Name</th><th>ISO</th><th>Ref Date</th><th>Place</th><th>Enabled</th><th></th></tr>
+        ${rows.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.iso_code)}</td><td>${esc(c.ref_date)}</td><td>${esc(c.ref_place)}</td>
+          <td>${c.enabled ? '✓' : '–'}</td>
+          <td><button class="icon-btn" data-e="${c.id}" title="Edit"><span class="ms">edit</span></button>
+              ${c.id != 1 ? `<button class="icon-btn" data-d="${c.id}" title="Delete"><span class="ms">delete</span></button>` : ''}</td></tr>`).join('')}
+        </table></div></section>`));
+      $app.querySelectorAll('[data-e]').forEach(b => b.onclick = () => { location.hash = '#/world-countries/' + b.dataset.e; });
+      $app.querySelectorAll('[data-d]').forEach(b => b.onclick = async () => {
+        if (await confirmDialog('Delete country?')) { try { await api('DELETE', '/admin/world-countries/' + b.dataset.d); viewAdminWorldCountries(); } catch (e) { toast(e.message, 'error'); } }
+      });
+    } catch (e) { h(errBox(e)); }
+  }
+
+  async function viewAdminWorldCountryForm(id = null) {
+    loading();
+    try {
+      const c = id ? await api('GET', '/admin/world-countries') : null;
+      const row = id ? (Array.isArray(c) ? c.find(x => x.id == id) : null) : null;
+      const v = k => row ? esc(row[k] ?? '') : '';
+      h(admWrap('world-countries', `<h1>${id ? 'Edit' : 'Add'} Country</h1>
+        <section class="card" style="max-width:600px">
+          <form id="wcf" class="stack">
+            <label>Name <input name="name" value="${v('name')}" required></label>
+            <label>ISO Code <input name="iso_code" maxlength="3" value="${v('iso_code')}" placeholder="e.g. USA"></label>
+            <label>Reference Date <input name="ref_date" type="date" value="${v('ref_date')}" required></label>
+            <label>Reference Time <input name="ref_time" type="time" value="${v('ref_time') || '00:00'}"></label>
+            <label>Place Name <input name="ref_place" value="${v('ref_place')}" required></label>
+            <label>Latitude <input name="ref_lat" type="number" step="0.0001" value="${v('ref_lat')}" required></label>
+            <label>Longitude <input name="ref_lon" type="number" step="0.0001" value="${v('ref_lon')}" required></label>
+            <label>Timezone <input name="ref_tzid" value="${v('ref_tzid') || 'UTC'}" required placeholder="e.g. America/New_York"></label>
+            <label>Source / Chart basis <input name="ref_source" value="${v('ref_source')}"></label>
+            <label>Rationale <textarea name="ref_rationale" rows="3">${row?.ref_rationale ?? ''}</textarea></label>
+            <label class="check fl"><input type="checkbox" name="enabled" value="1"${!row || row.enabled ? ' checked' : ''}> Enabled</label>
+            <div class="row"><button class="btn" type="submit">${esc(t('ui.save'))}</button>
+              <button class="btn text" type="button" id="wcback">Cancel</button></div>
+          </form></section>`));
+      document.getElementById('wcback').onclick = () => { location.hash = '#/world-countries'; };
+      document.getElementById('wcf').onsubmit = async e => {
+        e.preventDefault(); const f = e.target;
+        const body = { name: f.name.value, iso_code: f.iso_code.value, ref_date: f.ref_date.value,
+          ref_time: f.ref_time.value || '00:00:00', ref_place: f.ref_place.value, ref_lat: f.ref_lat.value,
+          ref_lon: f.ref_lon.value, ref_tzid: f.ref_tzid.value, ref_source: f.ref_source.value,
+          ref_rationale: f.ref_rationale.value, enabled: f.enabled.checked ? 1 : 0 };
+        try {
+          await api(id ? 'PUT' : 'POST', '/admin/world-countries' + (id ? '/' + id : ''), body);
+          toast(t('ui.saved')); location.hash = '#/world-countries';
+        } catch (err) { toast(err.message, 'error'); }
+      };
+    } catch (e) { h(errBox(e)); }
+  }
+
+  async function viewAdminWorldTopics() {
+    loading();
+    try {
+      const rows = await api('GET', '/admin/world-topics');
+      h(admWrap('world-topics', `<h1>World Topics</h1>
+        <section class="card"><div class="scroll"><table><tr><th>Slug</th><th>Label (EN)</th><th>Order</th><th>Enabled</th><th></th></tr>
+        ${rows.map(r => `<tr><td><code>${esc(r.slug)}</code></td>
+          <td><input class="tl-en" data-id="${r.id}" value="${esc(r.label_en)}" style="width:180px"></td>
+          <td><input class="tl-ord" data-id="${r.id}" type="number" value="${r.sort_order}" style="width:60px"></td>
+          <td><input class="tl-en2" data-id="${r.id}" type="checkbox"${r.enabled ? ' checked' : ''}></td>
+          <td><button class="btn text tl-save" data-id="${r.id}" style="padding:.25rem .6rem">Save</button></td></tr>`).join('')}
+        </table></div></section>`));
+      $app.querySelectorAll('.tl-save').forEach(b => b.onclick = async () => {
+        const id = b.dataset.id;
+        const label_en = $app.querySelector(`.tl-en[data-id="${id}"]`)?.value;
+        const sort_order = +$app.querySelector(`.tl-ord[data-id="${id}"]`)?.value;
+        const enabled = $app.querySelector(`.tl-en2[data-id="${id}"]`)?.checked ? 1 : 0;
+        try { await api('PATCH', '/admin/world-topics/' + id, { label_en, sort_order, enabled }); toast(t('ui.saved')); } catch (e) { toast(e.message, 'error'); }
+      });
+    } catch (e) { h(errBox(e)); }
+  }
+
   // ---------- Dashboard ----------
   async function viewDashboard() {
     loading();
@@ -1406,6 +1490,112 @@
           <div class="db-kv"><small>${esc(t('ui.rahu_kaal'))}</small><b>${tm(pc.rahu_kaal.start)} – ${tm(pc.rahu_kaal.end)}</b></div></div>`;
       }).catch(() => { const el = document.getElementById('dbpc'); if (el) el.innerHTML = `<p class="muted">—</p>`; });
     } catch (e) { h(errBox(e)); }
+  }
+
+  // ---------- World Outlook ----------
+  async function viewWorldOutlook() {
+    const today = new Date().toLocaleDateString('en-CA');
+    let scope = 'india', countryId = null, period = 'daily', date = today, topicSlug = '', selLang = lang;
+    let countries = [], topics = [], detail = null, loading = false;
+
+    async function loadMeta() {
+      [countries, topics] = await Promise.all([
+        api('GET', '/world-outlook/countries'),
+        api('GET', `/world-outlook/topics?lang=${selLang}`)
+      ]);
+      if (!topicSlug && topics.length) topicSlug = topics[0].slug;
+    }
+
+    function scopeLabel() { return { india: t('wo.scope_india') || 'India', country: t('wo.scope_country') || 'Country', world: t('wo.scope_world') || 'World' }[scope] || scope; }
+
+    function render() {
+      const topicOpts = topics.map(tp => `<option value="${esc(tp.slug)}"${tp.slug === topicSlug ? ' selected' : ''}>${esc(tp.label)}</option>`).join('');
+      const countryOpts = countries.map(c => `<option value="${c.id}"${c.id == countryId ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+      const periodLabels = { daily: t('wo.daily') || 'Daily', weekly: t('wo.weekly') || 'Weekly', monthly: t('wo.monthly') || 'Monthly', yearly: t('wo.yearly') || 'Yearly' };
+      const periodTabs = ['daily', 'weekly', 'monthly', 'yearly'].map(p =>
+        `<button class="tab-btn${p === period ? ' on' : ''}" data-p="${p}">${periodLabels[p]}</button>`).join('');
+
+      h(`<div class="wo-page">
+        <div class="wo-head">
+          <h1><span class="ms" style="color:var(--t-saffron)">public</span> ${esc(t('ui.nav_world') || 'World Outlook')}</h1>
+          <p class="wo-sub">${esc(t('wo.subtitle') || 'Vedic astrological outlook for nations and the world')}</p>
+        </div>
+        <div class="wo-filters card">
+          <div class="wo-row">
+            <label>${esc(t('wo.scope') || 'Scope')}</label>
+            <div class="seg-group" id="woscope">
+              ${['india','country','world'].map(s => `<button class="seg${s===scope?' on':''}" data-s="${s}">${{india:t('wo.scope_india')||'India',country:t('wo.scope_country')||'Country',world:t('wo.scope_world')||'World'}[s]}</button>`).join('')}
+            </div>
+            ${scope === 'country' ? `<select id="wocountry" style="max-width:180px">${countryOpts || '<option>Loading…</option>'}</select>` : ''}
+          </div>
+          <div class="wo-row">
+            <label>${esc(t('wo.period') || 'Period')}</label>
+            <div class="tab-row" id="woperiod">${periodTabs}</div>
+            <input type="date" id="wodate" value="${date}" style="max-width:160px">
+          </div>
+          <div class="wo-row">
+            <label>${esc(t('wo.topic') || 'Topic')}</label>
+            <select id="wotopic">${topicOpts}</select>
+            <select id="wolang" style="max-width:100px">
+              <option value="en"${selLang==='en'?' selected':''}>English</option>
+              <option value="hi"${selLang==='hi'?' selected':''}>हिंदी</option>
+              <option value="gu"${selLang==='gu'?' selected':''}>ગુજ.</option>
+            </select>
+          </div>
+          <button class="btn" id="woload" style="align-self:flex-start"${loading?' disabled':''}>${loading ? '…' : esc(t('wo.get') || 'Get Outlook')}</button>
+        </div>
+        ${detail ? renderDetail() : `<p class="wo-hint" style="text-align:center;color:var(--on-surface-variant);margin-top:2rem">${esc(t('wo.hint') || 'Select options above and press "Get Outlook"')}</p>`}
+      </div>`);
+      bindFilters();
+    }
+
+    function renderDetail() {
+      if (!detail) return '';
+      const planets = detail.calc?.transit_planets || {};
+      const retro = Object.entries(planets).filter(([,v]) => v.retrograde).map(([k]) => k);
+      const pc = detail.calc?.panchang;
+      const factors = [
+        ...Object.entries(planets).slice(0, 6).map(([name, p]) => `<span class="wo-planet"><b>${esc(name)}</b> ${esc(p.sign)}${p.retrograde?' ℞':''}${p.dignity?' · '+esc(p.dignity):''}</span>`),
+        ...(pc ? [`<span class="wo-planet"><b>${esc(t('panchang.tithi')||'Tithi')}</b> ${esc(pc.tithi)}</span>`,
+                   `<span class="wo-planet"><b>${esc(t('panchang.nakshatra')||'Nak.')}</b> ${esc(pc.nakshatra)}</span>`] : [])
+      ].join('');
+      return `<div class="wo-detail card">
+        <div class="wo-detail-head">
+          <span>${esc(scopeLabel())} · ${esc(topicLabel())} · ${esc(detail.period_from)}${detail.period_from !== detail.period_to ? ' – '+esc(detail.period_to) : ''}</span>
+          ${detail.from_cache ? `<span class="wo-cached">${esc(t('wo.cached')||'cached')}</span>` : ''}
+        </div>
+        <div class="wo-content">${detail.content.split('\n').map(l => l.trim() ? `<p>${esc(l)}</p>` : '').join('')}</div>
+        ${factors ? `<div class="wo-factors"><h4>${esc(t('wo.factors')||'Planetary Factors')}</h4><div class="wo-planet-row">${factors}</div></div>` : ''}
+        ${detail.reference?.source ? `<div class="wo-ref"><span class="ms" style="font-size:1rem">info</span> ${esc(detail.reference.source)}</div>` : ''}
+        <div class="wo-disclaimer">${esc(detail.disclaimer || '')}</div>
+      </div>`;
+    }
+
+    function topicLabel() { const t2 = topics.find(x => x.slug === topicSlug); return t2 ? t2.label : topicSlug; }
+
+    function bindFilters() {
+      document.querySelectorAll('#woscope .seg').forEach(b => b.addEventListener('click', () => { scope = b.dataset.s; countryId = null; render(); }));
+      document.querySelectorAll('#woperiod .tab-btn').forEach(b => b.addEventListener('click', () => { period = b.dataset.p; render(); }));
+      const wd = document.getElementById('wodate'); if (wd) wd.addEventListener('change', e => { date = e.target.value; });
+      const wc = document.getElementById('wocountry'); if (wc) wc.addEventListener('change', e => { countryId = e.target.value; });
+      const wt = document.getElementById('wotopic'); if (wt) wt.addEventListener('change', e => { topicSlug = e.target.value; });
+      const wl = document.getElementById('wolang'); if (wl) wl.addEventListener('change', async e => { selLang = e.target.value; topics = await api('GET', `/world-outlook/topics?lang=${selLang}`); render(); });
+      const btn = document.getElementById('woload'); if (btn) btn.addEventListener('click', async () => {
+        date = document.getElementById('wodate')?.value || date;
+        if (scope === 'country' && !countryId) { alert(t('wo.select_country') || 'Please select a country'); return; }
+        loading = true; render();
+        try {
+          const qs = new URLSearchParams({ scope, period, date, topic: topicSlug, lang: selLang });
+          if (scope === 'country' && countryId) qs.set('country_id', countryId);
+          detail = await api('GET', `/world-outlook?${qs}`);
+        } catch (e) { alert(e.message || 'Error'); }
+        loading = false; render();
+      });
+    }
+
+    h(`<p style="text-align:center;padding:3rem;color:var(--on-surface-variant)">Loading…</p>`);
+    try { await loadMeta(); } catch(e) { h(`<p style="text-align:center;padding:3rem;color:var(--error)">Failed to load. ${esc(e.message||'')}</p>`); return; }
+    render();
   }
 
   // ---------- Rashifal: all 12 Moon signs, daily / weekly / monthly (public) ----------
@@ -1537,7 +1727,18 @@
     renderNav();
     const [, page, arg] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/auth/logout'); } catch (e) {} setToken(null); location.hash = '#/panchang'; return; }
-    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat', 'ai-chat', 'milan'].includes(page) && !token) { location.hash = '#/login'; return; }
+    if (['charts', 'chart', 'print', 'dashboard', 'add', 'edit', 'profile', 'predict', 'chat', 'ai-chat', 'milan'].includes(page) && !token) {
+      h(`<section class="card" style="max-width:420px;margin:4rem auto;text-align:center;padding:2.5rem 2rem">
+        <span class="ms" style="font-size:3rem;color:var(--t-saffron)">lock</span>
+        <h2 style="margin:.5rem 0 .75rem">${esc(t('ui.sign_in_required') || 'Sign In Required')}</h2>
+        <p style="color:var(--on-surface-variant);margin-bottom:1.5rem">Please sign in to access this feature.</p>
+        <div class="row" style="justify-content:center;gap:.75rem">
+          <a class="btn" href="#/login">${esc(t('ui.sign_in'))}</a>
+          <a class="btn text" href="#/register">${esc(t('ui.register'))}</a>
+        </div>
+      </section>`);
+      renderNav(); return;
+    }
     if (page === 'login' || page === 'register') return viewAuth(page);
     if (page === 'forgot') return viewForgot();
     if (page === 'reset' && arg) return viewReset(arg);
@@ -1549,6 +1750,7 @@
     if (page === 'milan') return viewMilan(arg ? parseInt(arg,10) : 0);
     if (page === 'chat') return viewChat();
     if (page === 'ai-chat') return viewChat('claude');
+    if (page === 'world-outlook') return viewWorldOutlook();
     if (page === 'rashifal') return viewRashifal(['daily', 'weekly', 'monthly'].includes(arg) ? arg : 'daily');
     if (page === 'admin') { location.hash = '#/panchang'; return; }
 
@@ -1567,7 +1769,9 @@
       overview: viewAdminOverview,
       users: () => sub === 'new' ? viewAdminAddUser() : sub && action === 'kundali' ? viewAdminAddKundali(+sub) : sub ? viewAdminUser(+sub) : viewAdminUsers(),
       kundalis: () => sub ? viewAdminEditKundali(+sub) : viewAdminKundalis(),
-      categories: () => viewAdminCats(), remedies: () => viewAdmin(), plans: viewAdminPlans, admins: viewAdminAdmins
+      categories: () => viewAdminCats(), remedies: () => viewAdmin(), plans: viewAdminPlans, admins: viewAdminAdmins,
+      'world-countries': () => sub === 'new' ? viewAdminWorldCountryForm() : sub ? viewAdminWorldCountryForm(+sub) : viewAdminWorldCountries(),
+      'world-topics': () => viewAdminWorldTopics()
     }[page] || viewAdminOverview)();
   }
   const DATE_RE = /\b(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2})(?::\d{2})?Z)?\b/g;
