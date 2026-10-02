@@ -37,6 +37,15 @@ final class AiChat {
 
     public static function enabled(): bool { return trim((string) (app_config()['ai']['key'] ?? '')) !== ''; }
 
+    /**
+     * Public wrapper for free-form generation used by WorldOutlook and similar services.
+     * Returns the "content" field from the AI's JSON response, or null on failure.
+     */
+    public static function generate(string $sys, string $user, string $lang = 'en', float $temp = 0.65): ?string {
+        $j = (new self($lang))->call($sys, $user, $temp);
+        return is_array($j) && isset($j['content']) ? (string) $j['content'] : null;
+    }
+
     /** @return ?array ['topic' => ?string, 'ask' => string, 'period' => ?string, 'offset' => int] */
     public function understand(string $msg, array $history, array $ctx, array $topics): ?array {
         $sys = "You read questions sent to a Vedic astrology chat and classify them. Users write English, Hindi, Gujarati, or Hindi/Gujarati in Latin letters "

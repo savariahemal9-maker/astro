@@ -267,6 +267,55 @@ final class Routes {
                 WHERE b.label LIKE ? OR b.place_name LIKE ? OR u.email LIKE ? ORDER BY b.id DESC LIMIT ' . ($per + 1) . ' OFFSET ' . (($page - 1) * $per), [$s, $s, $s]);
             return ['items' => array_slice($rows, 0, $per), 'page' => $page, 'has_more' => count($rows) > $per]; }, false);
         $r->add('DELETE', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q); Db::exec('DELETE FROM birth_profiles WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
+
+        // ---- World Outlook (public) ----
+        $r->add('GET', '/world-outlook/countries', fn(Request $q) => \App\Interp\WorldOutlook::countries(), false);
+        $r->add('GET', '/world-outlook/topics', fn(Request $q) => \App\Interp\WorldOutlook::topics((string) $q->input('lang', 'en')), false);
+        $r->add('GET', '/world-outlook', function (Request $q) {
+            return \App\Interp\WorldOutlook::get(
+                (string) $q->input('scope', 'india'),
+                $q->input('country_id') !== null ? (int) $q->input('country_id') : null,
+                (string) $q->input('period', 'daily'),
+                (string) $q->input('date', date('Y-m-d')),
+                (string) $q->input('topic', 'stock_market'),
+                (string) $q->input('lang', 'en')
+            );
+        }, false);
+
+        // ---- Admin: World countries CRUD ----
+        $r->add('GET', '/admin/world-countries', function (Request $q) use ($adm) { $adm($q);
+            return Db::all('SELECT * FROM world_countries ORDER BY name'); }, false);
+        $r->add('POST', '/admin/world-countries', function (Request $q) use ($adm) { $adm($q);
+            $in = $q->require(['name', 'ref_date', 'ref_place', 'ref_lat', 'ref_lon', 'ref_tzid']);
+            $id = Db::insert('INSERT INTO world_countries (name, iso_code, enabled, ref_date, ref_time, ref_place, ref_lat, ref_lon, ref_tzid, ref_source, ref_rationale) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                [trim($in['name']), strtoupper(substr((string) ($q->input('iso_code') ?? ''), 0, 3)), 1,
+                 $in['ref_date'], $q->input('ref_time') ?? '00:00:00', $in['ref_place'],
+                 (float) $in['ref_lat'], (float) $in['ref_lon'], $in['ref_tzid'],
+                 (string) ($q->input('ref_source') ?? ''), (string) ($q->input('ref_rationale') ?? '')]);
+            return Db::one('SELECT * FROM world_countries WHERE id=?', [$id]); }, false);
+        $r->add('PUT', '/admin/world-countries/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
+            $c = Db::one('SELECT id FROM world_countries WHERE id=?', [$a['id']]);
+            if (!$c) throw new ApiException('not_found', 'Country not found', 404);
+            $f = ['name','iso_code','enabled','ref_date','ref_time','ref_place','ref_lat','ref_lon','ref_tzid','ref_source','ref_rationale'];
+            $sets = []; $vals = [];
+            foreach ($f as $k) { if ($q->input($k) !== null) { $sets[] = "$k=?"; $vals[] = $k === 'iso_code' ? strtoupper(substr((string) $q->input($k), 0, 3)) : $q->input($k); } }
+            if ($sets) { $vals[] = $a['id']; Db::exec('UPDATE world_countries SET ' . implode(',', $sets) . ' WHERE id=?', $vals); }
+            return Db::one('SELECT * FROM world_countries WHERE id=?', [$a['id']]); }, false);
+        $r->add('DELETE', '/admin/world-countries/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
+            if ((int) $a['id'] === 1) throw new ApiException('validation', 'India reference chart cannot be deleted', 422);
+            Db::exec('DELETE FROM world_countries WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
+
+        // ---- Admin: World topics (enable/disable, reorder) ----
+        $r->add('GET', '/admin/world-topics', function (Request $q) use ($adm) { $adm($q);
+            return Db::all('SELECT * FROM world_topics ORDER BY sort_order, id'); }, false);
+        $r->add('PATCH', '/admin/world-topics/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
+            $t = Db::one('SELECT id FROM world_topics WHERE id=?', [$a['id']]);
+            if (!$t) throw new ApiException('not_found', 'Topic not found', 404);
+            $sets = []; $vals = [];
+            foreach (['enabled', 'sort_order', 'label_en', 'label_hi', 'label_gu'] as $k)
+                if ($q->input($k) !== null) { $sets[] = "$k=?"; $vals[] = $q->input($k); }
+            if ($sets) { $vals[] = $a['id']; Db::exec('UPDATE world_topics SET ' . implode(',', $sets) . ' WHERE id=?', $vals); }
+            return Db::one('SELECT * FROM world_topics WHERE id=?', [$a['id']]); }, false);
         $r->add('GET', '/profiles/{id}/planet-results', function (Request $q, array $u, array $a) {
             [, $kid, $k, $lang] = self::ctx($q, $u, $a);
             return self::cached($kid, 'planet_results', '', $lang, fn() => (new RuleEngine($lang))->planetResults($k));
