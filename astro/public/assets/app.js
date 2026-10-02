@@ -1189,7 +1189,8 @@
     } catch (e) { h(admWrap('overview', errBox(e))); } }
   async function viewAdminUsers(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/users?q=${encodeURIComponent(q)}&page=${page}`);
-      h(admWrap('users', `<h1>${esc(t('ui.admin_users'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / email"><button><span class="ms">search</span></button></form>
+      h(admWrap('users', `<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:.5rem"><h1 style="margin:0">${esc(t('ui.admin_users'))}</h1><a href="#/users/new" class="tonal" style="text-decoration:none;padding:.4rem .8rem;border-radius:.5rem;font-size:.9rem"><span class="ms" style="font-size:1.1rem;vertical-align:middle">person_add</span> Add User</a></div>
+        <form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / email"><button><span class="ms">search</span></button></form>
         <section class="card"><div class="scroll"><table><tr><th>Name</th><th>Email</th><th>Plan</th><th>Kundalis</th><th>Joined</th><th>Status</th></tr>
         ${d.items.map(u => `<tr><td><a href="#/users/${u.id}"><b>${esc(u.name)}</b></a></td><td>${esc(u.email)}</td><td><span class="chip ${u.plan === 'premium' ? 'ok' : ''}">${esc(u.plan)}</span></td><td>${u.kundalis}</td><td>${esc(u.created_at.slice(0, 10))}</td><td>${+u.disabled ? '<span class="chip warn">Disabled</span>' : 'Active'}</td></tr>`).join('')}</table></div>${pager(d)}</section>`));
       document.getElementById('aq').onsubmit = e => { e.preventDefault(); viewAdminUsers(e.target.q.value); };
@@ -1203,12 +1204,85 @@
           <label>Premium until<input type="date" name="plan_expires" value="${esc(u.plan_expires || '')}"></label></div>
           <label class="check"><input type="checkbox" name="disabled"${+u.disabled ? ' checked' : ''}> Disable this account (signs the user out)</label>
           <div class="row"><button>${esc(t('ui.save'))}</button><button type="button" class="ghost danger" id="ud"><span class="ms">delete</span>Delete user</button></div></form></section>
-        <section class="card"><div class="card-h"><span class="ms">auto_stories</span>${esc(t('ui.admin_kundalis'))} (${u.profiles.length})</div><div class="scroll"><table>
-          ${u.profiles.map(p => `<tr><td><b>${esc(p.label)}</b></td><td>${esc(p.birth_date)} ${esc(p.birth_time.slice(0, 5))}</td><td>${esc(p.place_name)}</td></tr>`).join('') || `<tr><td class="muted">${esc(t('ui.none'))}</td></tr>`}</table></div></section>`));
+        <section class="card"><div class="card-h" style="justify-content:space-between"><div><span class="ms">auto_stories</span>${esc(t('ui.admin_kundalis'))} (${u.profiles.length})</div>
+          <a href="#/users/${id}/kundali" class="tonal" style="text-decoration:none;padding:.3rem .7rem;border-radius:.5rem;font-size:.85rem"><span class="ms" style="font-size:1rem;vertical-align:middle">add</span> Add</a></div>
+          <div class="scroll"><table><tr><th>Kundali</th><th>Birth</th><th>Place</th><th></th></tr>
+          ${u.profiles.map(p => `<tr><td><b>${esc(p.label)}</b></td><td>${esc(p.birth_date)} ${esc(p.birth_time.slice(0, 5))}</td><td>${esc(p.place_name)}</td>
+            <td style="white-space:nowrap"><a class="icon-btn" href="#/kundalis/${p.id}" title="Edit"><span class="ms">edit</span></a>
+            <button class="icon-btn" data-dk="${p.id}" aria-label="Delete"><span class="ms">delete</span></button></td></tr>`).join('') || `<tr><td class="muted" colspan="4">${esc(t('ui.none'))}</td></tr>`}
+          </table></div></section>`));
       const f = document.getElementById('uf');
       f.onsubmit = async e => { e.preventDefault(); try { await api('PATCH', '/admin/users/' + id, { plan: f.plan.value, plan_expires: f.plan_expires.value, disabled: f.disabled.checked }); toast(t('ui.saved')); } catch (er) { toast(er.message, 'error'); } };
       document.getElementById('ud').onclick = async () => { if (await confirmDialog(`Delete ${u.email} and all their kundalis?`)) { try { await api('DELETE', '/admin/users/' + id); toast(t('ui.deleted'), 'delete'); location.hash = '#/users'; } catch (er) { toast(er.message, 'error'); } } };
+      $app.querySelectorAll('[data-dk]').forEach(b => b.onclick = async () => { if (await confirmDialog('Delete this kundali?')) { try { await api('DELETE', '/admin/kundalis/' + b.dataset.dk); viewAdminUser(id); } catch (er) { toast(er.message, 'error'); } } });
     } catch (e) { h(admWrap('users', errBox(e))); } }
+  function viewAdminAddUser() {
+    h(admWrap('users', `<p><a href="#/users">‹ ${esc(t('ui.admin_users'))}</a></p><h1>Add User</h1>
+      <section class="card"><form class="stack" id="nuf">
+        <label>${esc(t('ui.name'))}<input name="name" required></label>
+        <label>${esc(t('ui.email'))}<input type="email" name="email" required></label>
+        <label>${esc(t('ui.password'))}<input type="password" name="password" required minlength="8"></label>
+        <label>Plan<select name="plan"><option value="free">Free</option><option value="premium">Premium</option></select></label>
+        <div id="uerr"></div><div class="row"><button>Create User</button></div>
+      </form></section>`));
+    const f = document.getElementById('nuf');
+    f.onsubmit = async e => { e.preventDefault(); try {
+      const u = await api('POST', '/admin/users', { name: f.name.value, email: f.email.value, password: f.password.value, plan: f.plan.value });
+      toast('User created'); location.hash = '#/users/' + u.id;
+    } catch (er) { document.getElementById('uerr').innerHTML = errBox(er); } }; }
+  async function viewAdminAddKundali(userId) {
+    loading(); try { const u = await api('GET', '/admin/users/' + userId);
+      h(admWrap('users', `<p><a href="#/users/${userId}">‹ ${esc(u.name)}</a></p><h1>Add Kundali</h1><section class="card">${chartForm()}</section>`));
+      bindAdminKundaliForm(userId, null, null);
+    } catch (e) { h(admWrap('users', errBox(e))); } }
+  async function viewAdminEditKundali(kundaliId) {
+    loading(); try { const p = await api('GET', '/admin/kundalis/' + kundaliId);
+      h(admWrap('kundalis', `<p><a href="#/users/${p.user_id}">‹ User</a></p><h1>Edit Kundali</h1><section class="card">${chartForm()}</section>`));
+      bindAdminKundaliForm(p.user_id, kundaliId, p);
+    } catch (e) { h(admWrap('kundalis', errBox(e))); } }
+  function bindAdminKundaliForm(userId, kundaliId, edit) {
+    const f = document.getElementById('cf'); let place = null, confirmed = null;
+    if (edit) {
+      for (const k of ['label', 'gender', 'birth_date', 'time_accuracy', 'tzid']) f[k].value = edit[k] ?? '';
+      f.birth_time.value = edit.birth_time; f.place_q.value = edit.place_name; place = { lat: edit.lat, lon: edit.lon };
+      if (edit.offset_source === 'manual') f.manual_offset_minutes.value = edit.offset_minutes;
+    }
+    api('GET', '/meta/timezones').then(z => document.getElementById('tzlist').innerHTML = z.map(x => `<option value="${esc(x)}">`).join('')).catch(() => {});
+    placePicker(f, p => { place = p; if (p.tzid) f.tzid.value = p.tzid; reset(); });
+    const reset = () => { confirmed = null; document.getElementById('resolved').innerHTML = ''; f.check.textContent = t('ui.check_details'); };
+    f.querySelectorAll('input,select').forEach(i => i.addEventListener('change', () => { if (i.name !== 'fold') reset(); }));
+    const body = () => ({
+      label: f.label.value, gender: f.gender.value || null, birth_date: f.birth_date.value, birth_time: f.birth_time.value,
+      time_accuracy: f.time_accuracy.value, place_name: f.place_q.value, lat: place?.lat, lon: place?.lon, tzid: f.tzid.value,
+      manual_offset_minutes: f.manual_offset_minutes.value === '' ? null : parseInt(f.manual_offset_minutes.value, 10),
+      dst_fold: f.querySelector('[name=fold]:checked')?.value || null,
+    });
+    f.onsubmit = async e => {
+      e.preventDefault(); const err = document.getElementById('cerr'); err.innerHTML = '';
+      if (!place) { err.innerHTML = errBox({ message: t('ui.search_place') }); return; }
+      try {
+        if (!confirmed) {
+          const r = await api('POST', '/birth/resolve', body()); confirmed = r;
+          document.getElementById('resolved').innerHTML = `<section class="calc"><strong>${esc(t('ui.resolved_as'))}</strong>
+            <table><tr><th>${esc(t('ui.utc'))}</th><td>${esc(r.utc)}</td></tr>
+            <tr><th>${esc(t('ui.offset'))}</th><td>${r.offset_minutes >= 0 ? '+' : '−'}${String(Math.floor(Math.abs(r.offset_minutes) / 60)).padStart(2, '0')}:${String(Math.abs(r.offset_minutes) % 60).padStart(2, '0')} (${esc(r.offset_source)})</td></tr>
+            <tr><th>${esc(t('ui.location'))}</th><td>${place.lat}, ${place.lon}</td></tr></table>
+            ${r.warnings.map(w => `<div class="warn">${esc(w.message)}</div>`).join('')}</section>`;
+          f.check.textContent = t('ui.confirm_save');
+        } else {
+          await api(kundaliId ? 'PUT' : 'POST', kundaliId ? '/admin/kundalis/' + kundaliId : '/admin/users/' + userId + '/kundalis', { ...body(), confirmed: true });
+          toast(t('ui.saved')); location.hash = '#/users/' + userId;
+        }
+      } catch (e2) {
+        if (e2.code === 'ambiguous_local_time') {
+          document.getElementById('fold').innerHTML = `<fieldset><legend>${esc(t('ui.dst_choose'))}</legend>
+            <label><input type="radio" name="fold" value="earlier" required> ${esc(t('ui.earlier'))}</label>
+            <label><input type="radio" name="fold" value="later"> ${esc(t('ui.later'))}</label></fieldset>`;
+        }
+        err.innerHTML = errBox(e2);
+      }
+    };
+  }
   async function viewAdminKundalis(q = '', page = 1) {
     loading(); try { const d = await api('GET', `/admin/kundalis?q=${encodeURIComponent(q)}&page=${page}`);
       h(admWrap('kundalis', `<h1>${esc(t('ui.admin_kundalis'))}</h1><form class="adm-search" id="aq"><input type="search" name="q" value="${esc(q)}" placeholder="${esc(t('ui.search'))}: name / place / email"><button><span class="ms">search</span></button></form>
@@ -1486,11 +1560,15 @@
   }
   async function adminRoute() {
     document.body.classList.add('admin-mode'); $rail.innerHTML = $bnav.innerHTML = '';
-    const [, page, sub] = location.hash.split('/');
+    const [, page, sub, action] = location.hash.split('/');
     if (page === 'logout') { try { await api('POST', '/admin-auth/logout'); } catch (e) {} setToken(null); location.hash = '#/'; return viewAdminAuth(); }
     if (!token) return viewAdminAuth(page === 'register' ? 'register' : 'login');
-    return ({ overview: viewAdminOverview, users: () => sub ? viewAdminUser(+sub) : viewAdminUsers(), kundalis: () => viewAdminKundalis(), categories: () => viewAdminCats(),
-      remedies: () => viewAdmin(), plans: viewAdminPlans, admins: viewAdminAdmins }[page] || viewAdminOverview)();
+    return ({
+      overview: viewAdminOverview,
+      users: () => sub === 'new' ? viewAdminAddUser() : sub && action === 'kundali' ? viewAdminAddKundali(+sub) : sub ? viewAdminUser(+sub) : viewAdminUsers(),
+      kundalis: () => sub ? viewAdminEditKundali(+sub) : viewAdminKundalis(),
+      categories: () => viewAdminCats(), remedies: () => viewAdmin(), plans: viewAdminPlans, admins: viewAdminAdmins
+    }[page] || viewAdminOverview)();
   }
   const DATE_RE = /\b(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2})(?::\d{2})?Z)?\b/g;
   const TIME_RE = /(?<![+\u2212\-\d:])\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b(?!\s?[AP]M)/g, AMPM = { en: ['AM', 'PM'], hi: ['AM', 'PM'], gu: ['AM', 'PM'] };

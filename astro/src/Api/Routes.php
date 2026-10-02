@@ -239,6 +239,28 @@ final class Routes {
             return Db::one('SELECT id, name, email, plan, plan_expires, disabled FROM users WHERE id=?', [$a['id']]); }, false);
         $r->add('DELETE', '/admin/users/{id}', function (Request $q, array $u, array $a) use ($adm) { $adm($q);
             Db::exec('DELETE FROM users WHERE id=?', [$a['id']]); return ['deleted' => true]; }, false);
+        $r->add('POST', '/admin/users', function (Request $q, array $u) use ($adm) {
+            $adm($q); $in = $q->require(['name', 'email', 'password']);
+            $email = strtolower(trim($in['email']));
+            if (Db::one('SELECT id FROM users WHERE email=?', [$email]))
+                throw new ApiException('validation', 'Email already registered', 422, ['field' => 'email']);
+            $id = Db::insert('INSERT INTO users (name, email, password_hash, lang, plan) VALUES (?,?,?,?,?)',
+                [trim($in['name']), $email, password_hash($in['password'], PASSWORD_DEFAULT), $in['lang'] ?? 'en', $in['plan'] ?? 'free']);
+            return Db::one('SELECT id, name, email, lang, plan, disabled, created_at FROM users WHERE id=?', [$id]); }, false);
+        $r->add('POST', '/admin/users/{id}/kundalis', function (Request $q, array $u, array $a) use ($adm) {
+            $adm($q);
+            if (!Db::one('SELECT id FROM users WHERE id=?', [$a['id']])) throw new ApiException('not_found', 'User not found', 404);
+            return ProfileService::save((int) $a['id'], array_merge($q->body, ['confirmed' => true])); }, false);
+        $r->add('GET', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) {
+            $adm($q);
+            $p = Db::one('SELECT * FROM birth_profiles WHERE id=?', [$a['id']]);
+            if (!$p) throw new ApiException('not_found', 'Kundali not found', 404);
+            $out = ProfileService::present($p); $out['user_id'] = (int) $p['user_id']; return $out; }, false);
+        $r->add('PUT', '/admin/kundalis/{id}', function (Request $q, array $u, array $a) use ($adm) {
+            $adm($q);
+            $p = Db::one('SELECT user_id FROM birth_profiles WHERE id=?', [$a['id']]);
+            if (!$p) throw new ApiException('not_found', 'Kundali not found', 404);
+            return ProfileService::save((int) $p['user_id'], array_merge($q->body, ['confirmed' => true]), (int) $a['id']); }, false);
         $r->add('GET', '/admin/kundalis', function (Request $q, array $u) use ($adm) { $adm($q);
             $s = '%' . trim((string) $q->input('q', '')) . '%'; $page = max(1, (int) $q->input('page', 1)); $per = 25;
             $rows = Db::all('SELECT b.id, b.label, b.birth_date, b.birth_time, b.place_name, b.created_at, u.id user_id, u.name user_name, u.email FROM birth_profiles b JOIN users u ON u.id=b.user_id
