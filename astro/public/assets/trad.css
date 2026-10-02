@@ -85,11 +85,12 @@ button:not(.ghost):not(.tonal):not(.text):not(.icon-btn):not(.pw-eye):not(.coll-
 .kvl>.tabs button.on .ms{color:var(--t-saffron)!important}
 input:focus,select:focus,textarea:focus{border-color:var(--t-saffron)!important;box-shadow:0 0 0 1px var(--t-saffron)!important}
 
-/* ---------- bottom nav (phones) ---------- */
+/* ---------- bottom nav: removed site-wide ---------- */
+.bnav{display:none!important}
 @media (max-width:760px){
-  .bnav{background:#fff!important;box-shadow:0 -2px 12px rgba(122,28,28,.12)!important;border-top:3px solid var(--t-saffron)!important}
-  .bnav a.on{color:var(--t-maroon)!important} .bnav a.on .ms{background:var(--m-primary-c)!important;color:var(--t-deep)!important}
-  .cp{height:calc(100dvh - var(--strip) - 72px - var(--navbar) - env(safe-area-inset-bottom,0px))!important}
+  /* reset the bottom padding m3.css added for the nav bar */
+  main{padding-bottom:1.5rem!important}
+  .cp{height:calc(100dvh - var(--strip) - 72px)!important}
   .ph{padding:1.1rem 1.1rem 1.4rem;border-radius:12px}.ph::after{width:160px;height:160px;margin-top:-80px;right:-50px}
   .tstrip{font-size:.72rem;justify-content:flex-start}
 }
@@ -132,7 +133,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--t-saffron)!important;
 .sf-in a{display:block;color:#f6dcc0;font-size:.88rem;padding:.2rem 0} .sf-in a:hover{color:#fff}
 .sf-copy{text-align:center;padding:.9rem 1rem 1.1rem;border-top:1px solid rgba(255,255,255,.12);font-size:.78rem;color:#d8b595}
 body:has(.cp) .sfoot{display:none}
-@media (max-width:760px){.sf-in{grid-template-columns:1fr 1fr}.sf-brand{grid-column:1/-1}.sfoot{padding-bottom:calc(var(--navbar) + env(safe-area-inset-bottom,0px))}}
+@media (max-width:760px){.sf-in{grid-template-columns:1fr 1fr}.sf-brand{grid-column:1/-1}.sfoot{padding-bottom:env(safe-area-inset-bottom,0px)}}
 body.admin-mode .tstrip,body.admin-mode .sfoot{display:none!important} body.admin-mode .topbar.appbar{top:0!important} body.admin-mode main{margin-top:72px!important}
 
 /* =====================================================================
@@ -339,7 +340,7 @@ body.kb-open .bnav{display:none!important}
 .mm-form{display:grid;gap:1rem;padding:1.3rem}
 .mm-pair{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:start}
 .mm-side{display:grid;gap:.75rem;padding:1.1rem;border-radius:14px;border:1px solid #ecdcc8;background:#fffaf3}
-.mm-side.boy{border-top:4px solid #2d5fa8} .mm-side.girl{border-top:4px solid #c2387a}
+.mm-side.boy{border-top:4px solid var(--t-saffron)} .mm-side.girl{border-top:4px solid var(--t-maroon)}
 .mm-sh{display:flex;align-items:center;gap:.6rem} .mm-sh b{font-size:1.05rem;color:var(--t-maroon)}
 .mm-man{display:grid;gap:.75rem} .mm-man[hidden]{display:none}
 .mm-av{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;background:#2d5fa8}
@@ -398,8 +399,8 @@ body.kb-open .bnav{display:none!important}
 }
 @media print{.mm-hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.mm-sec,.mm-tr,.mm-dosha,.mm-exi{break-inside:avoid}}
 .mm>.card,.mm>section,.mm>header{margin-left:0;margin-right:0}
-/* chat: when the keyboard is up the bottom bar is hidden, so the chat takes the full visible height */
-@media (max-width:960px){body.kb-open .cp{height:calc(var(--vvh,100dvh) - var(--strip) - 72px)!important}}
+/* chat: keyboard open — use visual viewport height */
+@media (max-width:960px){body.kb-open .cp{height:calc(var(--vvh,100dvh) - var(--strip) - 72px)!important;transition:height .15s ease}}
 /* Milan remedies */
 .mm-rem{margin-top:.8rem;padding-top:.7rem;border-top:1px dashed #ecdcc8}
 .mm-rh,.mm-kh{display:flex;align-items:center;gap:.35rem;color:var(--t-maroon);font-size:.92rem} .mm-rh .ms,.mm-kh .ms{font-size:18px;color:var(--t-saffron)}
