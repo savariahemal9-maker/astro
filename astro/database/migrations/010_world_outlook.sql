@@ -43,21 +43,31 @@ CREATE TABLE IF NOT EXISTS world_reports (
   INDEX idx_date (date_from)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO world_topics (slug, label_en, label_hi, label_gu, sort_order) VALUES
-('stock_market',      'Stock Market',          'शेयर बाज़ार',           'શેર બજાર',              1),
-('nifty_50',          'Nifty 50',              'निफ्टी 50',              'નિફ્ટી 50',             2),
-('bank_nifty',        'Bank Nifty',            'बैंक निफ्टी',            'બૅન્ક નિફ્ટી',          3),
-('economy_banking',   'Economy & Banking',     'अर्थव्यवस्था व बैंकिंग', 'અર્થતંત્ર અને બૅન્કિંગ', 4),
-('weather',           'Weather',               'मौसम',                  'હવામાન',                5),
-('national_security', 'National Security',     'राष्ट्रीय सुरक्षा',     'રાષ્ટ્રીય સુરક્ષા',      6),
-('politics',          'Politics & Government', 'राजनीति व शासन',        'રાજકારણ',               7),
-('international',     'International Relations','अंतर्राष्ट्रीय संबंध',  'આંતરરાષ્ટ્રીય સંબંધ',  8),
-('agriculture',       'Agriculture',           'कृषि',                  'કૃષિ',                  9),
-('public_health',     'Public Health',         'सार्वजनिक स्वास्थ्य',   'જાહેર આરોગ્ય',         10),
-('transport',         'Transport',             'परिवहन',                'પરિવહન',                11);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('stock_market', 'Stock Market', 1);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('nifty_50', 'Nifty 50', 2);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('bank_nifty', 'Bank Nifty', 3);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('economy_banking', 'Economy & Banking', 4);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('weather', 'Weather', 5);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('national_security', 'National Security', 6);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('politics', 'Politics & Government', 7);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('international', 'International Relations', 8);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('agriculture', 'Agriculture', 9);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('public_health', 'Public Health', 10);
+INSERT IGNORE INTO world_topics (slug, label_en, sort_order) VALUES ('transport', 'Transport', 11);
 
--- India: Independence 15 Aug 1947 midnight IST New Delhi (most widely used mundane chart)
+UPDATE world_topics SET label_hi='शेयर बाज़ार', label_gu='શેર બજાર' WHERE slug='stock_market';
+UPDATE world_topics SET label_hi='निफ्टी 50', label_gu='નિફ્ટી 50' WHERE slug='nifty_50';
+UPDATE world_topics SET label_hi='बैंक निफ्टी', label_gu='બૅન્ક નિફ્ટી' WHERE slug='bank_nifty';
+UPDATE world_topics SET label_hi='अर्थव्यवस्था व बैंकिंग', label_gu='અર્થતંત્ર અને બૅન્કિંગ' WHERE slug='economy_banking';
+UPDATE world_topics SET label_hi='मौसम', label_gu='હવામાન' WHERE slug='weather';
+UPDATE world_topics SET label_hi='राष्ट्रीय सुरक्षा', label_gu='રાષ્ટ્રીય સુરક્ષા' WHERE slug='national_security';
+UPDATE world_topics SET label_hi='राजनीति व शासन', label_gu='રાજકારણ' WHERE slug='politics';
+UPDATE world_topics SET label_hi='अंतर्राष्ट्रीय संबंध', label_gu='આંતરરાષ્ટ્રીય સંબંધ' WHERE slug='international';
+UPDATE world_topics SET label_hi='कृषि', label_gu='કૃષિ' WHERE slug='agriculture';
+UPDATE world_topics SET label_hi='सार्वजनिक स्वास्थ्य', label_gu='જાહેર આરોગ્ય' WHERE slug='public_health';
+UPDATE world_topics SET label_hi='परिवहन', label_gu='પરિવહન' WHERE slug='transport';
+
 INSERT IGNORE INTO world_countries (id, name, iso_code, ref_date, ref_time, ref_place, ref_lat, ref_lon, ref_tzid, ref_source, ref_rationale) VALUES
 (1, 'India', 'IND', '1947-08-15', '00:00:00', 'New Delhi, India', 28.6139, 77.2090, 'Asia/Kolkata',
- 'Indian Independence — 15 August 1947, 00:00 IST, New Delhi',
- 'India became independent at the stroke of midnight on 15 August 1947 in New Delhi. This is the most widely used reference chart for Indian mundane astrology.');
+ 'Indian Independence 15 Aug 1947 00:00 IST New Delhi',
+ 'India became independent at midnight on 15 August 1947 in New Delhi. Most widely used reference chart for Indian mundane astrology.');
