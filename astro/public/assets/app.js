@@ -1492,109 +1492,80 @@
     } catch (e) { h(errBox(e)); }
   }
 
-  // ---------- World Outlook ----------
+  // ---------- India Outlook ----------
   async function viewWorldOutlook() {
     const today = new Date().toLocaleDateString('en-CA');
-    let scope = 'india', countryId = null, period = 'daily', date = today, topicSlug = '', selLang = lang;
-    let countries = [], topics = [], detail = null, loading = false;
-
-    async function loadMeta() {
-      [countries, topics] = await Promise.all([
-        api('GET', '/world-outlook/countries'),
-        api('GET', `/world-outlook/topics?lang=${selLang}`)
-      ]);
-      if (!topicSlug && topics.length) topicSlug = topics[0].slug;
-    }
-
-    function scopeLabel() { return { india: t('wo.scope_india') || 'India', country: t('wo.scope_country') || 'Country', world: t('wo.scope_world') || 'World' }[scope] || scope; }
+    const TOPICS = [
+      { slug: 'stock_market',    en: 'Stock Market',       hi: 'शेयर बाज़ार',              gu: 'શેર બજાર',         icon: 'trending_up' },
+      { slug: 'economy_banking', en: 'Economy & Banking',  hi: 'अर्थव्यवस्था व बैंकिंग', gu: 'અર્થ & બૅન્કિંગ', icon: 'account_balance' },
+      { slug: 'politics',        en: 'Politics',           hi: 'राजनीति',                  gu: 'રાજકારણ',         icon: 'gavel' },
+      { slug: 'national_security', en: 'National Security', hi: 'राष्ट्रीय सुरक्षा',      gu: 'રાષ્ટ્રીય સુરક્ષા', icon: 'shield' },
+      { slug: 'weather',         en: 'Weather',            hi: 'मौसम',                     gu: 'હવામાન',          icon: 'cloud' },
+      { slug: 'agriculture',     en: 'Agriculture',        hi: 'कृषि',                     gu: 'કૃષિ',            icon: 'grass' },
+    ];
+    const TL = tp => tp[lang] || tp.en;
+    const PL = { daily: t('wo.daily')||'Daily', weekly: t('wo.weekly')||'Weekly', monthly: t('wo.monthly')||'Monthly', yearly: t('wo.yearly')||'Yearly' };
+    let period = 'daily', activeTopic = null, detail = null, busy = false;
 
     function render() {
-      const topicOpts = topics.map(tp => `<option value="${esc(tp.slug)}"${tp.slug === topicSlug ? ' selected' : ''}>${esc(tp.label)}</option>`).join('');
-      const countryOpts = countries.map(c => `<option value="${c.id}"${c.id == countryId ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
-      const periodLabels = { daily: t('wo.daily') || 'Daily', weekly: t('wo.weekly') || 'Weekly', monthly: t('wo.monthly') || 'Monthly', yearly: t('wo.yearly') || 'Yearly' };
-      const periodTabs = ['daily', 'weekly', 'monthly', 'yearly'].map(p =>
-        `<button class="tab-btn${p === period ? ' on' : ''}" data-p="${p}">${periodLabels[p]}</button>`).join('');
+      const periodTabs = ['daily','weekly','monthly','yearly'].map(p =>
+        `<button class="wo-ptab${p===period?' on':''}" data-p="${p}">${esc(PL[p])}</button>`).join('');
+      const cards = TOPICS.map(tp => `<button class="wo-tcard${activeTopic===tp.slug?' on':''}" data-tp="${tp.slug}">
+        <span class="ms wo-tic">${tp.icon}</span>
+        <span class="wo-tlbl">${esc(TL(tp))}</span>
+        ${busy && activeTopic===tp.slug ? '<span class="wo-spin"></span>' : ''}
+      </button>`).join('');
 
       h(`<div class="wo-page">
-        <div class="wo-head">
-          <h1><span class="ms" style="color:var(--t-saffron)">public</span> ${esc(t('ui.nav_world') || 'World Outlook')}</h1>
-          <p class="wo-sub">${esc(t('wo.subtitle') || 'Vedic astrological outlook for nations and the world')}</p>
-        </div>
-        <div class="wo-filters card">
-          <div class="wo-row">
-            <label>${esc(t('wo.scope') || 'Scope')}</label>
-            <div class="seg-group" id="woscope">
-              ${['india','country','world'].map(s => `<button class="seg${s===scope?' on':''}" data-s="${s}">${{india:t('wo.scope_india')||'India',country:t('wo.scope_country')||'Country',world:t('wo.scope_world')||'World'}[s]}</button>`).join('')}
+        <div class="wo-hero">
+          <div class="wo-hero-in">
+            <span class="wo-flag">🇮🇳</span>
+            <div>
+              <h1 class="wo-h1">${esc(t('wo.india_title')||'India Outlook')}</h1>
+              <p class="wo-sub">${esc(t('wo.india_sub')||'Vedic astrological outlook — based on India\'s Independence chart')}</p>
             </div>
-            ${scope === 'country' ? `<select id="wocountry" style="max-width:180px">${countryOpts || '<option>Loading…</option>'}</select>` : ''}
           </div>
-          <div class="wo-row">
-            <label>${esc(t('wo.period') || 'Period')}</label>
-            <div class="tab-row" id="woperiod">${periodTabs}</div>
-            <input type="date" id="wodate" value="${date}" style="max-width:160px">
-          </div>
-          <div class="wo-row">
-            <label>${esc(t('wo.topic') || 'Topic')}</label>
-            <select id="wotopic">${topicOpts}</select>
-            <select id="wolang" style="max-width:100px">
-              <option value="en"${selLang==='en'?' selected':''}>English</option>
-              <option value="hi"${selLang==='hi'?' selected':''}>हिंदी</option>
-              <option value="gu"${selLang==='gu'?' selected':''}>ગુજ.</option>
-            </select>
-          </div>
-          <button class="btn" id="woload" style="align-self:flex-start"${loading?' disabled':''}>${loading ? '…' : esc(t('wo.get') || 'Get Outlook')}</button>
+          <div class="wo-ptabs">${periodTabs}</div>
         </div>
-        ${detail ? renderDetail() : `<p class="wo-hint" style="text-align:center;color:var(--on-surface-variant);margin-top:2rem">${esc(t('wo.hint') || 'Select options above and press "Get Outlook"')}</p>`}
+        <div class="wo-tgrid">${cards}</div>
+        ${detail ? renderResult() : ''}
       </div>`);
-      bindFilters();
+      bind();
     }
 
-    function renderDetail() {
+    function renderResult() {
       if (!detail) return '';
       const planets = detail.calc?.transit_planets || {};
-      const retro = Object.entries(planets).filter(([,v]) => v.retrograde).map(([k]) => k);
       const pc = detail.calc?.panchang;
-      const factors = [
-        ...Object.entries(planets).slice(0, 6).map(([name, p]) => `<span class="wo-planet"><b>${esc(name)}</b> ${esc(p.sign)}${p.retrograde?' ℞':''}${p.dignity?' · '+esc(p.dignity):''}</span>`),
-        ...(pc ? [`<span class="wo-planet"><b>${esc(t('panchang.tithi')||'Tithi')}</b> ${esc(pc.tithi)}</span>`,
-                   `<span class="wo-planet"><b>${esc(t('panchang.nakshatra')||'Nak.')}</b> ${esc(pc.nakshatra)}</span>`] : [])
-      ].join('');
-      return `<div class="wo-detail card">
-        <div class="wo-detail-head">
-          <span>${esc(scopeLabel())} · ${esc(topicLabel())} · ${esc(detail.period_from)}${detail.period_from !== detail.period_to ? ' – '+esc(detail.period_to) : ''}</span>
-          ${detail.from_cache ? `<span class="wo-cached">${esc(t('wo.cached')||'cached')}</span>` : ''}
+      const tp = TOPICS.find(x => x.slug === activeTopic);
+      const factors = Object.entries(planets).slice(0, 7).map(([n, p]) =>
+        `<span class="wo-planet">${esc(n)} <b>${esc(p.sign)}</b>${p.retrograde?' <em>℞</em>':''}</span>`).join('');
+      return `<div class="wo-result card">
+        <div class="wo-result-h">
+          <span class="ms" style="color:var(--t-saffron)">${tp?.icon||'auto_awesome'}</span>
+          <strong>${esc(TL(tp||{en:activeTopic}))}</strong>
+          <span class="wo-period-badge">${esc(PL[period])}</span>
+          <span class="wo-date-badge">${esc(detail.period_from)}${detail.period_from!==detail.period_to?' – '+esc(detail.period_to):''}</span>
         </div>
-        <div class="wo-content">${detail.content.split('\n').map(l => l.trim() ? `<p>${esc(l)}</p>` : '').join('')}</div>
-        ${factors ? `<div class="wo-factors"><h4>${esc(t('wo.factors')||'Planetary Factors')}</h4><div class="wo-planet-row">${factors}</div></div>` : ''}
-        ${detail.reference?.source ? `<div class="wo-ref"><span class="ms" style="font-size:1rem">info</span> ${esc(detail.reference.source)}</div>` : ''}
-        <div class="wo-disclaimer">${esc(detail.disclaimer || '')}</div>
+        <div class="wo-body">${detail.content.split('\n').filter(l=>l.trim()).map(l=>`<p>${esc(l)}</p>`).join('')}</div>
+        ${factors ? `<div class="wo-planets-row"><span class="wo-pl-label">${esc(t('wo.factors')||'Planets')}</span>${factors}${pc?`<span class="wo-planet">${esc(pc.nakshatra)} <b>nak</b></span>`:''}</div>` : ''}
+        ${detail.reference?.source ? `<p class="wo-ref"><span class="ms">info</span> ${esc(detail.reference.source)}</p>` : ''}
+        <p class="wo-disclaimer">${esc(detail.disclaimer||'')}</p>
       </div>`;
     }
 
-    function topicLabel() { const t2 = topics.find(x => x.slug === topicSlug); return t2 ? t2.label : topicSlug; }
-
-    function bindFilters() {
-      document.querySelectorAll('#woscope .seg').forEach(b => b.addEventListener('click', () => { scope = b.dataset.s; countryId = null; render(); }));
-      document.querySelectorAll('#woperiod .tab-btn').forEach(b => b.addEventListener('click', () => { period = b.dataset.p; render(); }));
-      const wd = document.getElementById('wodate'); if (wd) wd.addEventListener('change', e => { date = e.target.value; });
-      const wc = document.getElementById('wocountry'); if (wc) wc.addEventListener('change', e => { countryId = e.target.value; });
-      const wt = document.getElementById('wotopic'); if (wt) wt.addEventListener('change', e => { topicSlug = e.target.value; });
-      const wl = document.getElementById('wolang'); if (wl) wl.addEventListener('change', async e => { selLang = e.target.value; topics = await api('GET', `/world-outlook/topics?lang=${selLang}`); render(); });
-      const btn = document.getElementById('woload'); if (btn) btn.addEventListener('click', async () => {
-        date = document.getElementById('wodate')?.value || date;
-        if (scope === 'country' && !countryId) { alert(t('wo.select_country') || 'Please select a country'); return; }
-        loading = true; render();
+    function bind() {
+      document.querySelectorAll('.wo-ptab').forEach(b => b.addEventListener('click', () => { period = b.dataset.p; detail = null; render(); }));
+      document.querySelectorAll('.wo-tcard').forEach(b => b.addEventListener('click', async () => {
+        if (busy) return;
+        activeTopic = b.dataset.tp; detail = null; busy = true; render();
         try {
-          const qs = new URLSearchParams({ scope, period, date, topic: topicSlug, lang: selLang });
-          if (scope === 'country' && countryId) qs.set('country_id', countryId);
-          detail = await api('GET', `/world-outlook?${qs}`);
-        } catch (e) { alert(e.message || 'Error'); }
-        loading = false; render();
-      });
+          detail = await api('GET', `/world-outlook?scope=india&period=${period}&date=${today}&topic=${activeTopic}&lang=${lang}`);
+        } catch (e) { detail = null; }
+        busy = false; render();
+      }));
     }
 
-    h(`<p style="text-align:center;padding:3rem;color:var(--on-surface-variant)">Loading…</p>`);
-    try { await loadMeta(); } catch(e) { h(`<p style="text-align:center;padding:3rem;color:var(--error)">Failed to load. ${esc(e.message||'')}</p>`); return; }
     render();
   }
 
