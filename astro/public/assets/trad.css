@@ -84,6 +84,9 @@ button:not(.ghost):not(.tonal):not(.text):not(.icon-btn):not(.pw-eye):not(.coll-
 .kvl>.tabs button.on{background:linear-gradient(90deg,var(--m-primary-c),#fff)!important;color:var(--t-maroon)!important;box-shadow:inset 3px 0 0 var(--t-saffron)}
 .kvl>.tabs button.on .ms{color:var(--t-saffron)!important}
 input:focus,select:focus,textarea:focus{border-color:var(--t-saffron)!important;box-shadow:0 0 0 1px var(--t-saffron)!important}
+/* Safari fix: override native select button rendering so label text doesn't bleed into the control */
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23b85e00' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .5rem center;background-size:20px;padding-right:2.2rem!important}
+.lang-pick select,.appbar select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E")!important}
 
 /* ---------- bottom nav: removed site-wide ---------- */
 .bnav{display:none!important}
